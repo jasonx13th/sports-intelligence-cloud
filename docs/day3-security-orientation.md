@@ -27,3 +27,9 @@
 - KMS stores encryption keys and lets services encrypt/decrypt data without exposing the keys.
 - Club Vivo athlete data in S3, Ruta Viva ride logs in S3, Athlete Evolution AI model artifacts.
 - Only specific Lambda roles, SageMaker roles, and my admin user should be able to use the main SIC KMS key.
+
+## VPC Model (first draft)
+
+- For early SIC, public-facing components like CloudFront, the web UI (S3 static hosting), and API Gateway will stay outside my VPC.
+- Most Lambda functions can call AWS services (DynamoDB, S3) without being in a VPC, but later some Lambdas may run inside a VPC to reach private resources.
+- In the future, private subnets in a VPC will host sensitive services like SageMaker endpoints or any databases that must not be directly internet-accessible.

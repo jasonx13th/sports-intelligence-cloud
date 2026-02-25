@@ -38,17 +38,17 @@
 
 1. **What changed in how I see AWS security today?**
 
-   Before today, security felt like one big thing. Now I see IAM as who can call what, KMS as who can decrypt data, and VPC as what is exposed vs private.
+Before today, security felt like one big thing. Now I see IAM as who can call what, KMS as who can decrypt data, and VPC as what is exposed vs private.
 
 
 2. **What still feels confusing or fuzzy?**
 
-   I still don’t feel confident about when exactly to put Lambda in a VPC
+I still don’t feel confident about when exactly to put Lambda in a VPC
 
 3. **Which architecture principle did I actually apply today?**
 
-  Security by default: I’m planning KMS for all S3 data instead of later.
+Security by default: I’m planning KMS for all S3 data instead of later.
 
 4. **One concrete thing I will do differently from now on when using AWS:**
 
- I will never give an app long-lived IAM user keys; I’ll always use roles.And any S3 buckets with athlete data will always get SSE-KMS from day one.
+I will never give an app long-lived IAM user keys; I’ll always use roles.And any S3 buckets with athlete data will always get SSE-KMS from day one.

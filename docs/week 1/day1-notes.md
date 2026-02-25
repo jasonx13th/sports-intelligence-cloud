@@ -1,0 +1,168 @@
+## Why IAM matters for multi-tenant Club Vivo
+
+- IAM is the gatekeeper that enforces **tenant isolation**: it makes sure that when Club A hits our APIs, they can only ever touch data that belongs to Club A, even though all clubs share the same AWS account and many of the same services.
+- IAM lets us apply **least privilege** to every actor (admins, coaches, Lambdas, future CI/CD pipelines) so each identity can only do exactly what it needs (e.g., Club Vivo API Lambda can only read/write items for its tenant’s records in DynamoDB and S3, not the whole table or bucket).
+- IAM separates **human identities from workload identities**: humans use IAM users or SSO with MFA (e.g., j-admin), while workloads use IAM roles with temporary credentials, so we never hard-code long-lived keys into code or config.
+
+## Why Cognito is our auth backbone for SIC
+
+- Cognito gives us a **managed user directory** for all clubs, schools, and municipalities, so we don’t have to build password storage, MFA, or account recovery ourselves (which are easy to get wrong and critical for youth data).
+- Cognito issues **standards-based JWT tokens** that integrate directly with API Gateway, so our Club Vivo APIs can trust the identity and role (group) information without custom auth code scattered across Lambdas.
+- Cognito is designed to **scale to thousands of users and multiple apps**, letting us onboard more clubs and add new SIC pillars (Athlete Evolution AI, Ruta Viva) while still using a unified identity system per tenant.
+
+### IAM users vs IAM roles in SIC
+
+- IAM users in SIC are **human operator identities** inside the AWS account (for example, `j-admin` or a future DevOps engineer). They have long-term identity, console access, and MFA, and are used to manage and operate the platform, not to act as clubs or coaches.
+- IAM roles in SIC are **workload identities** that AWS services (like Lambda or future SageMaker jobs) assume. They have no long-term credentials; instead, AWS issues temporary credentials for them when the workload runs.
+- Club admins, coaches, athletes, and other end-users of Club Vivo are **Cognito users**, not IAM users. They authenticate via Cognito, and our Lambdas run under IAM roles to act on their behalf within strict permissions.
+
+### Example of a human identity in SIC
+
+- `j-admin` is an IAM user in the `SIC-Admins` group. They can configure, secure, and update the SIC platform (including Club Vivo resources) via the console and CLI, but they cannot use the root user and should not have permissions to bypass our security guardrails (for example, they shouldn’t be able to disable CloudTrail or delete audit logs).
+- A future “Athlete AI Developer” IAM user would have permissions scoped only to the Athlete Evolution AI stacks and data. They would not be able to modify Club Vivo’s production tables, S3 buckets, or IAM roles, even though everything is in the same AWS account for now.
+
+### Example of a workload identity in SIC
+
+- When a coach (Cognito user) in Club Vivo creates a new training session, the frontend sends a request with the coach’s JWT to our API Gateway.
+- API Gateway invokes a Lambda function that runs under the `club-vivo-api-lambda-role`. This IAM role is allowed to read the coach’s club configuration (equipment, field size, player list, etc.) from DynamoDB and S3, and then call an AI service to help build a training plan.
+- The coach never gets AWS credentials. Only the Lambda assumes the IAM role with temporary credentials, which is safer than putting any access keys into code or config.
+
+## Cognito User Types & Groups (Club Vivo)
+
+In Club Vivo, end-users live in Cognito (not IAM). They are organized into groups to represent their role within a club:
+
+- **Club owner / director** → `director-group-cv`  
+  Responsible for managing the club account, onboarding coaches/athletes, and seeing club-wide analytics.
+
+- **Coach** → `coach-group-cv`  
+  Creates training sessions, manages teams and attendance, and interacts with AI planning tools for their club.
+
+- **Athlete** → `athlete-group-cv`  
+  Views personal schedule, session feedback, and optionally interacts with AI for individual development, but cannot change club-level settings.
+
+These groups are stored in the Cognito User Pool and appear as claims in the user’s JWT (e.g. `cognito:groups`), so the backend knows what each user is allowed to do.
+
+---
+
+## Tenant Identity – `tenant_id` Flow
+
+To support multi-tenancy, every club in SIC has a `tenant_id` that identifies it uniquely (for example: `club-vivo-1234`).
+
+- When a **new club is onboarded**, the platform creates a Tenant record (e.g. in a DynamoDB `Tenants` table) with a unique `tenant_id` plus metadata like name, city, and sport.
+- The Cognito User Pool defines a **custom attribute** such as `custom:tenant_id`. Every user account in Cognito is created with this attribute set to the `tenant_id` of their club.
+- All members of the same club (directors, coaches, athletes) share the same `tenant_id` value in their Cognito profile. They don’t choose this manually; the platform logic assigns it based on which club they belong to.
+- When a user logs in, Cognito authenticates them and issues JWT tokens. The **JWT payload** includes the `custom:tenant_id` claim, along with their role (`cognito:groups`).
+- That means every API request carries the tenant identity inside the token, so backend Lambdas can enforce data access using `tenant_id` against DynamoDB keys and S3 prefixes.
+
+This makes `tenant_id` a single thread that runs from tenant onboarding → Cognito user profile → JWT → backend authorization logic.
+
+---
+
+## API Gateway & Cognito Token Validation
+
+API Gateway uses a Cognito authorizer to make sure only valid, trusted tokens ever reach our Lambdas.
+
+**Request flow:**
+
+1. The user logs into Cognito (via Hosted UI or custom login), and on success, the frontend receives JWT tokens.
+2. When the frontend calls a Club Vivo API endpoint, it sends the token in the `Authorization: Bearer <JWT>` header.
+3. API Gateway’s **Cognito authorizer** checks the token on every request:
+   - Verifies the **signature** using Cognito’s public keys (to ensure it wasn’t tampered with).
+   - Confirms the **issuer** (`iss`) matches our User Pool.
+   - Confirms the **audience** (`aud`) matches the correct app/client id.
+   - Checks the **expiration** (`exp`) to ensure the token is still valid.
+
+**Outcomes:**
+
+- If the token is **expired, malformed, has the wrong audience/issuer, or a bad signature**, API Gateway returns `401/403` and **does not call Lambda at all**.
+- If the token is **valid**, API Gateway forwards the request to Lambda along with the token context, so Lambda can read claims like `custom:tenant_id` and `cognito:groups` and enforce tenant isolation and permissions in code.
+
+API Gateway + Cognito together act as the “front door bouncer” for SIC, ensuring that only authenticated, correctly scoped requests ever touch our multi-tenant data.
+
+## End-to-End Flow: Coach from Club A Fetching Athlete List
+
+This flow shows how a coach from **Club A** fetches their athletes in Club Vivo, and how multi-tenant isolation is enforced so they never see Club B’s data.
+
+### 1. Login and Token Issuance
+
+1. The coach opens the Club Vivo web app and logs in.
+2. The frontend redirects the coach to the Cognito User Pool sign-in page (or uses a custom UI that calls Cognito behind the scenes).
+3. Cognito verifies the coach’s credentials (and MFA if enabled).
+4. On successful login, Cognito returns JWT tokens to the frontend.  
+   The ID/access token contains:
+   - `sub` → unique user id
+   - `cognito:groups` → includes `coach-group-cv`
+   - `custom:tenant_id` → the coach’s club tenant id, e.g. `club-vivo-1234`
+
+### 2. Frontend Calls the Athletes API
+
+1. The frontend calls the Club Vivo API endpoint to list athletes, for example:
+   `GET /club-vivo/athletes`
+2. It attaches the token in the header:
+   `Authorization: Bearer <JWT_HERE>`
+
+### 3. API Gateway and Cognito Authorizer
+
+1. API Gateway receives the request and passes the token to the **Cognito authorizer**.
+2. The authorizer validates:
+   - Token signature (using Cognito’s public keys)
+   - `iss` (issuer) matches our User Pool
+   - `aud` (audience) matches our app’s client id
+   - `exp` (expiration) is still in the future
+3. If any check fails, API Gateway returns `401/403` and **does not invoke Lambda**.
+4. If all checks pass, API Gateway marks the request as authenticated and forwards it to the Lambda function.
+
+### 4. Lambda Reads Claims and Enforces Tenant
+
+1. The Lambda function runs under the IAM role `club-vivo-api-lambda-role`.
+2. The Lambda code reads the token claims from the request context:
+   - `tenant_id = "club-vivo-1234"`
+   - `role = "coach-group-cv"`
+3. The Lambda **never trusts any tenant id from the request body or query string**.  
+   It only trusts the `tenant_id` from the validated JWT.
+
+### 5. DynamoDB Data Access Pattern
+
+1. The Club Vivo DynamoDB table is designed with tenant-based keys, for example:
+
+   - Partition key (`PK`): `TENANT#<tenant_id>`
+   - Sort key (`SK`): `ATHLETE#<athlete_id>`
+
+2. To fetch athletes for Club A, the Lambda runs a query like:
+
+   - `PK = "TENANT#club-vivo-1234"`
+   - `SK begins_with "ATHLETE#"`
+
+3. This means:
+   - The Lambda **only ever queries using the tenant id from the token**.
+   - Even if a bug tried to request `club-vivo-9999`, the code would still use the tenant id from the JWT, not from the client input.
+
+### 6. S3 Access Pattern (If Athletes Have Media)
+
+If athlete photos or documents are stored in S3:
+
+1. S3 uses a tenant-based prefix structure, for example:
+   - `s3://sic-dev-.../club-vivo-1234/athletes/<athlete-id>/photo.jpg`
+2. The Lambda constructs S3 keys using the `tenant_id` from the JWT:
+   - Never from client-provided tenant ids.
+3. The IAM policy for `club-vivo-api-lambda-role` can include conditions to restrict access to S3 keys under the matching tenant prefix only.
+
+### 7. Response Back to the Coach
+
+1. Lambda returns the list of athletes that match `tenant_id = club-vivo-1234`.
+2. API Gateway sends the JSON response back to the frontend.
+3. The coach from Club A only sees **Club A athletes** because:
+   - The JWT carried `tenant_id = club-vivo-1234`
+   - The Lambda enforced tenant id at query time
+   - The data model (DynamoDB + S3 prefixes) is structured by tenant
+   - IAM and app logic never allow cross-tenant queries
+
+### Isolation Guarantees
+
+This flow enforces tenant isolation at multiple layers:
+
+- **Identity layer**: `custom:tenant_id` in the Cognito token
+- **API layer**: API Gateway authorizer validates tokens before anything runs
+- **Application layer**: Lambda uses `tenant_id` from the JWT and never from client input
+- **Data layer**: DynamoDB keys and S3 prefixes are partitioned by `tenant_id`
+- **IAM layer**: Lambda’s IAM role is restricted to tenant-scoped data access patterns

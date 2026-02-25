@@ -22,3 +22,8 @@
 - Lambda functions will run with execution roles (no long-lived access keys in code).
 - Later, CI/CD (e.g. GitHub Actions) will assume a deployment role instead of using an IAM user.
 - The future Club Vivo API Lambda will use a Lambda execution role. That role should be allowed to read/write only the DynamoDB table (and S3 bucket, later) needed for Club Vivo data, not all resources in the account.
+
+## KMS Model (first draft)
+- KMS stores encryption keys and lets services encrypt/decrypt data without exposing the keys.
+- Club Vivo athlete data in S3, Ruta Viva ride logs in S3, Athlete Evolution AI model artifacts.
+- Only specific Lambda roles, SageMaker roles, and my admin user should be able to use the main SIC KMS key.

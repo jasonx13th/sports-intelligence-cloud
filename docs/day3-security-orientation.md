@@ -14,3 +14,10 @@
 - Monitoring and logging (CloudWatch logs/metrics, CloudTrail, budget alarms, and how I respond to incidents).
 - Application and data security (Cognito auth, enforcing `tenant_id` in APIs and data access, securing secrets, preventing cross-tenant leaks).
 - For S3 buckets with athlete data, I will enforce encryption by enabling default SSE-KMS on the bucket (via IaC) and never allowing unencrypted writes.
+
+## IAM Model (first draft)
+
+- IAM users are for humans only (for now just `j-admin` with MFA).
+- Workloads (Club Vivo backend, Ruta Viva ingestion, ML jobs) will use IAM roles, not IAM users.
+- Lambda functions will run with execution roles (no long-lived access keys in code).
+- Later, CI/CD (e.g. GitHub Actions) will assume a deployment role instead of using an IAM user.

@@ -21,3 +21,4 @@
 - Workloads (Club Vivo backend, Ruta Viva ingestion, ML jobs) will use IAM roles, not IAM users.
 - Lambda functions will run with execution roles (no long-lived access keys in code).
 - Later, CI/CD (e.g. GitHub Actions) will assume a deployment role instead of using an IAM user.
+- The future Club Vivo API Lambda will use a Lambda execution role. That role should be allowed to read/write only the DynamoDB table (and S3 bucket, later) needed for Club Vivo data, not all resources in the account.

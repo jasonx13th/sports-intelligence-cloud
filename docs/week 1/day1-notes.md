@@ -199,3 +199,141 @@ In other words:
 - `SicApiStack` = “What are you allowed to do in the Club Vivo API, given your tenant and role?”
 
 Infrastructure-wise, `SicApiStack` will **import** the outputs from `SicAuthStack` (e.g. via CloudFormation export/import or CDK stack references) so that API Gateway is always configured against the correct Cognito User Pool for the current environment (dev/stage/prod).
+
+## Production & Observability for Auth
+
+### Security-by-Default for Authentication
+
+For the Sports Intelligence Cloud, especially working with youth data, auth must be secure by default:
+
+- **MFA for operators:**  
+  - IAM users like `j-admin` must always use MFA.  
+  - Any future SicOps/SRE accounts will be required to enable MFA before they get permissions.
+
+- **Cognito password policy (Club Vivo users):**  
+  - Minimum length: **at least 10 characters**.  
+  - Require at least **3 of 4**: uppercase, lowercase, number, special character.  
+  - Password expiration and reuse rules kept reasonable to avoid users choosing weak patterns.
+
+- **MFA for high-privilege app users (optional later):**  
+  - For Cognito users in `director-group-cv`, the platform should encourage or require MFA because they manage club-wide data and billing.
+
+- **Secrets management:**  
+  - Any future integration secrets (e.g., Bedrock API config, third-party APIs) will be stored in **AWS Secrets Manager** or **SSM Parameter Store**, never hard-coded in Lambda or CDK code.
+  - Only the specific Lambda roles that need a secret will be granted `GetSecretValue` / `GetParameter` with least-privilege scopes.
+
+### Observability for Authentication & Authorization
+
+To understand and debug auth in production, we need visibility at several layers:
+
+- **Cognito metrics & logs:**  
+  - Monitor sign-in success vs failure counts (especially spikes in failures by IP / user).  
+  - Track account lockouts or unusual sign-in patterns.
+
+- **API Gateway authorizer logs:**  
+  - Enable access logging on API Gateway to see:
+    - Rejected requests (401/403) vs successful ones.  
+    - Which endpoints are frequently hit with invalid/expired tokens.
+
+- **Lambda logs for auth context:**  
+  - Each Lambda that uses JWT claims should log (at debug/info level, without PII):
+    - `tenant_id` and `role` being processed.  
+    - Why a request was denied at the application layer (e.g., cross-tenant access attempt, missing required claim).
+
+- **CloudWatch Alarms:**  
+  - Alarms on:
+    - A sharp increase in API Gateway 401/403 for specific routes (could indicate auth misconfiguration or attack).  
+    - Unusual volume of sign-in failures in Cognito for a single user or IP range.  
+    - Lambda errors when parsing/validating tokens (could indicate deployment of wrong config or expired keys).
+
+### Logging Principles
+
+- Do **not** log raw tokens, passwords, or sensitive personal data.  
+- Log **enough context** to reconstruct what happened:
+  - `requestId`, `tenant_id`, role/group, endpoint, high-level reason for denial.  
+- Use structured logging (JSON) where possible to make searching and alerting easier.
+
+## Stress-Test Questions for Auth & Tenancy (Week 1 Day 1)
+
+### 1. Scale: 10 Clubs → 10,000 Clubs
+
+- How does Cognito handle going from a few hundred users to tens of thousands across many clubs?
+- Do I need **one** User Pool for all clubs, or separate pools per region or environment?
+- How does my `tenant_id` design in JWT + DynamoDB scale when:
+  - Each tenant has hundreds of athletes and sessions?
+  - There are thousands of tenants?
+
+**My thoughts:**
+- [Write 3–5 bullet points about how your current design scales, and any future changes you might make.]
+
+---
+
+### 2. Failure Modes
+
+**Cognito region outage:**
+
+- What happens to Club Vivo if Cognito in that region is unavailable?
+- What is the user experience (login, already-signed-in sessions)?
+- What is my mitigation or fallback plan?
+
+**API authorizer misconfiguration:**
+
+- Worst case: what if I accidentally deploy an API stage without the Cognito authorizer configured correctly?
+- How would I detect this quickly from:
+  - Logs?
+  - Metrics?
+  - Synthetic tests or smoke tests?
+
+**My thoughts:**
+- [Write 3–6 bullets covering both failure scenarios and how you would react.]
+
+---
+
+### 3. Cost Awareness for Auth
+
+Think roughly about cost components (no need for exact numbers):
+
+- Cognito charges per **MAU** (monthly active user).  
+- API Gateway charges per **request**.  
+- Lambda charges per **invocation + duration**.
+
+**My thoughts:**
+- At ~10 clubs (early dev), what’s my auth cost profile like?
+- At ~1,000 clubs, what changes (or what should I monitor)?
+- At ~10,000 clubs, what optimizations might I need (e.g., caching, fewer roundtrips, more efficient token usage)?
+
+Write a few bullets estimating how auth cost grows and what metrics you’d keep an eye on.
+
+---
+
+### 4. Security Incident: Cross-Tenant Data Leak
+
+Imagine a bug allows a coach from Club A to see **one athlete** from Club B.
+
+**Questions:**
+
+- How would I **detect** such a bug or incident?
+- Once detected, what immediate steps would I take to:
+  - Stop the leak.
+  - Audit how many records were impacted.
+  - Fix the code and/or IAM/data model.
+- How would I communicate this to:
+  - The affected clubs.
+  - (If required) regulators or data protection officers.
+
+**My thoughts:**
+- [Write 5–8 bullets describing your incident response approach.]
+
+## Reflection – Week 1 Day 1
+
+- **What clicked today about multi-tenant auth and IAM?**  
+  - [1–3 sentences in my own words.]
+
+- **What is still fuzzy or uncomfortable?**  
+  - [List any areas: Cognito config, JWT details, CDK patterns, etc.]
+
+- **One way I applied the “Multi-Tenant First” principle today:**  
+  - [Describe a concrete design choice: `tenant_id` in JWT, DynamoDB key design, S3 prefixes, IAM conditions, etc.]
+
+- **How this ties back to the Sports Intelligence Cloud mission:**  
+  - [1–2 sentences connecting secure tenant isolation to trust with clubs, schools, municipalities, and families.]

@@ -166,3 +166,36 @@ This flow enforces tenant isolation at multiple layers:
 - **Application layer**: Lambda uses `tenant_id` from the JWT and never from client input
 - **Data layer**: DynamoDB keys and S3 prefixes are partitioned by `tenant_id`
 - **IAM layer**: Lambda’s IAM role is restricted to tenant-scoped data access patterns
+
+## How `SicAuthStack` Will Connect to `SicApiStack`
+
+The `SicAuthStack` is responsible for **identity and authentication** across the Sports Intelligence Cloud, starting with Club Vivo:
+
+- Creates the **Cognito User Pool** for SIC end-users (club directors, coaches, athletes).
+- Creates **User Pool Clients** for the Club Vivo web app (and later other frontends).
+- Defines **Cognito Groups** for roles:
+  - `director-group-cv`
+  - `coach-group-cv`
+  - `athlete-group-cv`
+- Adds a custom attribute for `tenant_id` so every user is bound to a specific club/tenant.
+- (Later) May create a Cognito **Identity Pool** + IAM roles for direct S3 access.
+- Exposes key identifiers as **CloudFormation outputs**, e.g.:
+  - `UserPoolId`
+  - `UserPoolArn`
+  - `ClubVivoWebClientId`
+
+The future `SicApiStack` will be responsible for **API Gateway + Lambda** for Club Vivo and other pillars:
+
+- Defines **REST APIs** or HTTP APIs (e.g. `/club-vivo/athletes`, `/club-vivo/sessions`).
+- Creates **Lambda functions** for the Club Vivo backend, running under IAM roles that enforce least privilege.
+- Configures **Cognito authorizers** on API Gateway using values exported by `SicAuthStack`:
+  - The authorizer trusts tokens from the SIC User Pool (`UserPoolId` / `UserPoolArn`).
+  - The API client configuration uses the `ClubVivoWebClientId`.
+- Passes the validated **JWT claims** (including `tenant_id` and `cognito:groups`) through to the Lambdas so they can enforce tenant isolation in DynamoDB and S3.
+
+In other words:
+
+- `SicAuthStack` = “Who are you?” and “Can I trust this token?”  
+- `SicApiStack` = “What are you allowed to do in the Club Vivo API, given your tenant and role?”
+
+Infrastructure-wise, `SicApiStack` will **import** the outputs from `SicAuthStack` (e.g. via CloudFormation export/import or CDK stack references) so that API Gateway is always configured against the correct Cognito User Pool for the current environment (dev/stage/prod).

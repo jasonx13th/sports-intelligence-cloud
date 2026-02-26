@@ -131,7 +131,7 @@ This flow shows how a coach from **Club A** fetches their athletes in Club Vivo,
 2. To fetch athletes for Club A, the Lambda runs a query like:
 
    - `PK = "TENANT#club-vivo-1234"`
-   - `SK begins_with "ATHLETE#"`
+   - `SK begins_with "ATHLETE#"`  
 
 3. This means:
    - The Lambda **only ever queries using the tenant id from the token**.
@@ -264,7 +264,12 @@ To understand and debug auth in production, we need visibility at several layers
   - There are thousands of tenants?
 
 **My thoughts:**
-- [Write 3–5 bullet points about how your current design scales, and any future changes you might make.]
+
+- One Cognito User Pool per environment (dev/stage/prod) is enough for the early phases. Cognito is built to handle large numbers of users, and I can request quota increases as needed.
+- Using a single pool with `custom:tenant_id` keeps the architecture simple: all clubs authenticate through the same pool, and tenant isolation is enforced in JWT + app logic + data model instead of by creating many user pools.
+- The DynamoDB key pattern `PK = TENANT#<tenant_id>` scales as long as most clubs are similar in size. In youth sports, it’s unlikely that a single club will become such a hotspot that it overwhelms a partition key.
+- If I ever see hot-partition problems (one tenant doing huge volume), I can introduce time-based or entity-based patterns in the sort key (e.g. `ATHLETE#<id>` or `SESSION#<date>#<id>`) and possibly move very heavy tenants to their own tables without changing the overall tenancy model.
+- At very large scale (10k+ clubs), I might consider regional user pools (e.g., EU vs LATAM) for latency and data residency, but the logical model of `tenant_id` in JWT + DynamoDB would stay the same.
 
 ---
 
@@ -285,7 +290,13 @@ To understand and debug auth in production, we need visibility at several layers
   - Synthetic tests or smoke tests?
 
 **My thoughts:**
-- [Write 3–6 bullets covering both failure scenarios and how you would react.]
+
+- If Cognito in the region is down, **new logins and token refresh** will fail. Users might see errors on the sign-in page, but users who already have valid, unexpired tokens can keep calling APIs until their tokens expire.
+- The UI should handle auth errors gracefully (clear “login temporarily unavailable” message) instead of generic 500 errors, and I should monitor Cognito health and CloudWatch metrics so I know when the identity layer is failing.
+- In the long term, “premium” resilience could involve multi-region user pools and a DR strategy, but that’s beyond the first MVP; for now I accept that a Cognito regional outage means a temporary login outage.
+- If I misconfigure API Gateway and accidentally deploy an unauthenticated stage, the worst case is that routes become **publicly accessible**. To avoid this, I should have a baseline API template where every route has a default Cognito authorizer and I never expose a public stage without explicit decision.
+- Synthetic tests (smoke tests) should hit critical endpoints **without** a token and expect a 401/403. If they suddenly start returning 200, that’s a red flag for misconfigured authorizers.
+- I should also watch API Gateway metrics: a sudden spike in traffic or successful responses from unauthenticated IPs could indicate that auth has been loosened accidentally.
 
 ---
 
@@ -298,11 +309,11 @@ Think roughly about cost components (no need for exact numbers):
 - Lambda charges per **invocation + duration**.
 
 **My thoughts:**
-- At ~10 clubs (early dev), what’s my auth cost profile like?
-- At ~1,000 clubs, what changes (or what should I monitor)?
-- At ~10,000 clubs, what optimizations might I need (e.g., caching, fewer roundtrips, more efficient token usage)?
 
-Write a few bullets estimating how auth cost grows and what metrics you’d keep an eye on.
+- At ~10 clubs (early dev), auth costs will be tiny: a few test users in Cognito and low API/Lambda traffic. Most likely I’ll still be in free tier or a few dollars per month; the main goal is not cost optimization but building the right patterns.
+- At ~1,000 clubs, Cognito MAUs and API Gateway request counts start to matter. I should monitor the number of authenticated requests per feature and ensure I’m not doing unnecessary extra round-trips (for example, retriggering Lambdas for simple read operations that could be cached).
+- For public APIs, using **HTTP API** (cheaper) instead of the classic REST API can help keep costs under control if the design allows it, and short Lambda runtimes (fast queries, minimal over-fetching) will also keep compute costs down.
+- At ~10,000 clubs, I need to understand which endpoints are “hot” and consider optimizations like caching JWT claim-derived decisions, using DynamoDB efficiently, and possibly using async processing for heavy operations. I would also monitor MAU trends, request volume, and Lambda duration in CloudWatch to catch any cost spikes early.
 
 ---
 
@@ -322,18 +333,35 @@ Imagine a bug allows a coach from Club A to see **one athlete** from Club B.
   - (If required) regulators or data protection officers.
 
 **My thoughts:**
-- [Write 5–8 bullets describing your incident response approach.]
+
+- I would aim to detect this via a combination of logs and anomaly detection:  
+  - Structured Lambda logs that include `tenant_id`, endpoint, and basic resource ids, plus alerts for any response where the tenant in the JWT doesn’t match the tenant in the data.  
+  - Periodic checks on access patterns (e.g., “how often does data from tenant B get served while the token says tenant A?” – this should be zero).
+- As soon as I know there is a cross-tenant exposure, my first move is to **contain** it:  
+  - Temporarily disable the affected endpoint or feature.  
+  - If needed, temporarily tighten IAM policies or add explicit deny conditions based on the risky pattern.
+- Next, I would run an audit:  
+  - Query logs and database history to identify when the bug was introduced and which requests returned cross-tenant data.  
+  - Count how many unique tenants and athletes were impacted.
+- Then I would fix the root cause:  
+  - Add or correct tenant checks in Lambda code (always using `tenant_id` from the JWT).  
+  - Adjust DynamoDB/S3 access patterns or IAM conditions if they allowed too-broad access.  
+  - Add unit/integration tests that explicitly verify cross-tenant access is impossible.
+- Communication is critical:  
+  - Inform affected clubs as soon as I have accurate information: what happened, what data was exposed, when it was fixed, and what we’re doing to prevent it happening again.  
+  - If regulations require (depending on jurisdiction and severity), notify the relevant data protection authorities with a clear incident report.
+- Finally, I would capture this as an internal **postmortem** and update the platform’s security and testing standards so that future features must pass explicit multi-tenant isolation checks before deployment.
 
 ## Reflection – Week 1 Day 1
 
 - **What clicked today about multi-tenant auth and IAM?**  
-  - [1–3 sentences in my own words.]
+  - Today I connected all the pieces of identity together: IAM users for operators, IAM roles for workloads, and Cognito users for clubs/coaches/athletes. I now see how `tenant_id` flows from tenant onboarding → Cognito → JWT → API → DynamoDB/S3 to keep each club’s data isolated.
 
 - **What is still fuzzy or uncomfortable?**  
-  - [List any areas: Cognito config, JWT details, CDK patterns, etc.]
+  - I still want more practice with the exact Cognito configuration options (MFA modes, app clients, hosted UI vs custom UI) and how to express some of the more advanced IAM conditions in CDK. I also need repetition to feel fully comfortable with stack outputs and cross-stack references between `SicAuthStack` and future stacks.
 
 - **One way I applied the “Multi-Tenant First” principle today:**  
-  - [Describe a concrete design choice: `tenant_id` in JWT, DynamoDB key design, S3 prefixes, IAM conditions, etc.]
+  - I deliberately designed the data model and access patterns so Lambda never trusts a tenant id coming from the client. Instead, everything is driven by `custom:tenant_id` in the validated JWT, and both DynamoDB keys and S3 prefixes are structured around that tenant id. This means the tenancy boundary is baked into the architecture, not something I bolt on later.
 
 - **How this ties back to the Sports Intelligence Cloud mission:**  
-  - [1–2 sentences connecting secure tenant isolation to trust with clubs, schools, municipalities, and families.]
+  - Protecting tenant boundaries is directly linked to trust: clubs, schools, and municipalities will only adopt SIC if they are confident their data will never leak to another organization. Getting IAM, Cognito, and multi-tenant isolation right is a core part of delivering a safe analytics and AI platform for youth sports.

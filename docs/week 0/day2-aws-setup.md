@@ -6,6 +6,7 @@
 - Root user used only for billing and account-level setup.
 - Daily work done as IAM user `j-admin` with MFA.
 - Monthly cost budget set to $5 with email alerts.
+- This sandbox will host early experiments for both **solo-coach** and **club** tenants, but production workloads will eventually move to dedicated accounts/environments.
 
 ## CLI Configuration
 

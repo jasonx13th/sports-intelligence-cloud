@@ -1,28 +1,111 @@
-import * as cdk from 'aws-cdk-lib';
+// infra/cdk/lib/sic-auth-stack.ts
+import { Stack, StackProps, CfnOutput, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// NOTE: We'll import actual Cognito/IAM modules later when we implement.
-// import * as cognito from 'aws-cdk-lib/aws-cognito';
-// import * as iam from 'aws-cdk-lib/aws-iam';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 
-export interface SicAuthStackProps extends cdk.StackProps {
-  // Later we can add props like stage ('dev' | 'staging' | 'prod')
-  // or domainName for hosted UI, etc.
-}
-
-/**
- * SicAuthStack
- *
- * High-level responsibilities:
- * - Cognito User Pool for SIC end-users (Club Vivo first).
- * - Cognito User Pool Client(s) for the web frontend.
- * - Cognito Groups for roles (director, coach, athlete).
- * - Custom attribute for tenant_id in Cognito.
- * - (Optional later) Identity Pool and IAM roles for direct S3 access.
- */
-export class SicAuthStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: SicAuthStackProps) {
+export class SicAuthStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // (All the TODO / PSEUDO-CODE comments go here, like we had before.)
+    // Simple env name for naming – we can refine later if we want
+    const envName = this.node.tryGetContext('env') ?? 'dev';
+
+    // 1) User Pool
+    const userPool = new cognito.UserPool(this, 'SicUserPool', {
+      userPoolName: `sic-user-pool-${envName}`,
+      signInAliases: {
+        email: true,
+      },
+      selfSignUpEnabled: false, // we’ll control flows later
+      passwordPolicy: {
+        minLength: 12,
+        requireDigits: true,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireSymbols: true,
+        tempPasswordValidity: Duration.days(7),
+      },
+      standardAttributes: {
+        email: {
+          required: true,
+          mutable: false,
+        },
+      },
+      customAttributes: {
+        tenant_id: new cognito.StringAttribute({
+          mutable: true, // allows controlled tenant moves later if needed
+        }),
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      mfa: cognito.Mfa.OFF, // later: OPTIONAL + enforce for cv-admin
+    });
+
+    // 2) User Pool Client for Club Vivo web
+    const clubVivoWebClient = userPool.addClient('ClubVivoWebClient', {
+      userPoolClientName: `club-vivo-web-${envName}`,
+      generateSecret: false, // SPA
+      preventUserExistenceErrors: true,
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+        },
+        callbackUrls: ['http://localhost:3000/callback'], // TODO: replace with real URLs per env
+        logoutUrls: ['http://localhost:3000/logout'],
+      },
+    });
+
+    // 3) Cognito domain (for Hosted UI)
+    const domain = userPool.addDomain('ClubVivoDomain', {
+      cognitoDomain: {
+        // must be globally unique across AWS accounts/regions
+        domainPrefix: `club-vivo-${envName}`,
+      },
+    });
+
+    // 4) Groups (roles)
+    new cognito.CfnUserPoolGroup(this, 'CvAdminGroup', {
+      userPoolId: userPool.userPoolId,
+      groupName: 'cv-admin',
+      description: 'Tenant admin / director or solo-coach owner',
+    });
+
+    new cognito.CfnUserPoolGroup(this, 'CvCoachGroup', {
+      userPoolId: userPool.userPoolId,
+      groupName: 'cv-coach',
+      description: 'Coach within a tenant',
+    });
+
+    new cognito.CfnUserPoolGroup(this, 'CvMedicalGroup', {
+      userPoolId: userPool.userPoolId,
+      groupName: 'cv-medical',
+      description: 'Medical / performance staff within a tenant',
+    });
+
+    new cognito.CfnUserPoolGroup(this, 'CvAthleteGroup', {
+      userPoolId: userPool.userPoolId,
+      groupName: 'cv-athlete',
+      description: 'Athlete within a tenant',
+    });
+
+    // 5) Outputs for other stacks / frontends
+    new CfnOutput(this, 'UserPoolId', {
+      value: userPool.userPoolId,
+      exportName: `SicUserPoolId-${envName}`,
+    });
+
+    new CfnOutput(this, 'UserPoolArn', {
+      value: userPool.userPoolArn,
+      exportName: `SicUserPoolArn-${envName}`,
+    });
+
+    new CfnOutput(this, 'ClubVivoWebClientId', {
+      value: clubVivoWebClient.userPoolClientId,
+      exportName: `ClubVivoWebClientId-${envName}`,
+    });
+
+    new CfnOutput(this, 'UserPoolDomain', {
+      value: domain.baseUrl(),
+      exportName: `SicUserPoolDomain-${envName}`,
+    });
   }
 }

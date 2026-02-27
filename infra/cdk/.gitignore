@@ -1,0 +1,9 @@
+# Node modules in this folder
+node_modules/
+
+# CDK build output in this folder
+dist/
+cdk.out/
+
+# TypeScript build cache (optional)
+*.tsbuildinfo

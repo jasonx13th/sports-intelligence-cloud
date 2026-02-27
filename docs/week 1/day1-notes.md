@@ -1,14 +1,18 @@
+# Week 1 – Day 1: Multi-Tenant Auth & IAM Notes
+
 ## Why IAM matters for multi-tenant Club Vivo
 
-- IAM is the gatekeeper that enforces **tenant isolation**: it makes sure that when Club A hits our APIs, they can only ever touch data that belongs to Club A, even though all clubs share the same AWS account and many of the same services.
-- IAM lets us apply **least privilege** to every actor (admins, coaches, Lambdas, future CI/CD pipelines) so each identity can only do exactly what it needs (e.g., Club Vivo API Lambda can only read/write items for its tenant’s records in DynamoDB and S3, not the whole table or bucket).
-- IAM separates **human identities from workload identities**: humans use IAM users or SSO with MFA (e.g., j-admin), while workloads use IAM roles with temporary credentials, so we never hard-code long-lived keys into code or config.
+- IAM is the gatekeeper that enforces **tenant isolation**: it makes sure that when Tenant A (a club, school, municipality, or solo-coach workspace) hits our APIs, they can only ever touch data that belongs to Tenant A, even though all tenants share the same AWS account and many of the same services.
+- IAM lets us apply **least privilege** to every actor (admins, coaches, Lambdas, future CI/CD pipelines) so each identity can only do exactly what it needs (e.g., the Club Vivo API Lambda role can only access the specific DynamoDB tables and S3 buckets for Club Vivo; **within those, tenant-by-tenant isolation is enforced by `tenant_id` in code and the data model**, not by one IAM role per tenant).
+- IAM separates **human identities from workload identities**: humans use IAM users or SSO with MFA (e.g., `j-admin`), while workloads use IAM roles with temporary credentials, so we never hard-code long-lived keys into code or config.
 
 ## Why Cognito is our auth backbone for SIC
 
-- Cognito gives us a **managed user directory** for all clubs, schools, and municipalities, so we don’t have to build password storage, MFA, or account recovery ourselves (which are easy to get wrong and critical for youth data).
+- Cognito gives us a **managed user directory** for all clubs, schools, municipalities, and individual coaches, so we don’t have to build password storage, MFA, or account recovery ourselves (which are easy to get wrong and critical for youth data).
 - Cognito issues **standards-based JWT tokens** that integrate directly with API Gateway, so our Club Vivo APIs can trust the identity and role (group) information without custom auth code scattered across Lambdas.
-- Cognito is designed to **scale to thousands of users and multiple apps**, letting us onboard more clubs and add new SIC pillars (Athlete Evolution AI, Ruta Viva) while still using a unified identity system per tenant.
+- Cognito is designed to **scale to thousands of users and multiple apps**, letting us onboard more tenants and add new SIC pillars (Athlete Evolution AI, Ruta Viva) while still using a unified identity system per tenant.
+
+---
 
 ### IAM users vs IAM roles in SIC
 
@@ -24,33 +28,38 @@
 ### Example of a workload identity in SIC
 
 - When a coach (Cognito user) in Club Vivo creates a new training session, the frontend sends a request with the coach’s JWT to our API Gateway.
-- API Gateway invokes a Lambda function that runs under the `club-vivo-api-lambda-role`. This IAM role is allowed to read the coach’s club configuration (equipment, field size, player list, etc.) from DynamoDB and S3, and then call an AI service to help build a training plan.
+- API Gateway invokes a Lambda function that runs under the `club-vivo-api-lambda-role`. This IAM role is allowed to read the coach’s tenant configuration (equipment, field size, player list, etc.) from DynamoDB and S3, and then call an AI service to help build a training plan.
 - The coach never gets AWS credentials. Only the Lambda assumes the IAM role with temporary credentials, which is safer than putting any access keys into code or config.
+
+---
 
 ## Cognito User Types & Groups (Club Vivo)
 
-In Club Vivo, end-users live in Cognito (not IAM). They are organized into groups to represent their role within a club:
+In Club Vivo, end-users live in Cognito (not IAM). They are organized into groups to represent their role within a tenant (club or solo-coach workspace):
 
-- **Club owner / director** → `director-group-cv`  
-  Responsible for managing the club account, onboarding coaches/athletes, and seeing club-wide analytics.
+- **Club owner / director** → `cv-admin`  
+  Responsible for managing the club account or solo-coach workspace, onboarding coaches/athletes (for clubs), and seeing tenant-wide analytics and settings.
 
-- **Coach** → `coach-group-cv`  
-  Creates training sessions, manages teams and attendance, and interacts with AI planning tools for their club.
+- **Coach** → `cv-coach`  
+  Creates training sessions, manages teams and attendance, and interacts with AI planning tools for their tenant.
 
-- **Athlete** → `athlete-group-cv`  
-  Views personal schedule, session feedback, and optionally interacts with AI for individual development, but cannot change club-level settings.
+- **Medical / performance staff** → `cv-medical`  
+  Focus on wellness, injury, and physical testing data, with access scoped to their tenant’s athletes.
 
-These groups are stored in the Cognito User Pool and appear as claims in the user’s JWT (e.g. `cognito:groups`), so the backend knows what each user is allowed to do.
+- **Athlete** → `cv-athlete`  
+  Views personal schedule, session feedback, and optionally interacts with AI for individual development, but cannot change tenant-level settings.
+
+These groups are stored in the Cognito User Pool and appear as claims in the user’s JWT (e.g. `cognito:groups`), so the backend knows what each user is allowed to do inside their **own tenant**.
 
 ---
 
 ## Tenant Identity – `tenant_id` Flow
 
-To support multi-tenancy, every club in SIC has a `tenant_id` that identifies it uniquely (for example: `club-vivo-1234`).
+To support multi-tenancy, every **tenant** in SIC (club, school, municipality, or solo-coach workspace) has a `tenant_id` that identifies it uniquely (for example: `club-vivo-1234` or `coach-5678`).
 
-- When a **new club is onboarded**, the platform creates a Tenant record (e.g. in a DynamoDB `Tenants` table) with a unique `tenant_id` plus metadata like name, city, and sport.
-- The Cognito User Pool defines a **custom attribute** such as `custom:tenant_id`. Every user account in Cognito is created with this attribute set to the `tenant_id` of their club.
-- All members of the same club (directors, coaches, athletes) share the same `tenant_id` value in their Cognito profile. They don’t choose this manually; the platform logic assigns it based on which club they belong to.
+- When a **new tenant is onboarded** (club, school, municipality, or solo-coach), the platform creates a Tenant record (e.g. in a DynamoDB `Tenants` table) with a unique `tenant_id` plus metadata like name, type, city, and sport.
+- The Cognito User Pool defines a **custom attribute** such as `custom:tenant_id`. Every user account in Cognito is created with this attribute set to the `tenant_id` of their tenant.
+- All members of the same tenant (directors, coaches, athletes) share the same `tenant_id` value in their Cognito profile. They don’t choose this manually; the platform logic assigns it based on which tenant they belong to.
 - When a user logs in, Cognito authenticates them and issues JWT tokens. The **JWT payload** includes the `custom:tenant_id` claim, along with their role (`cognito:groups`).
 - That means every API request carries the tenant identity inside the token, so backend Lambdas can enforce data access using `tenant_id` against DynamoDB keys and S3 prefixes.
 
@@ -79,6 +88,8 @@ API Gateway uses a Cognito authorizer to make sure only valid, trusted tokens ev
 
 API Gateway + Cognito together act as the “front door bouncer” for SIC, ensuring that only authenticated, correctly scoped requests ever touch our multi-tenant data.
 
+---
+
 ## End-to-End Flow: Coach from Club A Fetching Athlete List
 
 This flow shows how a coach from **Club A** fetches their athletes in Club Vivo, and how multi-tenant isolation is enforced so they never see Club B’s data.
@@ -90,15 +101,15 @@ This flow shows how a coach from **Club A** fetches their athletes in Club Vivo,
 3. Cognito verifies the coach’s credentials (and MFA if enabled).
 4. On successful login, Cognito returns JWT tokens to the frontend.  
    The ID/access token contains:
-   - `sub` → unique user id
-   - `cognito:groups` → includes `coach-group-cv`
-   - `custom:tenant_id` → the coach’s club tenant id, e.g. `club-vivo-1234`
+   - `sub` → unique user id  
+   - `cognito:groups` → includes `cv-coach`  
+   - `custom:tenant_id` → the coach’s tenant id, e.g. `club-vivo-1234` (club) or `coach-5678` (solo-coach workspace)
 
 ### 2. Frontend Calls the Athletes API
 
-1. The frontend calls the Club Vivo API endpoint to list athletes, for example:
+1. The frontend calls the Club Vivo API endpoint to list athletes, for example:  
    `GET /club-vivo/athletes`
-2. It attaches the token in the header:
+2. It attaches the token in the header:  
    `Authorization: Bearer <JWT_HERE>`
 
 ### 3. API Gateway and Cognito Authorizer
@@ -116,8 +127,8 @@ This flow shows how a coach from **Club A** fetches their athletes in Club Vivo,
 
 1. The Lambda function runs under the IAM role `club-vivo-api-lambda-role`.
 2. The Lambda code reads the token claims from the request context:
-   - `tenant_id = "club-vivo-1234"`
-   - `role = "coach-group-cv"`
+   - `tenant_id = "club-vivo-1234"`  
+   - `role = "cv-coach"`
 3. The Lambda **never trusts any tenant id from the request body or query string**.  
    It only trusts the `tenant_id` from the validated JWT.
 
@@ -125,13 +136,13 @@ This flow shows how a coach from **Club A** fetches their athletes in Club Vivo,
 
 1. The Club Vivo DynamoDB table is designed with tenant-based keys, for example:
 
-   - Partition key (`PK`): `TENANT#<tenant_id>`
+   - Partition key (`PK`): `TENANT#<tenant_id>`  
    - Sort key (`SK`): `ATHLETE#<athlete_id>`
 
 2. To fetch athletes for Club A, the Lambda runs a query like:
 
-   - `PK = "TENANT#club-vivo-1234"`
-   - `SK begins_with "ATHLETE#"`  
+   - `PK = "TENANT#club-vivo-1234"`  
+   - `SK begins_with "ATHLETE#"`
 
 3. This means:
    - The Lambda **only ever queries using the tenant id from the token**.
@@ -141,8 +152,8 @@ This flow shows how a coach from **Club A** fetches their athletes in Club Vivo,
 
 If athlete photos or documents are stored in S3:
 
-1. S3 uses a tenant-based prefix structure, for example:
-   - `s3://sic-dev-.../club-vivo-1234/athletes/<athlete-id>/photo.jpg`
+1. S3 uses a tenant-based prefix structure, for example:  
+   `s3://sic-dev-.../club-vivo-1234/athletes/<athlete-id>/photo.jpg`
 2. The Lambda constructs S3 keys using the `tenant_id` from the JWT:
    - Never from client-provided tenant ids.
 3. The IAM policy for `club-vivo-api-lambda-role` can include conditions to restrict access to S3 keys under the matching tenant prefix only.
@@ -161,24 +172,27 @@ If athlete photos or documents are stored in S3:
 
 This flow enforces tenant isolation at multiple layers:
 
-- **Identity layer**: `custom:tenant_id` in the Cognito token
-- **API layer**: API Gateway authorizer validates tokens before anything runs
-- **Application layer**: Lambda uses `tenant_id` from the JWT and never from client input
-- **Data layer**: DynamoDB keys and S3 prefixes are partitioned by `tenant_id`
+- **Identity layer**: `custom:tenant_id` in the Cognito token  
+- **API layer**: API Gateway authorizer validates tokens before anything runs  
+- **Application layer**: Lambda uses `tenant_id` from the JWT and never from client input  
+- **Data layer**: DynamoDB keys and S3 prefixes are partitioned by `tenant_id`  
 - **IAM layer**: Lambda’s IAM role is restricted to tenant-scoped data access patterns
+
+---
 
 ## How `SicAuthStack` Will Connect to `SicApiStack`
 
 The `SicAuthStack` is responsible for **identity and authentication** across the Sports Intelligence Cloud, starting with Club Vivo:
 
-- Creates the **Cognito User Pool** for SIC end-users (club directors, coaches, athletes).
+- Creates the **Cognito User Pool** for SIC end-users (club directors, coaches, athletes, solo coaches, etc.).
 - Creates **User Pool Clients** for the Club Vivo web app (and later other frontends).
 - Defines **Cognito Groups** for roles:
-  - `director-group-cv`
-  - `coach-group-cv`
-  - `athlete-group-cv`
-- Adds a custom attribute for `tenant_id` so every user is bound to a specific club/tenant.
-- (Later) May create a Cognito **Identity Pool** + IAM roles for direct S3 access.
+  - `cv-admin`
+  - `cv-coach`
+  - `cv-medical`
+  - `cv-athlete`
+- Adds a custom attribute for `tenant_id` so every user is bound to a specific tenant.
+- (Later) May create a Cognito **Identity Pool** + IAM roles for direct S3 or other AWS access from the frontend.
 - Exposes key identifiers as **CloudFormation outputs**, e.g.:
   - `UserPoolId`
   - `UserPoolArn`
@@ -200,6 +214,8 @@ In other words:
 
 Infrastructure-wise, `SicApiStack` will **import** the outputs from `SicAuthStack` (e.g. via CloudFormation export/import or CDK stack references) so that API Gateway is always configured against the correct Cognito User Pool for the current environment (dev/stage/prod).
 
+---
+
 ## Production & Observability for Auth
 
 ### Security-by-Default for Authentication
@@ -216,7 +232,7 @@ For the Sports Intelligence Cloud, especially working with youth data, auth must
   - Password expiration and reuse rules kept reasonable to avoid users choosing weak patterns.
 
 - **MFA for high-privilege app users (optional later):**  
-  - For Cognito users in `director-group-cv`, the platform should encourage or require MFA because they manage club-wide data and billing.
+  - For Cognito users in the `cv-admin` group, the platform should encourage or require MFA because they manage tenant-wide data and billing.
 
 - **Secrets management:**  
   - Any future integration secrets (e.g., Bedrock API config, third-party APIs) will be stored in **AWS Secrets Manager** or **SSM Parameter Store**, never hard-coded in Lambda or CDK code.
@@ -253,12 +269,14 @@ To understand and debug auth in production, we need visibility at several layers
   - `requestId`, `tenant_id`, role/group, endpoint, high-level reason for denial.  
 - Use structured logging (JSON) where possible to make searching and alerting easier.
 
+---
+
 ## Stress-Test Questions for Auth & Tenancy (Week 1 Day 1)
 
-### 1. Scale: 10 Clubs → 10,000 Clubs
+### 1. Scale: 10 Tenants → 10,000 Tenants
 
-- How does Cognito handle going from a few hundred users to tens of thousands across many clubs?
-- Do I need **one** User Pool for all clubs, or separate pools per region or environment?
+- How does Cognito handle going from a few hundred users to tens of thousands across many tenants?
+- Do I need **one** User Pool for all tenants, or separate pools per region or environment?
 - How does my `tenant_id` design in JWT + DynamoDB scale when:
   - Each tenant has hundreds of athletes and sessions?
   - There are thousands of tenants?
@@ -266,10 +284,10 @@ To understand and debug auth in production, we need visibility at several layers
 **My thoughts:**
 
 - One Cognito User Pool per environment (dev/stage/prod) is enough for the early phases. Cognito is built to handle large numbers of users, and I can request quota increases as needed.
-- Using a single pool with `custom:tenant_id` keeps the architecture simple: all clubs authenticate through the same pool, and tenant isolation is enforced in JWT + app logic + data model instead of by creating many user pools.
-- The DynamoDB key pattern `PK = TENANT#<tenant_id>` scales as long as most clubs are similar in size. In youth sports, it’s unlikely that a single club will become such a hotspot that it overwhelms a partition key.
+- Using a single pool with `custom:tenant_id` keeps the architecture simple: all tenants authenticate through the same pool, and tenant isolation is enforced in JWT + app logic + data model instead of by creating many user pools.
+- The DynamoDB key pattern `PK = TENANT#<tenant_id>` scales as long as most tenants are similar in size. In youth sports, it’s unlikely that a single tenant will become such a hotspot that it overwhelms a partition key.
 - If I ever see hot-partition problems (one tenant doing huge volume), I can introduce time-based or entity-based patterns in the sort key (e.g. `ATHLETE#<id>` or `SESSION#<date>#<id>`) and possibly move very heavy tenants to their own tables without changing the overall tenancy model.
-- At very large scale (10k+ clubs), I might consider regional user pools (e.g., EU vs LATAM) for latency and data residency, but the logical model of `tenant_id` in JWT + DynamoDB would stay the same.
+- At very large scale (10k+ tenants), I might consider regional user pools (e.g., EU vs LATAM) for latency and data residency, but the logical model of `tenant_id` in JWT + DynamoDB would stay the same.
 
 ---
 
@@ -310,16 +328,16 @@ Think roughly about cost components (no need for exact numbers):
 
 **My thoughts:**
 
-- At ~10 clubs (early dev), auth costs will be tiny: a few test users in Cognito and low API/Lambda traffic. Most likely I’ll still be in free tier or a few dollars per month; the main goal is not cost optimization but building the right patterns.
-- At ~1,000 clubs, Cognito MAUs and API Gateway request counts start to matter. I should monitor the number of authenticated requests per feature and ensure I’m not doing unnecessary extra round-trips (for example, retriggering Lambdas for simple read operations that could be cached).
+- At ~10 tenants (early dev), auth costs will be tiny: a few test users in Cognito and low API/Lambda traffic. Most likely I’ll still be in free tier or a few dollars per month; the main goal is not cost optimization but building the right patterns.
+- At ~1,000 tenants, Cognito MAUs and API Gateway request counts start to matter. I should monitor the number of authenticated requests per feature and ensure I’m not doing unnecessary extra round-trips (for example, retriggering Lambdas for simple read operations that could be cached).
 - For public APIs, using **HTTP API** (cheaper) instead of the classic REST API can help keep costs under control if the design allows it, and short Lambda runtimes (fast queries, minimal over-fetching) will also keep compute costs down.
-- At ~10,000 clubs, I need to understand which endpoints are “hot” and consider optimizations like caching JWT claim-derived decisions, using DynamoDB efficiently, and possibly using async processing for heavy operations. I would also monitor MAU trends, request volume, and Lambda duration in CloudWatch to catch any cost spikes early.
+- At ~10,000 tenants, I need to understand which endpoints are “hot” and consider optimizations like caching JWT claim-derived decisions, using DynamoDB efficiently, and possibly using async processing for heavy operations. I would also monitor MAU trends, request volume, and Lambda duration in CloudWatch to catch any cost spikes early.
 
 ---
 
 ### 4. Security Incident: Cross-Tenant Data Leak
 
-Imagine a bug allows a coach from Club A to see **one athlete** from Club B.
+Imagine a bug allows a coach from Tenant A to see **one athlete** from Tenant B.
 
 **Questions:**
 
@@ -329,7 +347,7 @@ Imagine a bug allows a coach from Club A to see **one athlete** from Club B.
   - Audit how many records were impacted.
   - Fix the code and/or IAM/data model.
 - How would I communicate this to:
-  - The affected clubs.
+  - The affected tenants (clubs, coaches, schools).
   - (If required) regulators or data protection officers.
 
 **My thoughts:**
@@ -348,20 +366,22 @@ Imagine a bug allows a coach from Club A to see **one athlete** from Club B.
   - Adjust DynamoDB/S3 access patterns or IAM conditions if they allowed too-broad access.  
   - Add unit/integration tests that explicitly verify cross-tenant access is impossible.
 - Communication is critical:  
-  - Inform affected clubs as soon as I have accurate information: what happened, what data was exposed, when it was fixed, and what we’re doing to prevent it happening again.  
+  - Inform affected tenants as soon as I have accurate information: what happened, what data was exposed, when it was fixed, and what we’re doing to prevent it happening again.  
   - If regulations require (depending on jurisdiction and severity), notify the relevant data protection authorities with a clear incident report.
 - Finally, I would capture this as an internal **postmortem** and update the platform’s security and testing standards so that future features must pass explicit multi-tenant isolation checks before deployment.
+
+---
 
 ## Reflection – Week 1 Day 1
 
 - **What clicked today about multi-tenant auth and IAM?**  
-  - Today I connected all the pieces of identity together: IAM users for operators, IAM roles for workloads, and Cognito users for clubs/coaches/athletes. I now see how `tenant_id` flows from tenant onboarding → Cognito → JWT → API → DynamoDB/S3 to keep each club’s data isolated.
+  Today I connected all the pieces of identity together: IAM users for operators, IAM roles for workloads, and Cognito users for clubs/coaches/athletes. I now see how `tenant_id` flows from tenant onboarding → Cognito → JWT → API → DynamoDB/S3 to keep each tenant’s data isolated.
 
 - **What is still fuzzy or uncomfortable?**  
-  - I still want more practice with the exact Cognito configuration options (MFA modes, app clients, hosted UI vs custom UI) and how to express some of the more advanced IAM conditions in CDK. I also need repetition to feel fully comfortable with stack outputs and cross-stack references between `SicAuthStack` and future stacks.
+  I still want more practice with the exact Cognito configuration options (MFA modes, app clients, hosted UI vs custom UI) and how to express some of the more advanced IAM conditions in CDK. I also need repetition to feel fully comfortable with stack outputs and cross-stack references between `SicAuthStack` and future stacks.
 
 - **One way I applied the “Multi-Tenant First” principle today:**  
-  - I deliberately designed the data model and access patterns so Lambda never trusts a tenant id coming from the client. Instead, everything is driven by `custom:tenant_id` in the validated JWT, and both DynamoDB keys and S3 prefixes are structured around that tenant id. This means the tenancy boundary is baked into the architecture, not something I bolt on later.
+  I deliberately designed the data model and access patterns so Lambda never trusts a tenant id coming from the client. Instead, everything is driven by `custom:tenant_id` in the validated JWT, and both DynamoDB keys and S3 prefixes are structured around that tenant id. This means the tenancy boundary is baked into the architecture, not something I bolt on later.
 
 - **How this ties back to the Sports Intelligence Cloud mission:**  
-  - Protecting tenant boundaries is directly linked to trust: clubs, schools, and municipalities will only adopt SIC if they are confident their data will never leak to another organization. Getting IAM, Cognito, and multi-tenant isolation right is a core part of delivering a safe analytics and AI platform for youth sports.
+  Protecting tenant boundaries is directly linked to trust: clubs, schools, municipalities, and individual coaches will only adopt SIC if they are confident their data will never leak to another organization. Getting IAM, Cognito, and multi-tenant isolation right is a core part of delivering a safe analytics and AI platform for youth sports and active mobility.

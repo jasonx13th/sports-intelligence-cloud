@@ -1,4 +1,8 @@
 // infra/cdk/lib/sic-auth-stack.ts
+
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as path from 'path';
 import { Stack, StackProps, CfnOutput, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
@@ -86,6 +90,34 @@ export class SicAuthStack extends Stack {
       groupName: 'cv-athlete',
       description: 'Athlete within a tenant',
     });
+
+    // 4.5) Lambda: PostConfirmation trigger for role assignment
+    const postConfirmationFn = new lambda.Function(this, 'PostConfirmationFn', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler.handler',
+      functionName: `sic-post-confirmation-${envName}`,
+      code: lambda.Code.fromAsset(
+    // infra/cdk/lib -> infra/cdk -> infra -> repo root -> services/...
+    path.join(__dirname, '../../../services/auth/post-confirmation'),
+  ),
+      environment: {
+        LOG_LEVEL: 'info',
+      },
+    });
+
+    // Allow the Lambda to add users to groups in this User Pool
+    postConfirmationFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cognito-idp:AdminAddUserToGroup'],
+        resources: [userPool.userPoolArn],
+      }),
+    );
+
+    // Attach Lambda as PostConfirmation trigger
+    userPool.addTrigger(
+      cognito.UserPoolOperation.POST_CONFIRMATION,
+      postConfirmationFn,
+    );
 
     // 5) Outputs for other stacks / frontends
     new CfnOutput(this, 'UserPoolId', {

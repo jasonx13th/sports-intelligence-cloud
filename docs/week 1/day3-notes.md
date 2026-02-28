@@ -1,165 +1,385 @@
-# Week 1 – Day 3: Onboarding Strategy + Security Close-Out
+# Week 1 – Day 3: Onboarding Strategy + Tenant-Enforced API (Security Close-Out)
 
 ## Session Objective
-Finalize a secure onboarding model for SIC that still supports product-led growth:
-- **Two onboarding modes**
-  - **Solo-coach “intro”** (self-sign-up, low friction)
-  - **Org “full service”** (invite/admin onboarding)
-- Clarify how roles and tenancy stay secure in both modes
-- Document the plan to remove temporary security shortcuts (IAM `*`, Node 18 runtime)
+
+Close Week 1 by aligning:
+
+- Product onboarding strategy
+- Multi-tenant security model
+- Cognito + JWT architecture
+- API Gateway + Lambda enforcement
+- Infrastructure issues and fixes
+- Clear Week 2 roadmap
+
+This document serves as a structured technical review.
 
 ---
 
-## 1) Product Context: why two onboarding modes
+# 1) Product Strategy: Two Onboarding Modes, One Tenancy Model (Planned)
 
-To grow adoption, SIC needs an “appetizer”:
-- Individual coaches should be able to try core value quickly (planning sessions, light tracking)
-- Coaches become word-of-mouth distribution into clubs/academies/municipalities
-- The platform must still enforce security and tenant isolation from day one
+SIC must support product-led growth without compromising security.
 
-This leads to a deliberate design decision:
+To drive adoption:
+- Coaches must try the platform easily.
+- Coaches become word-of-mouth distribution into clubs and municipalities.
+- Tenant isolation must exist from day one.
 
-✅ **Two onboarding modes, one tenancy model**
+**Decision:**
+Two onboarding modes (**planned**).  
+One strict multi-tenant architecture (**implemented foundation in Week 1**).
 
----
-
-## 2) Decision: Option 1 (chosen)
-
-### Mode A — Intro / Trial (Solo-coach tenant)
-**Entry:** self-sign-up  
-**Tenant type:** `solo-coach`  
-**Default role:** `cv-admin` (owner of their own workspace)  
-**Purpose:** allow coaches to try SIC features quickly and safely.
-
-**Security constraints**
-- Self-sign-up creates **only** a solo-coach tenant
-- No ability to create org tenants (clubs/municipalities) via self-sign-up
-- No privilege escalation to org-level administration
-- Feature limits / quotas can be applied later (athletes, storage, advanced analytics)
-
-### Mode B — Full service org (Club/Academy/School/Municipality)
-**Entry:** invite/admin onboarding  
-**Tenant type:** `org`  
-**Roles assigned by:** tenant admin or platform admin  
-**Purpose:** multi-user workspace with operational controls.
-
-**Security constraints**
-- No user can self-assign privileged roles
-- Staff roles are assigned through controlled flows
-- Better audit story: “who invited whom and why”
+> Note: Week 1 implemented the security foundation (Cognito + JWT + tenant claim + protected API).  
+> The onboarding flows (self sign-up, org onboarding, tenant types) are designed but not fully built yet.
 
 ---
 
-## 3) Core security model (applies to both modes)
+## Mode A — Intro / Solo Coach (Planned Self-Sign-Up)
 
-### Tenant identity is mandatory
-Every tenant (solo coach, club, school, municipality) has a unique `tenant_id`.
+- Entry: self-sign-up (**not enabled in Week 1**; `selfSignUpEnabled: false`)
+- Tenant type: `solo-coach` (**planned**)
+- Planned default role: `cv-admin` (owner of their workspace) (**planned**)
 
-### `tenant_id` enforcement layers
-Tenant isolation must be enforced in four layers:
-
-1) **Identity layer (Cognito / JWT)**
-   - `custom:tenant_id` exists and is included in tokens.
-   - Backend trusts tenant only from validated JWT claims.
-
-2) **API layer (API Gateway authorizer)**
-   - Requests without valid tokens are rejected before Lambda runs.
-
-3) **Application layer (Lambda code)**
-   - Lambda extracts `tenant_id` from JWT claims.
-   - Lambda never trusts tenant ids passed in body/query.
-   - Missing/invalid claims are rejected.
-
-4) **Data layer (DynamoDB/S3 partitioning)**
-   - DynamoDB partition key uses tenant prefix (e.g., `PK = TENANT#<tenant_id>`).
-   - S3 uses tenant prefixes (e.g., `<tenant_id>/...`).
-
-**Most dangerous layer to forget:** Application layer  
-Because a single bug (wrong query, scan, wrong key) can cause cross-tenant leakage.
+### Planned Security Constraints
+- Can only create a solo tenant
+- Cannot create org tenants
+- Cannot self-escalate privileges
+- Feature limits can apply (quotas, tiers, etc.)
 
 ---
 
-## 4) Role assignment strategy (v1)
+## Mode B — Org / Full Service (Planned)
 
-We choose **invite/admin workflow** as the secure default.
+- Entry: invite/admin onboarding (**planned**)
+- Tenant type: `org` (**planned**)
+- Roles assigned by: tenant admin or platform admin (**planned, auditable**)
 
-Why:
-- Prevents privilege escalation
-- Keeps audit and compliance clean
-- Matches org onboarding reality
-
-Solo-coach still supports self-sign-up, but role assignment is constrained:
-- Solo-coach user becomes the tenant owner (`cv-admin` for their own tenant only)
+### Planned Security Constraints
+- No self-assigned privileged roles
+- Role assignment controlled and auditable
+- Governance for clubs/municipalities
 
 ---
 
-## 5) Real issues encountered (and what we learned)
+# 2) Core Multi-Tenant Security Model
 
-### A) CDK bootstrap required
-Initial deploy failed because environment was not bootstrapped:
+Every entity has a unique:
 
-- `/cdk-bootstrap/hnb659fds/version not found`
+```
+tenant_id
+```
+
+Tenant enforcement happens in four layers:
+
+---
+
+## 1️⃣ Identity Layer (Cognito / JWT)
+
+- `custom:tenant_id` stored on user
+- Injected into JWT as `tenant_id` (via **Pre Token Generation trigger**)
+- Backend trusts only validated JWT claims
+
+---
+
+## 2️⃣ API Layer (API Gateway Authorizer)
+
+- JWT authorizer validates:
+  - Issuer
+  - Audience (client id)
+  - Signature
+- Requests without valid tokens → 401 before Lambda runs
+
+---
+
+## 3️⃣ Application Layer (Lambda)
+
+Lambda must:
+
+- Extract `tenant_id` from JWT claims
+- Never trust tenant passed in body/query
+- Reject missing or invalid claims (future hardening; `/me` returns `tenantId` and would be the place to enforce required claims)
+
+⚠️ Most dangerous layer to forget:
+Application logic errors can cause cross-tenant leakage.
+
+---
+
+## 4️⃣ Data Layer (Partitioning) (Planned pattern)
+
+DynamoDB:
+```
+PK = TENANT#<tenant_id>
+```
+
+S3:
+```
+<tenant_id>/...
+```
+
+---
+
+# 3) Infrastructure Built This Week
+
+## SicAuthStack-Dev
+
+Owns:
+- Cognito User Pool
+- App client
+- Hosted UI domain
+- Groups:
+  - `cv-admin`
+  - `cv-coach`
+  - `cv-medical`
+  - `cv-athlete`
+- PostConfirmation trigger (group assignment logic still being tuned)
+- Pre Token Generation trigger (injects `tenant_id` into JWT)
+
+---
+
+## SicApiStack-Dev
+
+Owns:
+- API Gateway V2 (HTTP API)
+- JWT Authorizer (Cognito)
+- `GET /me` Lambda endpoint
+- Output:
+  - `ClubVivoApiUrl = https://<api-id>.execute-api.<region>.amazonaws.com/`
+
+Authorizer config:
+- Issuer:
+  ```
+  https://cognito-idp.<region>.amazonaws.com/<userPoolId>
+  ```
+- Audience:
+  ```
+  user pool app client id
+  ```
+
+---
+
+# 4) Implemented Tenant-Enforced `/me` Endpoint
+
+Lambda behavior:
+
+- Reads JWT claims from request context:
+  - `tenant_id`
+  - `cognito:groups`
+  - `sub`
+
+Returns proof of identity:
+
+```json
+{
+  "ok": true,
+  "tenantId": "...",
+  "groups": ["..."],
+  "sub": "..."
+}
+```
+
+---
+
+# 5) Security Validations Performed
+
+## ✅ Verified API is Protected
+
+Request without token:
+
+```bash
+curl -i https://<api-id>.execute-api.us-east-1.amazonaws.com/me
+```
+
+Observed:
+
+```
+HTTP/1.1 401 Unauthorized
+```
+
+Confirms:
+- Authorizer is active
+- Lambda is not public
+
+---
+
+## ✅ OAuth Flow Fixes
+
+Issues encountered:
+
+- Wrong client id → `client does not exist`
+- Used `response_type=token` but client configured for Authorization Code Grant
+
+Correct flow:
+
+```
+response_type=code
+```
+
+---
+
+## ✅ Fixed Authorizer Audience Mismatch
+
+Error:
+```
+invalid_token / token does not have a valid audience
+```
+
+Cause:
+- API authorizer audience did not match Cognito app client id
 
 Fix:
+- Updated `SicApiStack` to use the correct client id
+- Redeployed
+
+---
+
+## ✅ Injected `tenant_id` into JWT (Production-Grade Fix)
+
+Problem:
+- `custom:tenant_id` existed in user attributes
+- Not present in:
+  - `id_token`
+  - `access_token`
+  - `https://.../oauth2/userInfo`
+
+Lesson:
+User attributes ≠ token claims.
+
+---
+
+### Correct Solution: Pre Token Generation Trigger
+
+Attached:
+```
+UserPoolOperation.PRE_TOKEN_GENERATION
+```
+
+Behavior:
+- Reads `custom:tenant_id`
+- Injects claim:
+  ```
+  tenant_id: "<value>"
+  ```
+
+After redeploy:
+Decoded JWT includes:
+
+```
+"tenant_id": "club-vivo-1234"
+```
+
+---
+
+## ✅ End-to-End Proof
+
+Calling `/me` with valid `id_token`:
+
+Observed:
+
+```
+HTTP/1.1 200 OK
+```
+
+Response contains:
+
+- `tenantId`
+- `groups`
+
+Full chain verified:
+
+Cognito Login  
+→ JWT  
+→ API Gateway Authorizer  
+→ Lambda  
+→ Tenant-aware response  
+
+---
+
+# 6) Infrastructure Issues Encountered (And Fixes)
+
+## A) CDK Bootstrap Missing
+
+Error:
+```
+/cdk-bootstrap/hnb659fds/version not found
+```
+
+Fix:
+
 ```bash
 npx cdk bootstrap aws://<redacted-account-id>/us-east-1
+```
+
+---
 
 ## B) CloudFormation Circular Dependency
 
-We hit a circular dependency when:
+Problem:
+- Cognito User Pool needed Lambda trigger
+- Lambda IAM policy referenced User Pool ARN (caused circular dependency)
 
-- Cognito User Pool needed Lambda as a trigger  
-- Lambda IAM policy referenced the User Pool ARN  
-
-### Fix (Temporary MVP)
-
-- IAM policy used:
+Temporary MVP fix:
 
 ```ts
 resources: ['*']
 ```
 
-to break the dependency.
-
-**Follow-up action:**  
-Tighten permissions later without creating circular references.
+Plan:
+Refactor to least privilege without circular dependency.
 
 ---
 
-## C) Node 18 Lambda Runtime Missing aws-sdk
+## C) Node 18 Lambda Missing aws-sdk
 
-Lambda failed with:
-
+Error:
 ```
 Cannot find module 'aws-sdk'
 ```
 
-### Fix
-
-- Migrated Lambda to **AWS SDK v3**
-- Packaged `@aws-sdk/client-cognito-identity-provider` with the Lambda asset
+Fix:
+- Migrated to AWS SDK v3
+- Packaged:
+  ```
+  @aws-sdk/client-cognito-identity-provider
+  ```
 - Redeployed successfully
 
 ---
 
-## 6) Current Deployed State (Week 1 Status)
+# 7) Current Week 1 Status
 
-- ✅ SicAuthStack-Dev deployed  
-- ✅ Cognito User Pool + client + domain  
-- ✅ Groups exist: `cv-admin`, `cv-coach`, `cv-medical`, `cv-athlete`  
-- ✅ `custom:tenant_id` exists  
-- ✅ PostConfirmation Lambda runs and logs to CloudWatch  
-- ✅ Verified dummy user was added to group `cv-athlete` and logs confirmed  
+- ✅ SicAuthStack-Dev deployed
+- ✅ SicApiStack-Dev deployed
+- ✅ Cognito + domain + client configured
+- ✅ Groups created
+- ✅ PostConfirmation trigger working (default group behavior still being tuned)
+- ✅ Pre Token Generation trigger injecting tenant_id
+- ✅ JWT authorizer active
+- ✅ `/me` endpoint tenant-aware
+- ✅ Verified 401 without token
+- ✅ Verified 200 with valid token
+- ✅ CloudWatch logs validated
 
 ---
 
-## 7) Next Actions (Week 2 Kickoff)
+# 8) Week 2 Roadmap
 
-1. Tighten IAM from `'*'` back to least privilege (remove temporary policy).  
-2. Upgrade Lambda runtime to **Node 20**.  
-3. Build **SicApiStack**:
-   - API Gateway + Cognito authorizer  
-   - First tenant-enforced Lambda endpoint (reads `tenant_id` from JWT)  
-4. Implement a real onboarding flow:
-   - Solo-coach self-sign-up creates tenant + owner role  
-   - Org invite workflow assigns roles securely  
+1. Remove temporary IAM `'*'` and implement least privilege.
+2. Expand tenant-enforced endpoints beyond `/me` (start real CRUD patterns).
+3. Implement real onboarding flows:
+   - Solo-coach self-sign-up creates tenant + owner role (Mode A)
+   - Org invite workflow assigns roles securely (Mode B)
+4. Strengthen audit logging and monitoring.
+5. Add data-layer enforcement (DynamoDB/S3 patterns) as we introduce persistence.
+
+---
+
+# Key Technical Lessons
+
+- Tenant identity must be first-class in JWT.
+- User attributes are not automatically token claims.
+- Multi-tenant enforcement requires defense in depth.
+- Authorization bugs are often configuration mismatches.
+- Temporary security shortcuts must be documented and removed.
+
+---
+
+End of Week 1 Review.

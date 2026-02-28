@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-// Entry point for the Sports Intelligence Cloud Auth CDK app.
-// This wires up the SicAuthStack (Cognito + IAM for Club Vivo and other pillars).
+// Entry point for the Sports Intelligence Cloud CDK app.
+// This wires up SicAuthStack + SicApiStack (Auth + API).
 
+import { SicApiStack } from '../lib/sic-api-stack';
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { SicAuthStack } from '../lib/sic-auth-stack';
@@ -20,4 +21,11 @@ new SicAuthStack(app, 'SicAuthStack-Dev', {
   env,
   description:
     'Sports Intelligence Cloud - Auth (Cognito & IAM) for dev environment',
+});
+
+new SicApiStack(app, 'SicApiStack-Dev', {
+  env,
+  userPoolId: 'us-east-1_WfcDqdxJh',
+  userPoolClientId: '4ssfq7va608hr9uolatbhsma7q',
+  description: 'Sports Intelligence Cloud - API (HTTP API + JWT authorizer) for dev environment',
 });

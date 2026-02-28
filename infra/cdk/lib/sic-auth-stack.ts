@@ -93,7 +93,7 @@ export class SicAuthStack extends Stack {
 
     // 4.5) Lambda: PostConfirmation trigger for role assignment
     const postConfirmationFn = new lambda.Function(this, 'PostConfirmationFn', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler.handler',
       functionName: `sic-post-confirmation-${envName}`,
       code: lambda.Code.fromAsset(

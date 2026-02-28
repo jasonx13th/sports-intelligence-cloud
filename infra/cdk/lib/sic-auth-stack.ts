@@ -11,16 +11,13 @@ export class SicAuthStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // Simple env name for naming – we can refine later if we want
     const envName = this.node.tryGetContext('env') ?? 'dev';
 
     // 1) User Pool
     const userPool = new cognito.UserPool(this, 'SicUserPool', {
       userPoolName: `sic-user-pool-${envName}`,
-      signInAliases: {
-        email: true,
-      },
-      selfSignUpEnabled: false, // we’ll control flows later
+      signInAliases: { email: true },
+      selfSignUpEnabled: false,
       passwordPolicy: {
         minLength: 12,
         requireDigits: true,
@@ -30,15 +27,10 @@ export class SicAuthStack extends Stack {
         tempPasswordValidity: Duration.days(7),
       },
       standardAttributes: {
-        email: {
-          required: true,
-          mutable: false,
-        },
+        email: { required: true, mutable: false },
       },
       customAttributes: {
-        tenant_id: new cognito.StringAttribute({
-          mutable: true, // allows controlled tenant moves later if needed
-        }),
+        tenant_id: new cognito.StringAttribute({ mutable: true }),
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       mfa: cognito.Mfa.OFF, // later: OPTIONAL + enforce for cv-admin
@@ -50,10 +42,8 @@ export class SicAuthStack extends Stack {
       generateSecret: false, // SPA
       preventUserExistenceErrors: true,
       oAuth: {
-        flows: {
-          authorizationCodeGrant: true,
-        },
-        callbackUrls: ['http://localhost:3000/callback'], // TODO: replace with real URLs per env
+        flows: { authorizationCodeGrant: true },
+        callbackUrls: ['http://localhost:3000/callback'],
         logoutUrls: ['http://localhost:3000/logout'],
       },
     });
@@ -61,7 +51,6 @@ export class SicAuthStack extends Stack {
     // 3) Cognito domain (for Hosted UI)
     const domain = userPool.addDomain('ClubVivoDomain', {
       cognitoDomain: {
-        // must be globally unique across AWS accounts/regions
         domainPrefix: `club-vivo-${envName}`,
       },
     });
@@ -91,32 +80,49 @@ export class SicAuthStack extends Stack {
       description: 'Athlete within a tenant',
     });
 
-    // 4.5) Lambda: PostConfirmation trigger for role assignment
+    // 4.5) Lambda: PostConfirmation trigger for default role assignment
     const postConfirmationFn = new lambda.Function(this, 'PostConfirmationFn', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler.handler',
       functionName: `sic-post-confirmation-${envName}`,
       code: lambda.Code.fromAsset(
-    // infra/cdk/lib -> infra/cdk -> infra -> repo root -> services/...
-    path.join(__dirname, '../../../services/auth/post-confirmation'),
-  ),
+        path.join(__dirname, '../../../services/auth/post-confirmation'),
+      ),
       environment: {
         LOG_LEVEL: 'info',
       },
     });
 
-    // Allow the Lambda to add users to groups in this User Pool
+    // TEMP: avoids circular dependency; tighten later
     postConfirmationFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cognito-idp:AdminAddUserToGroup'],
-        resources: ['*'], // TEMP: avoids circular dependency; tighten later
+        resources: ['*'],
       }),
     );
 
-    // Attach Lambda as PostConfirmation trigger
+    // 4.6) Lambda: Pre Token Generation trigger (inject tenant_id claim into JWT)
+    const preTokenGenerationFn = new lambda.Function(this, 'PreTokenGenerationFn', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler.handler',
+      functionName: `sic-pre-token-generation-${envName}`,
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../../../services/auth/pre-token-generation'),
+      ),
+      environment: {
+        LOG_LEVEL: 'info',
+      },
+    });
+
+    // Attach triggers
     userPool.addTrigger(
       cognito.UserPoolOperation.POST_CONFIRMATION,
       postConfirmationFn,
+    );
+
+    userPool.addTrigger(
+      cognito.UserPoolOperation.PRE_TOKEN_GENERATION,
+      preTokenGenerationFn,
     );
 
     // 5) Outputs for other stacks / frontends

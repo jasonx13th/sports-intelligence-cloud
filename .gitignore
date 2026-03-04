@@ -1,8 +1,14 @@
 # Node modules (global)
-node_modules/
+**/node_modules/
 
-# CDK build output
-infra/cdk/dist/
+# CDK build output (global)
+**/cdk.out/
+**/dist/
+**/.cache/
 
-# TypeScript build cache (optional)
+# TypeScript build cache
 *.tsbuildinfo
+
+# OS/editor
+.DS_Store
+.vscode/

@@ -93,11 +93,11 @@ export class SicAuthStack extends Stack {
       },
     });
 
-    // TEMP: avoids circular dependency; tighten later
+    // Least privilege: scoped to this user pool only
     postConfirmationFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cognito-idp:AdminAddUserToGroup'],
-        resources: ['*'],
+        resources: [userPool.userPoolArn],
       }),
     );
 

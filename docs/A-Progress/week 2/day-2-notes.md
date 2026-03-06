@@ -1,175 +1,117 @@
 # Week 2 — Day 2 — Tenant Isolation + Shared API Guardrails
 
 **Date:** 2026-03-06  
-**Goal:** Prove end-to-end tenant isolation at the application layer using a real Cognito JWT, shared API guardrails, and a production-grade tenant context boundary.
+**Outcome:** ✅ End-to-end multi-tenant request pipeline works with a real Cognito JWT, and tenant isolation is enforced consistently.
 
 ---
 
-## Session objective
+## What Day 2 was supposed to accomplish
+Build a repeatable, production-style request pipeline for Club Vivo APIs:
 
-Build and validate a repeatable request pipeline for Club Vivo APIs:
+**API Gateway HTTP API → Cognito JWT Authorizer → Lambda → Tenant Context → Body Parse → Validation → Handler**
 
-API Gateway HTTP API → Cognito JWT Authorizer → Lambda → Tenant Context → Body Parse → Validation → Handler
-
-Success criteria:
-- ✅ Real JWT auth works end-to-end
-- ✅ Tenant context is enforced consistently for every handler
-- ✅ Guardrails return deterministic errors (no crashes on bad input)
-- ✅ Evidence: curl output + DynamoDB proof + CDK diff/deploy outputs
+Key requirement: **every request is tenant-scoped and fail-closed**.
 
 ---
 
-## What was built / changed
+## What we built (and what’s now true)
 
-### 1) Tenant middleware (Auth boundary)
-**File:** `services/club-vivo/api/_lib/tenant-context.js`
+### 1) Tenant Context Boundary (Path 2 — DB-backed entitlements)
+**File:** `services/club-vivo/api/_lib/tenant-context.js`  
+**Now:** tenant context is resolved like this:
 
-**Before:** tenant_id/role/tier were expected from JWT custom claims.  
-**After (Path 2):** access token proves identity (`sub`), and **tenant entitlements come from DynamoDB**:
+- **AuthN (who):** from JWT claims (`sub`)
+- **AuthZ context (what tenant/tier/role):** from DynamoDB entitlements table
+
+**Source of truth:**
 - `userId` ← `claims.sub`
-- `role` ← `cognito:groups` (MVP: first group wins)
-- `tenantId`, `tier` ← DynamoDB lookup (`TENANT_ENTITLEMENTS_TABLE`)
+- `tenantId` ← DynamoDB `tenant_id`
+- `tier` ← DynamoDB `tier`
+- `role` ← DynamoDB `role` (authoritative)
 
-**Enforcement:**
-- Fail-closed when auth claims are missing
-- Fail-closed when entitlements record is missing
-- Tenant ID must match: `^tenant_[a-z0-9-]{3,}$`
+**Fail-closed rules:**
+- missing claims → 401/403
+- missing entitlements → `403 missing_entitlements`
+- invalid tenant format → `403 invalid_tenant_claim`
+- missing role/tier → `403 missing_role_claim` / `403 missing_tier_claim`
 
----
-
-### 2) Request validation utility
-**File:** `services/club-vivo/api/_lib/validate.js`  
-**Use:** `requireFields(body, ["name"])`
+Tenant format enforced: `^tenant_[a-z0-9-]{3,}$`
 
 ---
 
-### 3) Safe JSON parsing utility
-**File:** `services/club-vivo/api/_lib/parse-body.js`  
-**Use:** `parseJsonBody(event)` returns `400 invalid_json` instead of crashing.
+### 2) Shared Guardrails (_lib)
+Added shared utilities used by handlers:
+- `services/club-vivo/api/_lib/parse-body.js` (safe JSON parse → deterministic `400 invalid_json`)
+- `services/club-vivo/api/_lib/validate.js` (required fields → consistent `400` errors)
 
 ---
 
-### 4) Shared code packaging fix
-Packaged the entire API directory so `_lib` is included in all functions.
+### 3) Packaging fix so shared code is always deployed
+**CDK:** package the whole `services/club-vivo/api` directory so `_lib` is included.
 
-**Lambda code asset:** `services/club-vivo/api`  
-**Handlers:**  
-- `me/handler.handler`  
+Handlers standardized:
+- `me/handler.handler`
 - `test-tenant/handler.handler`
 
 ---
 
-### 5) New endpoint added
+### 4) New endpoint to prove the full pipeline
 **Route:** `POST /test-tenant`  
-**Lambda:** `TestTenantFn`
+**Purpose:** prove tenant boundary + parsing + validation end-to-end.
 
-Purpose: demonstrate the production request pipeline and tenant boundary.
+✅ Successful call returned:
+- `tenantId: tenant_club-vivo-1234`
+- `userId: <redacted-user-sub>`
 
 ---
 
-### 6) Entitlements Store (DynamoDB) added
-**Stack:** `SicApiStack-Dev`  
+### 5) Tenant entitlements DynamoDB table
 **Table:** `sic-tenant-entitlements-dev`  
-**PK:** `user_sub` (Cognito `sub`)  
-**Attributes:** `tenant_id`, `tier`
+**PK:** `user_sub`  
+**Fields used:** `tenant_id`, `tier`, `role`
 
-**Lambda wiring:**
-- `TENANT_ENTITLEMENTS_TABLE` env var set on `TestTenantFn`
-- IAM: `TestTenantFn` granted read access
-
----
-
-## Architecture decision record
-
-### Decision: Path 2 authorization contract (server-side entitlements)
-**We chose:** **Access token for authN**, and **DynamoDB entitlements lookup for authZ context**.
-
-**Why:** authorization must be **revocable, auditable, centrally managed**, and not dependent on long-lived JWT claim contents. Entitlements in a DB allow instant upgrades/downgrades/locks without waiting for token expiry and avoid claim drift across clients.
-
-Tenant ID standard:
-- `tenant_<slug>-<unique>`  
-Example used: `tenant_club-vivo-1234`
+**Wiring:**
+- `TENANT_ENTITLEMENTS_TABLE` env var added to Lambda(s)
+- IAM read permission granted via CDK (`grantReadData`)
 
 ---
 
-## Evidence
+## Why we chose Path 2 (DB-backed entitlements)
+Path 2 is the production contract because it gives you:
 
-### A) DynamoDB seed + verification
-**Table:** `sic-tenant-entitlements-dev`  
-**User sub:** `<redacted-user-sub>`
-
-Seed:
-```bash
-aws dynamodb put-item --table-name sic-tenant-entitlements-dev --item "{\"user_sub\":{\"S\":\"<redacted-user-sub>\"},\"tenant_id\":{\"S\":\"tenant_club-vivo-1234\"},\"tier\":{\"S\":\"dev\"}}"
-```
-
-Verify:
-```bash
-aws dynamodb get-item --table-name sic-tenant-entitlements-dev --key "{\"user_sub\":{\"S\":\"<redacted-user-sub>\"}}"
-```
-
-Expected:
-- `tenant_id = tenant_club-vivo-1234`
-- `tier = dev`
+- **Instant revocation** (change entitlements without waiting for token expiry)
+- **Central authority** (no reliance on client-visible JWT claims)
+- **Auditability** (entitlements can be tracked/controlled like real SaaS access control)
+- **Stronger tenant isolation** (tenant boundary decisions come from server-side data)
 
 ---
 
-### B) Successful API call (real JWT)
-**API URL:** `https://<api-id>.execute-api.us-east-1.amazonaws.com/`  
-**Endpoint:** `POST /test-tenant`
-
-Request (token redacted):
-```bash
-curl -i -X POST "https://<api-id>.execute-api.us-east-1.amazonaws.com/test-tenant"   -H "Authorization: Bearer eyJ...REDACTED"   -H "Content-Type: application/json"   -d "{\"name\":\"Jason\"}"
-```
-
-Response:
-- `HTTP/1.1 200 OK`
-
-```json
-{
-  "ok": true,
-  "tenantId": "tenant_club-vivo-1234",
-  "userId": "<redacted-user-sub>",
-  "received": { "name": "Jason" }
-}
-```
+## Evidence we captured today
+- ✅ Real JWT request succeeds (200 OK) with tenant context resolved
+- ✅ Fail-closed behavior verified:
+  - delete entitlements → `403 missing_entitlements`
+  - bad tenant value → `403 invalid_tenant_claim`
+  - missing role field → `403 missing_role_claim`
+- ✅ CDK diff/deploy proved infra changes were applied
+- ✅ DynamoDB get/put proved entitlements state controls access
 
 ---
 
-## Operational / observability notes
+## Next tasks (Week 2 — Day 3)
+1) **Harden consistency**
+- Ensure both `/me` and `/test-tenant` use `await buildTenantContext(event)` everywhere.
 
-- CloudWatch alarms maintained:
-  - HTTP API 4xx / 5xx
-  - Lambda errors / throttles for `MeFn` and `TestTenantFn`
-- **Pitfall:** Windows CMD `curl` can break headers/tokens and mimic `invalid_token` failures. Fix: run curl as a single line and quote correctly.
-
----
-
-## Known gaps / planned hardening
-
-1) Add negative test evidence:
+2) **Add clean “negative test suite” notes**
 - malformed JSON → `400 invalid_json`
-- missing field(s) → `400` validation error
+- missing required field(s) → `400`
 - missing entitlements → `403 missing_entitlements`
 
-2) Move role authority into entitlements store (optional), or formalize group→role mapping table.
+3) **Observability upgrades**
+- structured logs include `requestId`, `userId`, `tenantId`, `error.code`
+- add metric filters / alarms for top auth failures (optional but recommended)
 
-3) Cost note:
-- DynamoDB on-demand reads per request (cheap at dev scale; model cost before scaling).
-
----
-
-## Certification mapping (covered today)
-
-- **DVA-C02:** API Gateway HTTP API + Lambda integration, env vars, IAM permissions, CloudWatch alarms/log groups, DynamoDB read patterns.
-- **AIF-C01:** separation of authN vs authZ, governance via identity + entitlements, least privilege access boundaries.
-- **MLA-C01:** multi-tenant isolation discipline applicable to feature stores/training datasets/model access.
+4) **Docs**
+- Add ADR: “Tenant Context Contract (Path 2)”
+- Add Week 2 Day 3 notes after implementing above
 
 ---
-
-## Next session (Week 2 — Day 3)
-
-- Add and document negative tests + alarms/metrics behavior under failure
-- Write weekly architecture note + LinkedIn post
-- Create an ADR for “Tenant Context Contract (Path 2)” and link it from docs

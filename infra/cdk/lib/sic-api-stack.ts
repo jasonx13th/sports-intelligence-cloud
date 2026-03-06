@@ -1,6 +1,6 @@
 // infra/cdk/lib/sic-api-stack.ts
 
-import { Stack, StackProps, CfnOutput, Duration } from 'aws-cdk-lib';
+import { Stack, StackProps, CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigwv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
@@ -9,6 +9,7 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 export interface SicApiStackProps extends StackProps {
   readonly userPoolId: string;
@@ -24,25 +25,45 @@ export class SicApiStack extends Stack {
     // Lambda: /me
     const meFn = new lambda.Function(this, 'MeFn', {
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'handler.handler',
+      handler: 'me/handler.handler',
       functionName: `sic-club-vivo-me-${envName}`,
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, '../../../services/club-vivo/api/me'),
-      ),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../services/club-vivo/api')),
     });
+
+    // Lambda: /test-tenant
+    const testTenantFn = new lambda.Function(this, 'TestTenantFn', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'test-tenant/handler.handler',
+      functionName: `sic-club-vivo-test-tenant-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../services/club-vivo/api')),
+    });
+
+    // -----------------------------
+    // Tenant Entitlements Store (DynamoDB)
+    // -----------------------------
+    const tenantEntitlementsTable = new dynamodb.Table(this, 'TenantEntitlementsTable', {
+      tableName: `sic-tenant-entitlements-${envName}`,
+      partitionKey: { name: 'user_sub', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: RemovalPolicy.DESTROY, // dev only; later RETAIN
+    });
+
+    // Wire into Lambda(s)
+    tenantEntitlementsTable.grantReadData(testTenantFn);
+    testTenantFn.addEnvironment('TENANT_ENTITLEMENTS_TABLE', tenantEntitlementsTable.tableName);
 
     // HTTP API
     const api = new apigwv2.HttpApi(this, 'ClubVivoHttpApi', {
       apiName: `sic-club-vivo-api-${envName}`,
     });
 
-    // Access logs for HTTP API (required for ops + later metric filters)
+    // Access logs for HTTP API
     const apiAccessLogs = new logs.LogGroup(this, 'ClubVivoHttpApiAccessLogs', {
       logGroupName: `/aws/apigwv2/sic-club-vivo-api-${envName}`,
       retention: logs.RetentionDays.ONE_WEEK,
     });
 
-    // Enable access logging (structured JSON) on default stage
+    // Enable access logging on default stage
     const defaultStage = api.defaultStage;
     if (defaultStage) {
       const cfnStage = defaultStage.node.defaultChild as apigwv2.CfnStage;
@@ -78,14 +99,25 @@ export class SicApiStack extends Stack {
       authorizer,
     });
 
+    // Route: POST /test-tenant
+    api.addRoutes({
+      path: '/test-tenant',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwv2Integrations.HttpLambdaIntegration(
+        'TestTenantIntegration',
+        testTenantFn,
+      ),
+      authorizer,
+    });
+
     new CfnOutput(this, 'ClubVivoApiUrl', {
       value: api.url ?? 'unknown',
       exportName: `ClubVivoApiUrl-${envName}`,
     });
 
-    // --- CloudWatch Alarms (minimum viable) ---
+    // --- CloudWatch Alarms ---
 
-    // Lambda: Errors
+    // Lambda: Me Errors
     new cloudwatch.Alarm(this, 'MeFnErrorsAlarm', {
       alarmName: `sic-${envName}-mefn-errors`,
       metric: meFn.metricErrors({ period: Duration.minutes(5) }),
@@ -93,10 +125,26 @@ export class SicApiStack extends Stack {
       evaluationPeriods: 1,
     });
 
-    // Lambda: Throttles
+    // Lambda: Me Throttles
     new cloudwatch.Alarm(this, 'MeFnThrottlesAlarm', {
       alarmName: `sic-${envName}-mefn-throttles`,
       metric: meFn.metricThrottles({ period: Duration.minutes(5) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+    });
+
+    // Lambda: TestTenant Errors
+    new cloudwatch.Alarm(this, 'TestTenantFnErrorsAlarm', {
+      alarmName: `sic-${envName}-testtenantfn-errors`,
+      metric: testTenantFn.metricErrors({ period: Duration.minutes(5) }),
+     threshold: 1,
+      evaluationPeriods: 1,
+    });
+
+    // Lambda: TestTenant Throttles
+    new cloudwatch.Alarm(this, 'TestTenantFnThrottlesAlarm', {
+      alarmName: `sic-${envName}-testtenantfn-throttles`,
+      metric: testTenantFn.metricThrottles({ period: Duration.minutes(5) }),
       threshold: 1,
       evaluationPeriods: 1,
     });

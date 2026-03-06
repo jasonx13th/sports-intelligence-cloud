@@ -97,7 +97,7 @@ export class SicAuthStack extends Stack {
     postConfirmationFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cognito-idp:AdminAddUserToGroup'],
-        resources: [userPool.userPoolArn],
+        resources: ['*'],
       }),
     );
 

@@ -65,7 +65,7 @@ async function buildTenantContext(event) {
   const tier = item.tier?.S || null;
 
   const groups = getGroupsFromClaims(claims);
-  const role = groups[0] || null; // MVP: first group wins
+  const role = item.role?.S || null; // authoritative from entitlements store
 
   if (!tenantId) {
     throw authError(403, "missing_tenant_claim", "Tenant claim missing");

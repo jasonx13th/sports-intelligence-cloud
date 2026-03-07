@@ -1,10 +1,19 @@
+// services/club-vivo/api/test-tenant/handler.js
+
 const { buildTenantContext } = require("../_lib/tenant-context");
 const { parseJsonBody } = require("../_lib/parse-body");
 const { requireFields } = require("../_lib/validate");
 
 exports.handler = async (event) => {
+  // Always extract these so we can log even if buildTenantContext fails
+  const requestId = event?.requestContext?.requestId || null;
+  const claims = event?.requestContext?.authorizer?.jwt?.claims || null;
+  const userId = claims?.sub || null;
+
+  let tenant = null;
+
   try {
-    const tenant = await buildTenantContext(event); // <-- ONLY critical change
+    tenant = await buildTenantContext(event); // consistent path with /me
     const body = parseJsonBody(event);
 
     requireFields(body, ["name"]);
@@ -25,6 +34,9 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error("test_tenant_handler_error", {
+      requestId,
+      userId,
+      tenantId: tenant?.tenantId || null,
       code: err.code,
       message: err.message,
       statusCode: err.statusCode,
@@ -39,7 +51,9 @@ exports.handler = async (event) => {
         ok: false,
         error: err.code || "internal_error",
         message:
-          err.statusCode && err.statusCode < 500 ? err.message : "Internal server error",
+          err.statusCode && err.statusCode < 500
+            ? err.message
+            : "Internal server error",
       }),
     };
   }

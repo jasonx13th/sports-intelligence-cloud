@@ -1,15 +1,31 @@
 // services/club-vivo/api/_lib/tenant-context.js
 
+"use strict";
+
 const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
 
-function authError(statusCode, code, message) {
+function authError(statusCode, code, message, details = undefined) {
   const err = new Error(message);
   err.statusCode = statusCode;
   err.code = code;
+  if (details !== undefined) err.details = details;
   return err;
 }
 
 const ddb = new DynamoDBClient({});
+
+function getClaims(event) {
+  return event?.requestContext?.authorizer?.jwt?.claims || null;
+}
+
+function getRequestId(event) {
+  // API Gateway (HTTP API) request id
+  return (
+    event?.requestContext?.requestId ||
+    event?.requestContext?.requestId ||
+    null
+  );
+}
 
 function getClaimSub(claims) {
   return claims?.sub || null;
@@ -34,57 +50,78 @@ async function fetchEntitlementsBySub({ tableName, userSub }) {
   return resp.Item || null;
 }
 
+function requireStringAttr(item, attrName, errorCode) {
+  const v = item?.[attrName]?.S || null;
+  if (!v) {
+    throw authError(403, errorCode, `Missing required entitlement attribute: ${attrName}`, {
+      attrName,
+    });
+  }
+  return v;
+}
+
 /**
- * Path 2 contract:
- * - Access token proves identity (sub) and groups
- * - Tenant entitlements come from DynamoDB (tenant_id, tier)
+ * Tenant Context contract:
+ * - JWT authorizer must supply claims (sub + groups)
+ * - Entitlements MUST exist in DynamoDB keyed by user_sub
+ * - Entitlements supply: tenant_id, role, tier (authoritative)
  */
 async function buildTenantContext(event) {
-  const claims = event?.requestContext?.authorizer?.jwt?.claims;
+  const requestId = getRequestId(event);
+  const claims = getClaims(event);
 
   if (!claims) {
-    throw authError(401, "missing_auth_claims", "Authentication claims not present");
+    throw authError(401, "missing_auth_claims", "Authentication claims not present", { requestId });
   }
 
   const userSub = getClaimSub(claims);
   if (!userSub) {
-    throw authError(403, "missing_sub_claim", "User sub claim missing");
+    throw authError(403, "missing_sub_claim", "User sub claim missing", { requestId });
   }
 
   const tableName = process.env.TENANT_ENTITLEMENTS_TABLE;
   if (!tableName) {
-    throw authError(500, "missing_entitlements_table", "TENANT_ENTITLEMENTS_TABLE not configured");
+    throw authError(
+      500,
+      "missing_entitlements_table",
+      "TENANT_ENTITLEMENTS_TABLE not configured",
+      { requestId }
+    );
   }
 
   const item = await fetchEntitlementsBySub({ tableName, userSub });
   if (!item) {
-    throw authError(403, "missing_entitlements", "No tenant entitlements for user");
+    throw authError(403, "missing_entitlements", "No tenant entitlements for user", {
+      requestId,
+      userSub,
+    });
   }
 
-  const tenantId = item.tenant_id?.S || null;
-  const tier = item.tier?.S || null;
+  // Authoritative attributes from entitlements store
+  const tenantId = requireStringAttr(item, "tenant_id", "missing_tenant_id");
+  const role = requireStringAttr(item, "role", "missing_role");
+  const tier = requireStringAttr(item, "tier", "missing_tier");
 
-  const groups = getGroupsFromClaims(claims);
-  const role = item.role?.S || null; // authoritative from entitlements store
-
-  if (!tenantId) {
-    throw authError(403, "missing_tenant_claim", "Tenant claim missing");
-  }
-
+  // Validate tenant id format (fail closed)
   const tenantRegex = /^tenant_[a-z0-9-]{3,}$/;
   if (!tenantRegex.test(tenantId)) {
-    throw authError(403, "invalid_tenant_claim", "Tenant claim invalid");
+    throw authError(403, "invalid_tenant_id", "Tenant id invalid", {
+      requestId,
+      tenantId,
+    });
   }
 
-  if (!role) {
-    throw authError(403, "missing_role_claim", "Role claim missing");
-  }
+  const groups = getGroupsFromClaims(claims);
 
-  if (!tier) {
-    throw authError(403, "missing_tier_claim", "Tier claim missing");
-  }
-
-  return { userId: userSub, tenantId, role, tier, claims };
+  return {
+    requestId,
+    userId: userSub,
+    tenantId,
+    role,
+    tier,
+    groups,
+    claims,
+  };
 }
 
-module.exports = { buildTenantContext };
+module.exports = { buildTenantContext, authError };

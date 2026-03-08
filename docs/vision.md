@@ -1,147 +1,143 @@
-# Sports Intelligence Cloud (SIC) – Vision
+# Sports Intelligence Cloud (SIC) Vision
+
+Sports Intelligence Cloud (SIC) is a multi-tenant, cloud-native platform that helps clubs, schools, municipalities, and individual coaches turn everyday sports and mobility data into actionable insights, while preserving clear data ownership and staying affordable for non-technical organisations and low-resource contexts.
+
+---
 
 ## 1. Mission
 
-Sports Intelligence Cloud (SIC) is a multi-tenant, cloud-native platform that gives **clubs, schools, municipalities and individual coaches true ownership and intelligence over their sports data**.
+Give sports communities true ownership and intelligence over their data.
 
-The mission is to turn everyday training, competition and mobility data into **actionable insights that keep people active longer, safer and happier** – while staying affordable and manageable for non-technical organisations **and accessible to individual practitioners, even in low-resource contexts**.
-
----
-
-## 2. Target Users
-
-SIC is designed for four primary groups:
-
-- **Sports Clubs & Academies**  
-  Community clubs, performance academies and youth programmes that need a central, long-term record of athlete development, regardless of coach turnover or tooling changes.
-
-- **Individual Coaches & Practitioners**  
-  Solo coaches and trainers (e.g. football, swimming, athletics) who need a simple, affordable way to plan sessions, track athletes and organise data – even if they are not part of a formal club or have limited income.
-
-- **Schools & Educational Programs**  
-  Schools and NGO programs running physical education or after-school sports, who need to monitor participation, wellbeing and risk without complex IT overhead.
-
-- **Municipalities & Public-Sector Partners**  
-  City sports departments, tourism boards and mobility/health teams who need geospatial and economic insights about cycling routes, participation and social impact.
+SIC turns training, competition, wellness, and mobility signals into actionable insights that keep people active longer, safer, and happier—without requiring a dedicated IT or data team.
 
 ---
 
-## 3. The Three Pillars
+## 2. Target Users (Who SIC is for)
 
-SIC is one platform with three core pillars, sharing the same serverless, multi-tenant AWS foundation.
+SIC serves four primary user groups:
 
-### 3.1 Club Vivo – Club- and Coach-Centric Data Ownership
+- **Sports Clubs and Academies**  
+  Centralise long-term athlete development history across seasons, regardless of coach turnover or tooling changes.
 
-**Vision:** Make the **club or training environment** (not the individual app) the long-term owner of athlete data – while still empowering individual coaches to operate independently when no formal club exists.
+- **Individual Coaches and Practitioners**  
+  Run a lightweight “mini platform” to plan sessions, track athletes, and organise data without high costs or complex setup.
 
-- Multi-tenant org structure:  
-  - **club/academy tenants**: `club → teams → athletes`  
-  - **solo-coach tenants**: `coach → groups/athletes`
-- Centralised tracking of attendance, training load, wellness, injuries and participation history.
-- Role-based access for club admins, coaches, medical staff and optionally families.
-- Support for **solo-coach workspaces** where a single coach is both admin and coach for their own tenant.
-- Dashboards and season reports that help clubs and coaches make better training and resource decisions.
+- **Schools and Educational Programs**  
+  Monitor participation, wellbeing, and risk with low operational overhead and clear role-based access.
 
-**Outcome:**  
-- Clubs retain athlete history over years, reducing data loss when staff or tools change.  
-- Individual coaches gain a “mini platform” of their own that organises their work without requiring a large budget or IT team.
+- **Municipalities and Public-Sector Partners**  
+  Generate geospatial and social-impact insights from route and participation data to support policy, investment, and tourism decisions.
 
 ---
 
-### 3.2 Athlete Evolution AI – Intelligence & Risk Management Engine
+## 3. Product Pillars (What SIC delivers)
 
-**Vision:** Provide **early-warning signals and development insights** so coaches can act before dropout or injury happens.
+SIC is one platform with three core product pillars built on a shared serverless, multi-tenant AWS foundation.
 
-- Predict athlete **dropout risk** within the next 60–90 days.
-- Estimate **injury/overload risk** based on training load, recovery and history.
-- Track progression curves and development benchmarks over seasons.
-- Expose explainable ML outputs and coach-friendly narratives on *why* risk is increasing.
+### 3.1 Club Vivo (Club and Coach Data Ownership)
 
-**Outcome:** Coaches move from intuition-only to data-informed decisions, improving retention, safety and fairness.
+**Vision:** Make the club or training environment (not individual apps) the long-term owner of athlete data, while still supporting independent coaches without a formal organisation.
 
----
+**Capabilities**
+- Multi-tenant org structure:
+  - Club/academy tenants: `club -> teams -> athletes`
+  - Solo-coach tenants: `coach -> groups -> athletes`
+- Centralised tracking: attendance, training load, wellness, injuries, participation history.
+- Role-based access: admins, coaches, medical staff, optional family views.
+- Dashboards and season reports for training and resource decisions.
 
-### 3.3 Ruta Viva – Geospatial & Community Impact Analytics
-
-**Vision:** Turn cycling routes and mobility data into **evidence of health, tourism and economic impact**.
-
-- Ingest ride telemetry (GPX/CSV) and map it onto routes and geofences.
-- Analyse route usage, intensity, rider categories and temporal patterns.
-- Generate municipality-ready reports on tourism, health and potential infrastructure improvements.
-- Provide geospatial dashboards and story-telling for local governments and sponsors.
-
-**Outcome:** Cities and programmes can justify investments in active mobility using real data, not anecdotes.
+**Outcome**
+- Clubs retain athlete history over years and reduce data loss from staff/tool changes.
+- Solo coaches get a structured workspace without needing an IT team.
 
 ---
 
-## 4. High-Level Problems SIC Will Solve
+### 3.2 Athlete Evolution AI (Intelligence and Risk Management)
 
-Across these pillars, Sports Intelligence Cloud focuses on a set of cross-cutting, high-value problems:
+**Vision:** Provide early-warning signals and development insights so coaches can act before dropout or injury happens.
+
+**Capabilities**
+- Predict athlete dropout risk in the next 60–90 days.
+- Estimate injury/overload risk from load, recovery, and history.
+- Track progression curves and benchmarks across seasons.
+- Provide explainable outputs and coach-friendly narratives (why risk is rising).
+
+**Outcome**
+- Coaches move from intuition-only to evidence-supported decisions that improve retention, safety, and fairness.
+
+---
+
+### 3.3 Ruta Viva (Geospatial and Community Impact Analytics)
+
+**Vision:** Turn cycling routes and mobility data into evidence of health, tourism, and economic impact.
+
+**Capabilities**
+- Ingest ride telemetry (GPX/CSV) and map to routes/geofences.
+- Analyse route usage, intensity, rider segments, and time patterns.
+- Generate municipality-ready reports for infrastructure and tourism planning.
+- Provide geospatial dashboards and story-driven stakeholder outputs.
+
+**Outcome**
+- Cities justify investments in active mobility using real data, not anecdotes.
+
+---
+
+## 4. Core Problems SIC Solves
 
 1. **Athlete data fragmentation**  
-   - Today: Data is scattered across WhatsApp, spreadsheets, paper notebooks and single-purpose apps.  
-   - SIC: Provides a unified, multi-tenant platform with clear data ownership, backed by cloud-native storage.
+   Today: data scattered across chats, spreadsheets, notebooks, and single-purpose apps.  
+   SIC: unified multi-tenant system with clear ownership and durable storage.
 
-2. **Dropout risk and churn in youth sports**  
-   - Today: Coaches see athletes disappear without warning.  
-   - SIC: Uses ML pipelines (Athlete Evolution AI) to predict dropout risk and surface early interventions.
+2. **Dropout risk in youth sports**  
+   Today: athletes disappear without warning.  
+   SIC: predicts risk and surfaces early interventions.
 
 3. **Injury and overload risk without visibility**  
-   - Today: Training load, wellness and injury history are rarely analysed systematically.  
-   - SIC: Aggregates training, workload and recovery signals; surfaces risk scores and explanations so coaches can adjust plans.
+   Today: load/wellness/injury history is rarely analysed systematically.  
+   SIC: aggregates signals, produces risk scores, and explains drivers.
 
-4. **Lack of mobility and route analytics for cities**  
-   - Today: Cities struggle to quantify how much routes are used, when and by whom.  
-   - SIC: Ruta Viva ingests geospatial data, builds heatmaps and impact metrics that inform infrastructure and tourism strategies.
+4. **Lack of route and mobility analytics for cities**  
+   Today: limited evidence for usage and impact.  
+   SIC: ingests geospatial telemetry and produces actionable metrics.
 
 5. **Manual, time-consuming impact reporting**  
-   - Today: Clubs and NGOs manually compile reports for sponsors and municipalities.  
-   - SIC: Uses a curated data lake plus GenAI to generate clear, stakeholder-specific narratives and visuals.
+   Today: clubs/NGOs compile sponsor and municipality reports by hand.  
+   SIC: curated data lake + AI-assisted narrative generation.
 
-6. **Limited access to affordable analytics & AI expertise**  
-   - Today: Smaller clubs and municipalities cannot hire full data teams. Solo coaches often have no access at all.  
-   - SIC: Packages best-practice serverless, ML and GenAI patterns into a managed, multi-tenant SaaS that is cost-aware and secure by design, with tiers that remain accessible for individual coaches.
-
----
-
-## 5. Architectural & Engineering Principles (Guardrails)
-
-SIC is built under a strict engineering “constitution”:
-
-- **Multi-Tenant First:** Every request carries a `tenant_id`, enforced at auth, API, data and storage layers. No cross-tenant access. Both **solo-coach workspaces** and **club tenants** use the same isolation model.
-- **Serverless-First:** Prefer managed services like Lambda, API Gateway, DynamoDB and S3 to reduce ops overhead.
-- **ML Lifecycle Completeness:** Any production model must cover data quality, evaluation, deployment, monitoring, drift and retraining.
-- **Security & Observability by Default:** Encryption, IAM least-privilege, structured logging, metrics and alerts are non-negotiable.
-- **Accessibility & Inclusivity by Design:** Features and pricing should support both well-funded organisations and individual practitioners in low-resource environments without compromising security or data quality.
-
-These principles ensure that each feature in Club Vivo, Athlete Evolution AI and Ruta Viva is **production-ready**, auditable and sustainable to operate.
+6. **Limited access to affordable analytics and AI**  
+   Today: small orgs cannot hire data teams; solo coaches have little access.  
+   SIC: cost-aware multi-tenant SaaS patterns with secure defaults and accessible tiers.
 
 ---
 
-## 6. Long-Term Vision
+## 5. Engineering Guardrails (Non-negotiables)
 
-Over time, Sports Intelligence Cloud will expand with additional modules that plug into the same platform.
-
-The long-term goal is to become the **default AI/ML platform for community sports and active mobility**, enabling any club, city or coach – regardless of size or budget – to make high-quality, data-driven decisions that improve participation, safety and community wellbeing.
+- **Multi-tenant first:** every request carries `tenant_id`; isolation enforced at auth, API, app logic, and data/storage layers.
+- **Serverless first:** prefer managed AWS services (Lambda, API Gateway, DynamoDB, S3, Glue, SageMaker) to minimise operational load.
+- **ML lifecycle completeness:** data quality, evaluation, deployment, monitoring, drift detection, and retraining are required for production models.
+- **Security and observability by default:** encryption, least-privilege IAM, structured logging, metrics, and alarms are part of “done”.
+- **Accessibility by design:** features and pricing must support low-resource contexts without weakening security or data quality.
 
 ---
 
-## 7. Tenant Types & Onboarding (Conceptual)
+## 6. Tenant Types and Onboarding (Conceptual)
 
-SIC models access around **tenants**, each with a unique `tenant_id` and shared multi-tenant infrastructure:
+SIC models access around tenants, each with a unique `tenant_id`, running on shared infrastructure.
 
-- **Solo-Coach Tenant (`tenant_type = "solo-coach"`)**  
-  - Created via low-friction self-sign-up.  
-  - One primary user acts as both `cv-admin` and `cv-coach`.  
-  - No formal club verification required; suitable for low-income or independent coaches.  
+- **Solo-coach tenant (`tenant_type="solo-coach"`)**
+  - Low-friction self-sign-up.
+  - Primary user acts as both admin and coach for the tenant.
 
-- **Club / Organisation Tenant (`tenant_type = "club"`)**  
-  - Created via a “Create club/academy” flow with optional verification.  
-  - First user is a `cv-admin` who can invite staff (`cv-coach`, `cv-medical`, etc.).  
-  - Designed for multi-coach environments, academies, schools and programmes.
+- **Club/organisation tenant (`tenant_type="club"`)**
+  - “Create club/academy” onboarding, optional verification.
+  - First user is an admin who can invite staff (coach, medical, etc.).
 
 Both tenant types:
+- Use a shared identity system with `custom:tenant_id` and role groups.
+- Enforce isolation deterministically at auth, API, and data layers.
 
-- Live in the **same Cognito User Pool** and platform.
-- Use `custom:tenant_id` on users plus role groups (e.g. `cv-admin`, `cv-coach`) to enforce isolation and permissions.
-- Are isolated by `tenant_id` at auth, API and data layers, so no tenant can access another’s data.
+---
+
+## 7. Long-term Vision
+
+SIC becomes the default AI/ML platform for community sports and active mobility, enabling any club, city, or coach—regardless of budget—to make high-quality decisions that improve participation, safety, and community wellbeing.

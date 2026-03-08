@@ -1,6 +1,6 @@
 # Sports Intelligence Cloud (SIC) Vision
 
-Sports Intelligence Cloud (SIC) is a multi-tenant, cloud-native platform that helps clubs, schools, municipalities, and individual coaches turn everyday sports and mobility data into actionable insights, while preserving clear data ownership and staying affordable for non-technical organisations and low-resource contexts.
+Sports Intelligence Cloud (SIC) is a multi-tenant, cloud-native platform that helps clubs, schools, municipalities, and individual coaches turn everyday sports and mobility data into actionable insights, while preserving clear data ownership and designed to be operationally lightweight and price-accessible through tiered plans, with subsidised options for low-resource contexts.
 
 ---
 
@@ -137,7 +137,14 @@ Both tenant types:
 - Enforce isolation deterministically at auth, API, and data layers.
 
 ---
+## Sustainable Access (Pricing Philosophy)
+
+SIC is designed to be sustainably priced so the platform can remain reliable and improve over time.  
+We use tiered plans aligned to tenant types (solo coach, club/school, municipality), with usage-based limits on compute-heavy features.  
+Low-resource contexts are supported through subsidised tiers, sponsored seats, and program partnerships—without compromising security, data isolation, or quality.
+
+---
 
 ## 7. Long-term Vision
 
-SIC becomes the default AI/ML platform for community sports and active mobility, enabling any club, city, or coach—regardless of budget—to make high-quality decisions that improve participation, safety, and community wellbeing.
+SIC becomes the default AI/ML platform for community sports and active mobility, enabling any club, city, or coach. Regardless of budget to make high-quality decisions that improve participation, safety, and community wellbeing.

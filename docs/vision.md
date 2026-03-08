@@ -34,7 +34,8 @@ SIC serves four primary user groups:
 
 SIC is one platform with three core product pillars built on a shared serverless, multi-tenant AWS foundation.
 
-### 3.1 Club Vivo (Club and Coach Data Ownership)
+### 3.1 Club Vivo { Club and Coach Data Ownership } 
+
 
 **Vision:** Make the club or training environment (not individual apps) the long-term owner of athlete data, while still supporting independent coaches without a formal organisation.
 

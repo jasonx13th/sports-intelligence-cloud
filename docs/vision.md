@@ -143,6 +143,14 @@ SIC is designed to be sustainably priced so the platform can remain reliable and
 We use tiered plans aligned to tenant types (solo coach, club/school, municipality), with usage-based limits on compute-heavy features.  
 Low-resource contexts are supported through subsidised tiers, sponsored seats, and program partnerships—without compromising security, data isolation, or quality.
 
+## Pricing Philosophy (Pay for What You Use)
+
+SIC uses usage-based billing with predictable controls:
+- Primary meter: Active athletes per month (an athlete is billable if they appear in at least one qualifying event in the month; MVP: competition entry and training attendance).
+- Add-ons: AI runs (one full-tenant batch scoring job) and monthly scheduled reports (one per tenant per month).
+- Built-in tenant budgets and alerts prevent surprise bills; compute-heavy features can be capped when needed.
+
+
 ---
 
 ## 7. Long-term Vision

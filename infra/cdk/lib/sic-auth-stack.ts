@@ -3,15 +3,28 @@
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
-import { Stack, StackProps, CfnOutput, Duration } from 'aws-cdk-lib';
+import { Stack, StackProps, CfnOutput, Duration, Fn } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 export class SicAuthStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     const envName = this.node.tryGetContext('env') ?? 'dev';
+
+    // Import the entitlements table name exported by SicApiStack
+    const tenantEntitlementsTableName = Fn.importValue(
+      `TenantEntitlementsTableName-${envName}`,
+    );
+
+    // Import a reference to the table so we can grant permissions
+    const tenantEntitlementsTable = dynamodb.Table.fromTableName(
+      this,
+      'ImportedTenantEntitlementsTable',
+      tenantEntitlementsTableName,
+    );
 
     // 1) User Pool
     const userPool = new cognito.UserPool(this, 'SicUserPool', {
@@ -90,10 +103,14 @@ export class SicAuthStack extends Stack {
       ),
       environment: {
         LOG_LEVEL: 'info',
+        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTableName,
       },
     });
 
-    // Least privilege: scoped to this user pool only
+    // Allow PostConfirmation to write entitlements
+    tenantEntitlementsTable.grantWriteData(postConfirmationFn);
+
+    // Least privilege: scoped to this user pool only (tighten resources later)
     postConfirmationFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cognito-idp:AdminAddUserToGroup'],

@@ -1,6 +1,11 @@
-# SIC Copilot Instructions (Repo Guardrails)
+# SIC Copilot Instructions (VS Code GitHub Copilot Chat)
 
-You are an AI coding assistant working inside the **Sports Intelligence Cloud (SIC)** repository.
+**Audience:** These instructions are consumed by **GitHub Copilot Chat in VS Code** for this repository.
+They apply to **all Copilot Chat interactions** in this repo, **regardless of whether you select an Agent**.
+
+**Related files (different purpose):**
+- `.github/hooks/*.json` = Copilot Chat Hooks (event-based reminders/checklists)
+- `docs/agents/*` = optional human-readable “agent role” notes/templates (only if you choose to use them)
 
 Your primary job is to help implement changes **without breaking** SIC’s non-negotiables:
 - **Multi-tenant isolation end-to-end**
@@ -13,7 +18,7 @@ If any instruction conflicts, **SIC architecture principles override everything*
 ---
 
 ## Must Read Before Editing
-Before proposing edits, you must read:
+Before proposing edits, read:
 - `docs/architecture/SIC architecture principles.md`
 - `docs/architecture/SIC Architecture Diagrams.md`
 - `docs/architecture/tenant-claim-contract.md`
@@ -25,13 +30,14 @@ If a file is missing, do **not** invent architecture—ask the user or point to 
 ---
 
 ## Scope & Safety Rules
+
 ### Allowed
 - Small, incremental edits in the files explicitly requested
 - Adding tests, logs, docs, and safe refactors
-- Making security/tenancy risks visible (call out “danger patterns”)
+- Making security/tenancy risks visible (call out danger patterns)
 
 ### Not Allowed (must ask for explicit approval first)
-- Any changes to **IAM/CDK/infra** (including policies, roles, permissions boundaries, networking, encryption settings)
+- Any changes to **IAM/CDK/infra** (policies, roles, permissions boundaries, networking, encryption settings)
 - Any change to **tenancy model, security boundaries, or data flows**
 - Adding new top-level folders or restructuring the repo
 
@@ -71,7 +77,7 @@ SIC is multi-tenant. Tenant isolation must be enforced **auth → API → data**
 ---
 
 ## Definition of Done (Evidence Required)
-After any meaningful change, you must provide:
+After any meaningful change, provide:
 1) **What changed** (1–3 bullets)
 2) **Why** (tradeoffs)
 3) **How to validate** (commands)
@@ -91,7 +97,7 @@ After any meaningful change, you must provide:
 ---
 
 ## ADR Triggers (Must Propose)
-Propose an ADR (Architecture Decision Record) when changing:
+Propose an ADR when changing:
 - tenancy boundaries or tenant identity contract
 - authentication/authorization flow
 - data flow boundaries (new stores, new pipelines)
@@ -104,6 +110,4 @@ Propose an ADR (Architecture Decision Record) when changing:
 - Be incremental: propose a plan before edits.
 - Ask for **2–3 sentence design intent** before touching infra/security/tenancy.
 - Prefer small diffs and explicit file paths.
-- Never “dump” a huge solution—guide step-by-step.
-
----
+- Never dump a huge solution—guide step-by-step.

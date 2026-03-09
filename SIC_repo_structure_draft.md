@@ -1,17 +1,17 @@
-# Sports Intelligence Cloud — Repo Structure (Current + Near-Term)
+# Sports Intelligence Cloud — Repo Structure (Recommended Final)
 
-Goal: one platform with shared infrastructure + reusable modules, but each capstone can be demoed independently.
+Goal: one platform with shared infrastructure + reusable modules, while each capstone can be demoed independently.
 
 This repo is a monorepo with:
 - **apps/** = capstone-facing entry points (demoable independently)
-- **infra/cdk/** = shared platform infrastructure (auth + API + storage)
+- **infra/cdk/** = shared platform infrastructure (auth + API + shared stores)
 - **services/** = serverless backend code (Lambdas + shared libs)
 - **docs/** = system of record (architecture, runbooks, progress logs)
 - **.github/** = Copilot Chat guardrails + CI hooks/workflows
 
 ---
 
-## Current tree (as implemented)
+## Current canonical tree (keep this stable)
 
 sports-intelligence-cloud/
 ├─ README.md
@@ -22,32 +22,28 @@ sports-intelligence-cloud/
 │  ├─ week 2/
 │  └─ week 3/
 ├─ .github/
+│  ├─ copilot-instructions.md          # VS Code Copilot Chat repo guardrails (must keep)
 │  ├─ hooks/
-│  │  └─ sic-hooks.json                  # Copilot Chat hooks
-│  └─ copilot-instructions.md            # Copilot Chat repo guardrails
+│  │  └─ sic-hooks.json                # VS Code Copilot Chat hooks (must keep)
+│  └─ workflows/                       # CI (add as you wire pipelines)
 ├─ apps/
-│  ├─ athlete-evolution-ai/
 │  ├─ club-vivo/
+│  ├─ athlete-evolution-ai/
 │  └─ ruta-viva/
 ├─ docs/
 │  ├─ vision.md
-│  ├─ agents/
-│  │  └─ sic-build.agent.md              # optional (VS Code agent template)
 │  ├─ architecture/
-│  │  ├─ SIC Architecture Diagrams.md
 │  │  ├─ SIC architecture principles.md
+│  │  ├─ SIC Architecture Diagrams.md
 │  │  └─ tenant-claim-contract.md
 │  ├─ runbooks/
-│  │  ├─ auth-api-alarms.md
-│  │  └─ tenant-entitlements-onboarding.md
-│  └─ errors/                            # error notes / troubleshooting
+│  │  ├─ tenant-entitlements-onboarding.md
+│  │  └─ auth-api-alarms.md
+│  └─ adr/                             # create when first ADR is needed
 ├─ infra/
 │  └─ cdk/
 │     ├─ bin/
-│     │  └─ sic-auth.ts
 │     ├─ lib/
-│     │  ├─ sic-api-stack.ts
-│     │  └─ sic-auth-stack.ts
 │     ├─ cdk.json
 │     ├─ package.json
 │     ├─ tsconfig.json
@@ -55,41 +51,32 @@ sports-intelligence-cloud/
 └─ services/
    ├─ auth/
    │  ├─ post-confirmation/
-   │  │  ├─ handler.js
-   │  │  ├─ package.json
-   │  │  └─ package-lock.json
    │  └─ pre-token-generation/
-   │     └─ handler.js
    └─ club-vivo/
       └─ api/
          ├─ _lib/
-         │  ├─ parse-body.js
-         │  ├─ tenant-context.js
-         │  └─ validate.js
          ├─ me/
-         │  └─ handler.js
          └─ test-tenant/
-            └─ handler.js
 
 ---
 
-## Repo rules (structure discipline)
+## Structure discipline (non-negotiables)
 
 1) **No new top-level folders** without an ADR.
-2) New backend features should go in:
-   - `services/<capstone>/api/...` (for API/Lambda handlers)
-3) Shared platform infrastructure stays in:
+2) **Capstone code** goes under:
+   - `apps/<capstone>/` (UI/demo entry point)
+   - `services/<capstone>/` (backend + shared libs for that capstone)
+3) **Platform infra** stays under:
    - `infra/cdk/` (CDK only)
-4) Documentation stays in:
-   - `docs/architecture/` (contracts + principles)
-   - `docs/runbooks/` (ops procedures)
+4) **System-of-record docs** stay under:
+   - `docs/architecture/` (principles/contracts)
+   - `docs/runbooks/` (operations/how-to)
+   - `docs/adr/` (decision records)
    - `.a_PROGRESS/` (weekly build logs)
 
 ---
 
-## Near-term planned additions (when needed)
+## Notes
 
-- docs/adr/                           # formal ADRs once we start making bigger decisions
-- tests/                              # unit/integration tests as we add more handlers
-- services/<capstone>/data/           # ingestion + ETL (Glue/Lambda) when we start pipelines
-- services/<capstone>/ml/             # training/inference pipeline code when models go live
+- `.github/copilot-instructions.md` and `.github/hooks/*.json` are **for VS Code GitHub Copilot Chat** (repo-scoped guardrails + reminders).
+- `docs/agents/` Treat it as documentation/templates only (not required for runtime).

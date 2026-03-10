@@ -132,7 +132,8 @@ Decision needed: true source of `tenant_id` at signup:
 ---
 
 ## Next session starting point (Week 3 Day 2)
-We need to introduce the **domain DynamoDB table** and set `SIC_DOMAIN_TABLE` in the API Lambdas.
+
+We need to provision the **tenant-partitioned SIC domain table** in CDK, inject `SIC_DOMAIN_TABLE` into the API Lambdas, and prove that the existing repository path transitions from **deterministic fail-closed** to **deterministic tenant-scoped query success**.
 
 This is an infra change → we will do it with explicit approval and show:
 - `cdk synth`

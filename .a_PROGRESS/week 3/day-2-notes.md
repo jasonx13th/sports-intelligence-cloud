@@ -1,111 +1,318 @@
 # Week 3 — Day 2 Unified Closeout Summary
 
-## What we built
+## Objective
 
-### A) SIC domain table provisioned (CDK)
-- Added **tenant-partitioned SIC domain DynamoDB table**:
-  - Table: `sic-domain-<env>` (verified: `sic-domain-dev`)
-  - Keys: `PK` (string), `SK` (string)
-  - Billing: `PAY_PER_REQUEST`
-- Added stack output: `SicDomainTableName-<env>`
+Move from **fail-closed authentication and tenant context** to
+**tenant-safe data operations** by implementing deterministic CRUD
+patterns using a tenant-partitioned DynamoDB design.
 
-### B) API wiring for domain table
-- Injected `SIC_DOMAIN_TABLE` into API Lambdas (notably `/test-tenant`)
-- Deterministic fail-closed for misconfig:
-  - Missing env var → `500 misconfig_missing_env`
+------------------------------------------------------------------------
 
-### C) Least-privilege IAM (no Scan)
-- Removed CDK “grantReadData” to avoid accidentally granting `dynamodb:Scan`
-- Added explicit allow-list actions **scoped to domain table ARN**:
-  - Read: `Query`, `GetItem`, `BatchGetItem`, `DescribeTable`
-  - Write (for idempotent create): `PutItem`, `TransactWriteItems`
-- Confirmed via `cdk diff` that **Scan is not granted**
+# What We Built
 
-### D) Tenant-safe athlete list (Query + pagination)
-- Implemented `list_athletes` path using DynamoDB Query:
-  - `PK = TENANT#<tenantId>`
-  - `begins_with(SK, "ATHLETE#")`
-- Pagination:
-  - `nextToken = base64(json(LastEvaluatedKey))`
-  - invalid token → deterministic `400 invalid_next_token`
-- Normalized list output to clean JSON objects:
-  - `{ athleteId, displayName, createdAt, updatedAt }` (no `{S: ...}` maps, no PK/SK leakage)
+## 1. Domain DynamoDB Table (Single-Table Design)
 
-### E) Idempotent athlete create (Option A: TransactWrite)
-- Implemented `create_athlete` using `TransactWriteItems`:
-  1) Idempotency record:
-     - `PK = TENANT#<tenantId>`
-     - `SK = IDEMPOTENCY#<idempotencyKey>`
-     - conditional put (must not exist)
-  2) Athlete record:
-     - `PK = TENANT#<tenantId>`
-     - `SK = ATHLETE#<athleteId>`
-- Replay behavior:
-  - First create → `201`, `replayed=false`
-  - Replay same key → `200`, `replayed=true`, same `athleteId`
-- Hardened replay detection:
-  - Uses `ReturnCancellationReasons` to avoid masking non-idempotency transaction failures
+Provisioned a **tenant-partitioned domain table**:
 
----
+    sic-domain-<env>
+    PK (string)
+    SK (string)
+    Billing: PAY_PER_REQUEST
 
-## Files changed (high-level)
-- `infra/cdk/lib/sic-api-stack.ts`
-- `services/club-vivo/api/_lib/athlete-repository.js`
-- `services/club-vivo/api/test-tenant/handler.js`
-- `docs/architecture/tenancy-model.md`
-- `docs/adr/*`
-- `.a_PROGRESS/Q&A's/Questions_answers.md`
+This table stores all tenant domain entities using a **single-table
+multi-tenant pattern**.
 
----
+Example key layout:
 
-## Key decisions (architecture)
-- **Tenant identity source of truth** remains entitlements via `buildTenantContext(event)`; never accept tenantId from client input.
-- **Tenant isolation by construction** in DynamoDB:
-  - `PK = TENANT#<tenantId>` + entity-prefixed `SK`
-- **No Scan permissions** on tenant domain table to reduce footguns and enforce Query-first design.
-- **Idempotent create** implemented with tenant-scoped idempotency record + transaction (Option A).
+    PK = TENANT#<tenantId>
+    SK = ATHLETE#<athleteId>
 
----
+This design ensures: - strict tenant isolation - deterministic access
+patterns - efficient DynamoDB queries
 
-## Validation evidence run
-- `npx aws-cdk synth` ✅
-- `npx aws-cdk diff SicApiStack-Dev` ✅ (confirmed table + env + IAM actions; no Scan)
-- `npx aws-cdk deploy SicApiStack-Dev` ✅
-- Live API validation ✅
-  - `list_athletes` returns `200` and tenant-scoped results
-  - `create_athlete` returns `replayed=false` on first create
-  - replay with same `Idempotency-Key` returns `replayed=true` + same athleteId
-  - list returns normalized JSON items
+------------------------------------------------------------------------
 
----
+## 2. API Lambda Environment Injection
 
-## Observability / Security / Cost notes
-- Observability:
-  - Structured logs include `requestId`, `userId`, `tenantId`, `code`, `statusCode`
-- Security:
-  - IAM is least-privilege and scoped to domain table ARN
-  - Removed `Scan` to reduce accidental cross-tenant leakage patterns
-- Cost:
-  - DynamoDB `PAY_PER_REQUEST` suitable for early stage
-  - Watch for hot partitions on very large tenants; consider sharding or GSIs later
+Injected environment variable:
 
----
+    SIC_DOMAIN_TABLE=<tableName>
 
-## Next session starting point (Week 3 Day 3)
-- Promote prototype ops into real endpoints:
-  - `POST /athletes`, `GET /athletes`, `GET /athletes/{athleteId}`
-- Add CloudWatch metric filters/alarms for:
-  - transaction failures (`dynamodb_transaction_failed`)
-  - idempotency replays
-- Runbook entry for:
-  - `misconfig_missing_env`
-  - idempotency behavior + troubleshooting
+Lambda startup now **fails closed** if this variable is missing:
 
----
+    500 misconfig_missing_env
 
-## Certification mapping
-- **DVA-C02:** CDK deploy workflow, Lambda env + least-privilege IAM, DynamoDB Query patterns, transactions for idempotency, troubleshooting with logs/diff.
-- **MLA-C01:** Tenant-safe data modeling foundations supporting later feature pipelines and governance.
-- **AIF-C01:** Deterministic behavior, guardrails (fail-closed), and trust patterns for production AI systems.
+This prevents silent misconfiguration in production.
 
----
+------------------------------------------------------------------------
+
+## 3. Tenant-Scoped Athlete Listing
+
+Implemented DynamoDB **Query-based listing**:
+
+    PK = TENANT#<tenantId>
+    begins_with(SK, "ATHLETE#")
+
+This guarantees: - zero cross-tenant reads - efficient partition
+access - no Scan usage
+
+Pagination implemented with strict cursor validation.
+
+------------------------------------------------------------------------
+
+## 4. Idempotent Athlete Creation
+
+Implemented **Option A (transactional idempotency)** using:
+
+    TransactWriteItems
+
+Transaction writes:
+
+### Idempotency record
+
+    PK = TENANT#<tenantId>
+    SK = IDEMPOTENCY#<idempotencyKey>
+
+### Athlete record
+
+    PK = TENANT#<tenantId>
+    SK = ATHLETE#<athleteId>
+
+Behavior:
+
+  Request                Result
+  ---------------------- ---------------------------
+  First request          Athlete created
+  Retry with same key    Original athlete returned
+  Duplicate prevention   Guaranteed
+
+Replay returns deterministic response:
+
+    replayed=true
+
+------------------------------------------------------------------------
+
+## 5. Replay Failure Hardening
+
+Improved transaction failure handling to ensure: - real DynamoDB errors
+are not masked - only legitimate idempotency replays trigger replay
+behavior
+
+------------------------------------------------------------------------
+
+## 6. Response Normalization
+
+Converted DynamoDB responses from AttributeValue maps:
+
+    { "displayName": { "S": "Maria" } }
+
+into clean JSON:
+
+    {
+      "displayName": "Maria"
+    }
+
+This keeps API contracts clean.
+
+------------------------------------------------------------------------
+
+# Files Changed
+
+### Infrastructure
+
+    infra/cdk/lib/sic-api-stack.ts
+
+### Application
+
+    services/club-vivo/api/_lib/athlete-repository.js
+    services/club-vivo/api/test-tenant/handler.js
+
+### Documentation
+
+    docs/architecture/tenancy-model.md
+    docs/adr/ADR-00xx-idempotent-athlete-create.md
+
+### Learning Log
+
+    .a_PROGRESS/Q&A's/Questions_answers.md
+
+------------------------------------------------------------------------
+
+# Architectural Decisions
+
+## Tenant Isolation by Construction
+
+Tenant ID is **never accepted from client payload**.
+
+Instead:
+
+    buildTenantContext(event)
+
+derives tenant identity from entitlements.
+
+------------------------------------------------------------------------
+
+## DynamoDB Access Discipline
+
+Allowed operations:
+
+    Query
+    GetItem
+    PutItem
+    UpdateItem
+    DeleteItem
+    TransactWriteItems
+
+Explicitly **no Scan permission** granted to API Lambda.
+
+This prevents accidental cross-tenant reads.
+
+------------------------------------------------------------------------
+
+## Idempotent Create Strategy
+
+Selected **transaction-based idempotency**.
+
+Reasons: - atomic consistency - deterministic replay - clean recovery
+behavior - avoids duplicate resource creation
+
+------------------------------------------------------------------------
+
+# Validation Evidence
+
+### Infrastructure
+
+    cdk synth
+    cdk diff SicApiStack-Dev
+    cdk deploy SicApiStack-Dev
+
+### API tests
+
+    POST /athletes
+    GET /athletes
+
+Results verified:
+
+  Test                Result
+  ------------------- ---------------
+  create athlete      201
+  idempotent replay   replayed=true
+  tenant isolation    verified
+  pagination          deterministic
+
+------------------------------------------------------------------------
+
+# Observability
+
+Structured logs include:
+
+    requestId
+    userId
+    tenantId
+    eventCode
+    statusCode
+
+Key events emitted:
+
+    athlete_create_success
+    athlete_create_idempotent_replay
+    athlete_list_success
+    invalid_request
+
+------------------------------------------------------------------------
+
+# Security Review
+
+IAM role for API Lambda scoped to:
+
+    dynamodb:Query
+    dynamodb:GetItem
+    dynamodb:PutItem
+    dynamodb:UpdateItem
+    dynamodb:DeleteItem
+    dynamodb:TransactWriteItems
+
+Resource restricted to:
+
+    arn:aws:dynamodb:<region>:<acct>:table/sic-domain-*
+
+No wildcard resource usage.
+
+------------------------------------------------------------------------
+
+# Cost Awareness
+
+Using DynamoDB:
+
+    PAY_PER_REQUEST
+
+Appropriate for early platform stages.
+
+Potential scaling risks: - hot tenant partitions - very large tenant
+datasets - large item payloads
+
+Mitigation strategies documented in cost model.
+
+------------------------------------------------------------------------
+
+# Certification Mapping
+
+## AWS Developer Associate (DVA-C02)
+
+Concepts implemented: - Lambda environment configuration - IAM least
+privilege - DynamoDB Query vs Scan - Transactional writes - API
+idempotency patterns
+
+------------------------------------------------------------------------
+
+## AWS Machine Learning Associate (MLA-C01)
+
+Foundation for: - tenant-safe feature pipelines - training dataset
+partitioning - governance boundaries
+
+------------------------------------------------------------------------
+
+## AWS AI Practitioner (AIF-C01)
+
+System reliability patterns: - deterministic system behavior -
+guardrails - fail-closed architecture
+
+------------------------------------------------------------------------
+
+# Where This Fits in SIC
+
+This CRUD pattern becomes the **template for all platform entities**:
+
+    Athletes
+    Teams
+    Sessions
+    Training plans
+    Analytics records
+    ML feature stores
+
+All will use the same tenant-partitioned structure.
+
+------------------------------------------------------------------------
+
+# Next Session Starting Point (Week 3 Day 3)
+
+Promote `/test-tenant` prototypes into real endpoints:
+
+    POST /athletes
+    GET /athletes
+    GET /athletes/{athleteId}
+
+Add CloudWatch metric filters for:
+
+    athlete_create_success
+    athlete_create_idempotent_replay
+    athlete_create_failure
+
+Add audit events:
+
+    PK = TENANT#<tenant>
+    SK = AUDIT#<timestamp>#CREATE_ATHLETE
+
+Add API contract documentation:
+
+    docs/api/athletes.md

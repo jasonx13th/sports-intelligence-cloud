@@ -6,6 +6,7 @@ import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as apigwv2Integrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as apigwv2Authorizers from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
@@ -32,6 +33,17 @@ export class SicApiStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY, // dev only; later RETAIN
     });
 
+    // -----------------------------
+    // SIC Domain Store (DynamoDB) — tenant-partitioned single table
+    // -----------------------------
+    const sicDomainTable = new dynamodb.Table(this, "SicDomainTable", {
+      tableName: `sic-domain-${envName}`,
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: RemovalPolicy.DESTROY, // dev only; later RETAIN
+    });
+
     // Lambda: /me
     const meFn = new lambda.Function(this, "MeFn", {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -51,12 +63,33 @@ export class SicApiStack extends Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
       environment: {
         TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
       },
     });
 
-    // IAM grants
+    // -----------------------------
+    // IAM grants (least privilege)
+    // -----------------------------
+    // Entitlements: read-only for /me and /test-tenant
     tenantEntitlementsTable.grantReadData(meFn);
     tenantEntitlementsTable.grantReadData(testTenantFn);
+
+    // Domain table: explicit allow-list (NO Scan) + add writes for idempotent create
+    testTenantFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          // reads
+          "dynamodb:Query",
+          "dynamodb:GetItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable",
+          // writes (for create_athlete + idempotency transact)
+          "dynamodb:PutItem",
+          "dynamodb:TransactWriteItems",
+        ],
+        resources: [sicDomainTable.tableArn],
+      })
+    );
 
     // HTTP API
     const api = new apigwv2.HttpApi(this, "ClubVivoHttpApi", {
@@ -124,6 +157,11 @@ export class SicApiStack extends Stack {
     new CfnOutput(this, "TenantEntitlementsTableName", {
       value: tenantEntitlementsTable.tableName,
       exportName: `TenantEntitlementsTableName-${envName}`,
+    });
+
+    new CfnOutput(this, "SicDomainTableName", {
+      value: sicDomainTable.tableName,
+      exportName: `SicDomainTableName-${envName}`,
     });
 
     // --- CloudWatch Alarms ---

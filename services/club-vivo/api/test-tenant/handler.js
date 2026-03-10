@@ -1,5 +1,6 @@
 // services/club-vivo/api/test-tenant/handler.js
 
+const { AthleteRepository } = require("../_lib/athlete-repository");
 const { buildTenantContext } = require("../_lib/tenant-context");
 const { parseJsonBody } = require("../_lib/parse-body");
 const { requireFields } = require("../_lib/validate");
@@ -16,6 +17,32 @@ exports.handler = async (event) => {
     tenant = await buildTenantContext(event); // consistent path with /me
     const body = parseJsonBody(event);
 
+    // New: list athletes (tenant-scoped) — fail closed until domain table exists
+    if (body?.op === "list_athletes") {
+      const tableName = process.env.SIC_DOMAIN_TABLE;
+      if (!tableName) {
+        const e = new Error("SIC_DOMAIN_TABLE not configured");
+        e.statusCode = 500;
+        e.code = "missing_domain_table";
+        throw e;
+      }
+
+      const repo = new AthleteRepository({ tableName });
+      const result = await repo.listAthletes(tenant, {
+        limit: body.limit,
+        nextToken: body.nextToken,
+      });
+
+      return {
+        statusCode: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ ok: true, ...result }),
+      };
+    }
+
+    // Existing behavior (unchanged)
     requireFields(body, ["name"]);
 
     return {

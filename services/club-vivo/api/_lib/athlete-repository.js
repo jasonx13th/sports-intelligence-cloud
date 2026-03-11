@@ -10,9 +10,9 @@
  * QueryCommand:
  *   - Used for tenant-scoped listing (Query, not Scan).
  * TransactWriteItemsCommand:
- *   - Used for idempotent create (atomic write of idempotency record + athlete record).
+ *   - Used for idempotent create (atomic write of idempotency record + athlete record + audit record).
  * GetItemCommand:
- *   - Used to fetch idempotency record + original athlete on replay.
+ *   - Used to fetch idempotency record + original athlete on replay + fetch athlete by id.
  *
  * marshall/unmarshall:
  *   - Converts JS objects <-> DynamoDB AttributeValue maps safely.
@@ -67,7 +67,6 @@ function decodeNextToken(nextToken) {
     if (!key || typeof key !== "object") throw new Error("bad_token");
 
     // Stricter checks for our access pattern: expect PK/SK string attributes
-    // (This prevents weird tokens that don’t match our table’s key schema.)
     if (
       !key.PK ||
       !key.SK ||
@@ -129,6 +128,56 @@ class AthleteRepository {
 
   /**
    * ---------------------------------------------
+   * getAthlete (tenant-scoped)
+   * ---------------------------------------------
+   * Access pattern:
+   * - PK = TENANT#<tenantId>
+   * - SK = ATHLETE#<athleteId>
+   *
+   * Returns:
+   * - null if not found
+   * - normalized athlete object if found
+   */
+  async getAthlete(tenantContext, athleteId) {
+    const tenantId = tenantContext?.tenantId;
+    if (!tenantId) {
+      const err = new Error("Missing tenantId in tenantContext");
+      err.code = "missing_tenant_context";
+      err.statusCode = 500;
+      throw err;
+    }
+
+    if (!athleteId || typeof athleteId !== "string" || athleteId.length > 128) {
+      const err = new Error("Missing or invalid athleteId");
+      err.code = "invalid_request";
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const pk = `TENANT#${tenantId}`;
+    const sk = `ATHLETE#${athleteId}`;
+
+    const res = await ddb.send(
+      new GetItemCommand({
+        TableName: this.tableName,
+        Key: marshall({ PK: pk, SK: sk }),
+        ConsistentRead: true,
+      })
+    );
+
+    if (!res.Item) return null;
+
+    const obj = unmarshall(res.Item);
+    return {
+      athleteId: obj.athleteId,
+      displayName: obj.displayName,
+      createdAt: obj.createdAt,
+      updatedAt: obj.updatedAt,
+    };
+  }
+
+  /**
+   * ---------------------------------------------
    * listAthletes (tenant-scoped)
    * ---------------------------------------------
    * Access pattern:
@@ -169,8 +218,6 @@ class AthleteRepository {
 
     const res = await ddb.send(cmd);
 
-    // Convert DynamoDB AttributeValue maps into clean JSON objects
-    // and do NOT expose internal PK/SK in API responses.
     const items = (res.Items ?? []).map((it) => {
       const obj = unmarshall(it);
       return {
@@ -191,28 +238,8 @@ class AthleteRepository {
    * ---------------------------------------------
    * createAthlete (idempotent, Option A)
    * ---------------------------------------------
-   * Goal:
-   * - Safely create an athlete even if the client retries the request.
-   *
-   * Strategy (Option A):
-   * - Use TransactWriteItems to atomically write:
-   *   1) Idempotency record: SK = IDEMPOTENCY#<idempotencyKey> (Put with condition not exists)
-   *   2) Athlete record:      SK = ATHLETE#<athleteId>
-   *
-   * First request:
-   * - Idempotency record does NOT exist -> transaction succeeds -> athlete created.
-   *
-   * Replay (same idempotencyKey):
-   * - Condition fails -> transaction canceled -> we fetch the idempotency record,
-   *   then fetch and return the original athlete (replayed=true).
-   *
-   * Inputs:
-   * - tenantContext.tenantId (required)
-   * - input.displayName (required, validated here)
-   * - idempotencyKey (required, validated here)
-   *
    * Output:
-   * - { athlete: <object>, replayed: boolean }
+   * - { athlete: <normalized>, replayed: boolean }
    */
   async createAthlete(tenantContext, input, idempotencyKey) {
     const tenantId = tenantContext?.tenantId;
@@ -223,7 +250,7 @@ class AthleteRepository {
       throw err;
     }
 
-    // Idempotency key validation (header is required at the handler level too)
+    // Idempotency key validation
     if (!idempotencyKey || typeof idempotencyKey !== "string" || idempotencyKey.length > 200) {
       const err = new Error("Missing or invalid Idempotency-Key");
       err.code = "invalid_idempotency_key";
@@ -263,7 +290,7 @@ class AthleteRepository {
       createdAt: now,
     };
 
-    // Athlete record
+    // Athlete record (internal shape includes PK/SK; do NOT return this directly)
     const athleteItem = {
       PK: pk,
       SK: athleteSk,
@@ -274,17 +301,28 @@ class AthleteRepository {
       updatedAt: now,
     };
 
+    // Audit record (append-only, minimal payload)
+    const auditSk = `AUDIT#${now}#CREATE_ATHLETE#${athleteId}`;
+    const auditItem = {
+      PK: pk,
+      SK: auditSk,
+      type: "AUDIT",
+      action: "CREATE_ATHLETE",
+      entityType: "ATHLETE",
+      entityId: athleteId,
+      createdAt: now,
+      replayed: false,
+    };
+
     try {
       await ddb.send(
         new TransactWriteItemsCommand({
-          // Ask DynamoDB to include cancellation reasons so we can distinguish replay vs real failure
           ReturnCancellationReasons: true,
           TransactItems: [
             {
               Put: {
                 TableName: this.tableName,
                 Item: marshall(idemItem),
-                // Enforces: "this idempotencyKey may only be used once per tenant"
                 ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
               },
             },
@@ -294,22 +332,28 @@ class AthleteRepository {
                 Item: marshall(athleteItem),
               },
             },
+            {
+              Put: {
+                TableName: this.tableName,
+                Item: marshall(auditItem),
+              },
+            },
           ],
         })
       );
 
-      return { athlete: athleteItem, replayed: false };
+      // ✅ Normalize first-write response (no PK/SK leakage)
+      return {
+        athlete: {
+          athleteId: athleteItem.athleteId,
+          displayName: athleteItem.displayName,
+          createdAt: athleteItem.createdAt,
+          updatedAt: athleteItem.updatedAt,
+        },
+        replayed: false,
+      };
     } catch (e) {
-      /**
-       * ---------------------------------------------
-       * Replay handling (hardened)
-       * ---------------------------------------------
-       * We only treat as replay when:
-       * - TransactionCanceledException occurs AND
-       * - CancellationReasons[0] indicates ConditionalCheckFailed (idempotency record exists)
-       *
-       * Otherwise, we rethrow a deterministic 500.
-       */
+      // Replay handling (hardened)
       if (e?.name !== "TransactionCanceledException") throw e;
 
       const reasons = e?.CancellationReasons || e?.cancellationReasons || null;
@@ -326,8 +370,6 @@ class AthleteRepository {
           throw err;
         }
       }
-      // If reasons are absent, we fall back to prior behavior (best-effort),
-      // but still treat it as likely replay.
 
       // Fetch idempotency record
       const idemRes = await ddb.send(
@@ -363,7 +405,16 @@ class AthleteRepository {
         throw err;
       }
 
-      return { athlete, replayed: true };
+      // Normalize replayed athlete (avoid leaking PK/SK)
+      return {
+        athlete: {
+          athleteId: athlete.athleteId,
+          displayName: athlete.displayName,
+          createdAt: athlete.createdAt,
+          updatedAt: athlete.updatedAt,
+        },
+        replayed: true,
+      };
     }
   }
 }

@@ -91,8 +91,11 @@ List athletes for the authenticated tenant (Query-based, no Scan).
 - `Authorization: Bearer <JWT>` (required)
 
 ### Query params (optional)
-- `cursor` (string): opaque pagination token
+- `nextToken` (string): opaque pagination token
 - `limit` (number): clamped to `1..50` (default `25`)
+
+**Backward compatibility**
+- `cursor` is accepted temporarily as an alias for `nextToken` (clients should migrate to `nextToken`).
 
 ### Response (200 OK)
 ```json
@@ -151,6 +154,9 @@ Metrics:
 
 Alarm:
 - `sic-<env>-athlete-create-failures` triggers on `athlete_create_failure >= 1` (5 min window)
+
+Dashboard:
+- `sic-<env>-ops` shows baseline panels for create success / replay / failure.
 
 ---
 

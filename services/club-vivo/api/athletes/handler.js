@@ -104,12 +104,16 @@ exports.handler = async (event) => {
     // GET /athletes
     // -------------------------
     if (rk === "GET /athletes") {
-      const { cursor, limit } = event?.queryStringParameters || {};
+      const { nextToken, cursor, limit } = event?.queryStringParameters || {};
 
-      const result = await athleteRepo.listAthletes(tenantCtx, {
-        limit,
-        nextToken: cursor,
-      });
+    // Back-compat: accept cursor, but prefer nextToken
+    const effectiveNextToken = nextToken || cursor;
+
+    const result = await athleteRepo.listAthletes(tenantCtx, {
+      limit,
+      nextToken: effectiveNextToken,
+    });
+
 
       logEvent({
         eventCode: "athlete_list_success",

@@ -229,6 +229,49 @@ export class SicApiStack extends Stack {
       evaluationPeriods: 1,
     });
 
+    // -----------------------------
+    // CloudWatch Dashboard (baseline)
+    // -----------------------------
+    const dashboard = new cloudwatch.Dashboard(this, "ClubVivoOpsDashboard", {
+      dashboardName: `sic-${envName}-ops`,
+    });
+
+    const successMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "athlete_create_success",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const replayMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "athlete_create_idempotent_replay",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const failureMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "athlete_create_failure",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: "Athlete Create — Success",
+        left: [successMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Athlete Create — Idempotent Replay",
+        left: [replayMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Athlete Create — Failure",
+        left: [failureMetric],
+      })
+    );
+
     // --- CloudWatch Alarms ---
 
     // Lambda: Me Errors

@@ -18,6 +18,27 @@ This document is the source of truth for:
 - All data access must be tenant-scoped by **key construction** (PK includes tenant).
 - Prefer **Query** over Scan, always.
 
+## Tenant ID format contract (fail closed)
+
+`buildTenantContext(event)` validates `tenant_id` from the entitlements store using:
+
+- Regex: `^tenant_[a-z0-9-]{3,}$`
+
+**Valid examples**
+- `tenant_club-vivo-dev`
+- `tenant_abc`
+- `tenant_team-123`
+
+**Invalid examples**
+- `cv#club-vivo-dev` (contains `#`, missing required `tenant_` prefix)
+- `Tenant_Club` (uppercase not allowed)
+- `tenant_` (too short)
+
+**Implication**
+- The entitlements store is authoritative for `tenant_id`, but it must supply a value that matches this contract or requests will fail with:
+  - HTTP `403`
+  - code: `invalid_tenant_id`
+
 ---
 
 ## Entities (v1)

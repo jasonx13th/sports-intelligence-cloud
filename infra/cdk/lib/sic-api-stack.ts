@@ -55,18 +55,6 @@ export class SicApiStack extends Stack {
       },
     });
 
-    // Lambda: /test-tenant
-    const testTenantFn = new lambda.Function(this, "TestTenantFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "test-tenant/handler.handler",
-      functionName: `sic-club-vivo-test-tenant-${envName}`,
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
-      environment: {
-        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
-        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
-      },
-    });
-
     // Lambda: /athletes
     const athletesFn = new lambda.Function(this, "AthletesFn", {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -82,9 +70,8 @@ export class SicApiStack extends Stack {
     // -----------------------------
     // IAM grants (least privilege)
     // -----------------------------
-    // Entitlements: read-only for /me and /test-tenant (NOTE: grantReadData includes Scan; we’ll tighten later)
+    // Entitlements: read-only for /me (NOTE: grantReadData includes Scan; we’ll tighten later)
     tenantEntitlementsTable.grantReadData(meFn);
-    tenantEntitlementsTable.grantReadData(testTenantFn);
 
     // Entitlements: explicit allow-list for /athletes (NO Scan)
     athletesFn.addToRolePolicy(
@@ -105,13 +92,6 @@ export class SicApiStack extends Stack {
       "dynamodb:PutItem",
       "dynamodb:TransactWriteItems",
     ];
-
-    testTenantFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: domainAccessActions,
-        resources: [sicDomainTable.tableArn],
-      })
-    );
 
     athletesFn.addToRolePolicy(
       new iam.PolicyStatement({
@@ -166,14 +146,6 @@ export class SicApiStack extends Stack {
       path: "/me",
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwv2Integrations.HttpLambdaIntegration("MeIntegration", meFn),
-      authorizer,
-    });
-
-    // Route: POST /test-tenant
-    api.addRoutes({
-      path: "/test-tenant",
-      methods: [apigwv2.HttpMethod.POST],
-      integration: new apigwv2Integrations.HttpLambdaIntegration("TestTenantIntegration", testTenantFn),
       authorizer,
     });
 
@@ -257,6 +229,49 @@ export class SicApiStack extends Stack {
       evaluationPeriods: 1,
     });
 
+    // -----------------------------
+    // CloudWatch Dashboard (baseline)
+    // -----------------------------
+    const dashboard = new cloudwatch.Dashboard(this, "ClubVivoOpsDashboard", {
+      dashboardName: `sic-${envName}-ops`,
+    });
+
+    const successMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "athlete_create_success",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const replayMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "athlete_create_idempotent_replay",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const failureMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "athlete_create_failure",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: "Athlete Create — Success",
+        left: [successMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Athlete Create — Idempotent Replay",
+        left: [replayMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Athlete Create — Failure",
+        left: [failureMetric],
+      })
+    );
+
     // --- CloudWatch Alarms ---
 
     // Lambda: Me Errors
@@ -274,23 +289,7 @@ export class SicApiStack extends Stack {
       threshold: 1,
       evaluationPeriods: 1,
     });
-
-    // Lambda: TestTenant Errors
-    new cloudwatch.Alarm(this, "TestTenantFnErrorsAlarm", {
-      alarmName: `sic-${envName}-testtenantfn-errors`,
-      metric: testTenantFn.metricErrors({ period: Duration.minutes(5) }),
-      threshold: 1,
-      evaluationPeriods: 1,
-    });
-
-    // Lambda: TestTenant Throttles
-    new cloudwatch.Alarm(this, "TestTenantFnThrottlesAlarm", {
-      alarmName: `sic-${envName}-testtenantfn-throttles`,
-      metric: testTenantFn.metricThrottles({ period: Duration.minutes(5) }),
-      threshold: 1,
-      evaluationPeriods: 1,
-    });
-
+    
     // Lambda: Athletes Errors
     new cloudwatch.Alarm(this, "AthletesFnErrorsAlarm", {
       alarmName: `sic-${envName}-athletesfn-errors`,

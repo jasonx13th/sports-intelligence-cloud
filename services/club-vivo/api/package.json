@@ -1,0 +1,10 @@
+{
+  "name": "sic-club-vivo-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1009.0",
+    "@aws-sdk/util-dynamodb": "^3.996.2"
+  }
+}

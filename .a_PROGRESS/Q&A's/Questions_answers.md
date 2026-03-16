@@ -276,3 +276,99 @@ Because idempotency means clients can safely retry without changing meaning. If 
 - subtle bugs appear in caching/UI/downstream processing
 
 Rule: **Same request + same idempotency key ⇒ same semantic result + same response schema**, with only allowed difference being metadata like `replayed: true/false`.
+
+---
+
+### Why is JSON structured logging more valuable than free text in CloudWatch? Give 2 reasons.
+
+First, JSON makes logs **queryable by field instead of by guesswork**. This means logs can be filtered directly by fields such as `tenantId`, `userId`, `requestId`, `eventType`, or `error.code` in CloudWatch Logs Insights rather than searching through raw text.
+
+Second, JSON makes logs **consistent across handlers**. When every Lambda writes logs using the same structure, dashboards, metric filters, alarms, and investigations become much easier because the fields are stable and predictable.
+
+---
+
+### What’s the difference between `requestId` and `correlationId`?
+
+`requestId` is the identifier for a **single API Gateway or Lambda invocation**.
+
+`correlationId` is used to **tie together the full request story across multiple components or service calls**. In a simple request, it may equal `requestId`. In more complex flows, multiple internal operations can share the same `correlationId`.
+
+---
+
+### Name 3 fields you will never log in production and why.
+
+The following fields must never appear in logs:
+
+- **Raw JWTs or access tokens**  
+  These are sensitive credentials and exposing them would create a serious security risk.
+
+- **Authorization headers**  
+  These often contain bearer tokens that could be used to impersonate users.
+
+- **Full request bodies containing user or athlete data**  
+  Request payloads may contain PII or business-sensitive information that should never be written to logs.
+
+---
+
+### Where does `tenantId` come from in SIC and why is that non negotiable?
+
+`tenantId` is derived **only from verified authentication context combined with entitlements resolution inside the backend flow**.
+
+It is non negotiable because **tenant identity is a security boundary**. If the client were allowed to supply `tenantId`, one tenant could attempt to read or write data belonging to another tenant, breaking isolation guarantees.
+
+---
+
+### If API Gateway retries or a client retries, how does correlation help debug duplicate writes?
+
+Correlation allows all retry attempts to be traced back to the same logical request.  
+By searching the `correlationId`, you can see the full sequence of events such as the original request, any retries, and whether the system treated the second attempt as an idempotency replay or a duplicate write.
+
+This makes it easy to understand whether the duplicate came from:
+- a client retry
+- an API Gateway retry
+- or a platform failure during processing.
+
+---
+
+### Why is “scan logs and filter in your head” not acceptable at platform scale?
+
+At platform scale, the volume of logs is far too large for manual interpretation.  
+Without structured fields, engineers would need to read thousands of lines of text to understand a single request.
+
+Structured logs allow automated filtering, aggregation, dashboards, alerts, and metric extraction. This enables fast debugging and reliable operations across large distributed systems.
+
+---
+
+### What’s the failure mode if `correlationId` is client-controlled without validation?
+
+If a client can send arbitrary correlation IDs without validation, they could:
+- inject extremely long or malformed values that break logging pipelines,
+- intentionally collide correlation IDs across requests to confuse investigations,
+- or manipulate logs to hide malicious behavior.
+
+Validation ensures the correlation ID remains safe, predictable, and trustworthy for debugging and observability.
+
+---
+
+### What fields are always present even when tenant resolution fails?
+
+The following fields must always be present because they come from the platform runtime and request context, not from tenant resolution:
+
+- `timestamp`
+- `level`
+- `service`
+- `env`
+- `eventType`
+- `message`
+- `requestId`
+- `correlationId`
+
+These allow the request to be traced and investigated even if authentication or tenant resolution fails early in the request lifecycle.
+
+---
+
+### What field(s) explicitly must not appear until after `buildTenantContext`?
+
+- `tenantId`
+
+`tenantId` must never appear before `buildTenantContext` succeeds because tenant identity is derived from verified authentication context and entitlements resolution inside the backend. Allowing it earlier would risk trusting client-supplied tenant information and could break tenant isolation.

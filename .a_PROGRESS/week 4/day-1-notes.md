@@ -8,71 +8,69 @@ Date: 2026-03-16
 ## What we built
 
 ### 1) Platform Observability Contract (docs)
-A platform-wide contract that standardizes:
+Standardized, platform-wide contract for:
 - structured JSON logging fields (required/optional)
-- correlation + request id semantics
+- correlation + requestId semantics
 - error semantics (safe client errors + structured error logs)
 - initial `eventType` set including domain events for athletes
 - CloudWatch Logs Insights evidence queries
 
-**Doc path**
+**Doc**
 - `docs/architecture/platform-observability.md`
 
-### 2) Shared logger utility (service-local core)
-Implemented a CommonJS structured logger with:
-- single-line JSON emission
-- child logger context enrichment
-- correlation id resolver with validation contract (`^[A-Za-z0-9._-]{8,128}$`)
-- normalized error logging (`error: { name, code, retryable }`) with safe defaults
+### 2) Shared logger utility (service-local)
+CommonJS logger utility providing:
+- single-line JSON logs to stdout
+- child context enrichment
+- correlationId resolver + validation (`^[A-Za-z0-9._-]{8,128}$`)
+- normalized structured error logging: `error: { name, code, retryable }`
 
-**Path**
+**Code**
 - `services/club-vivo/api/_lib/logger.js`
 
-### 3) Platform wrapper middleware for Lambdas (“operable by default”)
-Created a wrapper that standardizes every handler:
+### 3) Platform wrapper middleware (“operable by default”)
+Wrapper standardizes every handler:
 - lifecycle logs: `request_start`, `tenant_context_resolved`, `request_end`
-- error log: `handler_error` (structured, normalized)
-- correlation propagation and validation (warn on invalid client correlation id)
-- response always includes correlation headers
+- structured error logs: `handler_error`
+- correlation propagation + invalid correlation handling (`correlation_invalid`)
+- response always includes correlation headers:
   - `x-correlation-id`
   - `X-Correlation-Id`
-- tenant isolation enforcement: `tenantId` not logged until `buildTenantContext` succeeds
+- tenant isolation enforcement: `tenantId` not logged before tenant context resolves
 
-**Path**
+**Code**
 - `services/club-vivo/api/_lib/with-platform.js`
 
 ### 4) Wrapped endpoints
-- `/me` handler refactored to use the platform wrapper
+- `/me` now wrapped:
   - `services/club-vivo/api/me/handler.js`
-
-- `/athletes` handler refactored to use the platform wrapper + domain eventTypes
+- `/athletes` now wrapped + uses domain eventTypes + lazy repo init:
   - `services/club-vivo/api/athletes/handler.js`
-  - lazy init repository for local require-safety + Lambda container reuse
 
-### 5) Packaging fix for AWS SDK v3 deps (service-local)
-Added API-local dependencies required by `_lib/*` modules:
+### 5) Service-local packaging for AWS SDK v3
+Added required deps for runtime modules:
 - `@aws-sdk/client-dynamodb`
 - `@aws-sdk/util-dynamodb`
 
-**Path**
+**Code**
 - `services/club-vivo/api/package.json`
 - `services/club-vivo/api/package-lock.json`
 
-### 6) Timeout hardening
-Observed `/me` timing out at 3s under cold start + DDB calls; increased timeouts:
+### 6) Timeout hardening (realistic cold start + DDB)
+Observed `/me` timeout at 3s; increased:
 - `/me`: 10s
 - `/athletes`: 15s
 
-**Path**
+**Infra**
 - `infra/cdk/lib/sic-api-stack.ts`
 
 ### 7) Tenant context diagnostics + apigwRequestId clarity
-Added tenant-context diagnostics to pinpoint where tenant resolution time is spent:
+Added diagnostics for tenant context resolution:
 - `tenant_context_start`
-- `tenant_context_entitlements_loaded` with `ddbLatencyMs`
-And clarified `apigwRequestId` in diagnostics to prevent confusion with canonical Lambda `requestId`.
+- `tenant_context_entitlements_loaded` incl `ddbLatencyMs`
+Clarified API Gateway request id in diagnostics as `apigwRequestId`.
 
-**Path**
+**Code**
 - `services/club-vivo/api/_lib/tenant-context.js`
 
 ---
@@ -87,162 +85,135 @@ And clarified `apigwRequestId` in diagnostics to prevent confusion with canonica
 - `services/club-vivo/api/package.json`
 - `services/club-vivo/api/package-lock.json`
 - `infra/cdk/lib/sic-api-stack.ts`
-- `.gitignore` (ignore snapshot zips)
-- `.a_PROGRESS/Q&A's/Questions_answers.md` (session notes)
+- `.gitignore`
+- `.a_PROGRESS/...` session notes
 
 ---
 
 ## Errors encountered and fixes
 
-### 1) Local module load failures
-- `Cannot find module '@aws-sdk/client-dynamodb'`
-  - Fix: introduced API-local `package.json` + installed AWS SDK deps.
+1) **Local module load failures**
+- Missing AWS SDK modules (`@aws-sdk/client-dynamodb`)
+  - Fix: API-local `package.json` + deps install.
+- Local require-time env failures (`SIC_DOMAIN_TABLE`)
+  - Fix: lazy init `AthleteRepository`.
 
-- Local require failures due to env-required init (`SIC_DOMAIN_TABLE`)
-  - Fix: lazy initialize `AthleteRepository` in handler.
+2) **Correlation header missing in responses**
+- Fix: set both `x-correlation-id` and `X-Correlation-Id` in success + error paths.
 
-### 2) Correlation header not present in HTTP responses
-- Initial wrapper added `x-correlation-id` but it didn’t appear in client response headers.
-  - Fix: set both `x-correlation-id` and `X-Correlation-Id` in success and error paths.
+3) **/me timing out (3s)**
+- Fix: explicit Lambda timeouts (10s/15s) + redeploy.
+- Added tenant-context diagnostics to confirm DDB latency.
 
-### 3) `/me` returning 500 due to Lambda timeout
-- CloudWatch showed `Status: timeout` at 3000ms.
-  - Fix: set explicit Lambda timeouts in CDK (`10s`, `15s`) and redeploy.
+4) **CDK not on PATH**
+- Fix: deploy via `npx cdk` from `infra/cdk`.
 
-### 4) Deployment tooling
-- `cdk` command not found on PATH.
-  - Fix: run CDK via `npx cdk` from `infra/cdk` (project-local install).
+5) **Cognito redirect mismatch**
+- Fix: read callback URLs via CLI; used `http://localhost:3000/callback`.
 
-### 5) Cognito Hosted UI redirect mismatch
-- Fix: queried allowed CallbackURLs via AWS CLI; used `http://localhost:3000/callback`.
-
-### 6) PowerShell `curl` alias gotcha
-- PowerShell aliases `curl` to `Invoke-WebRequest` (different flags).
-  - Fix: use `Invoke-RestMethod` for token exchange and `Invoke-WebRequest -UseBasicParsing` for API calls.
+6) **PowerShell curl alias**
+- Fix: token exchange via `Invoke-RestMethod`; API calls via `Invoke-WebRequest -UseBasicParsing`.
 
 ---
 
-## Decisions made (ADR triggers / design commitments)
+## Decisions made (platform commitments)
 
-### A) Canonical request identifiers
-- `requestId` is canonical Lambda `context.awsRequestId`.
-- `apigwRequestId` is logged separately when available.
-
-### B) Correlation policy
-- Use valid `x-correlation-id` if present, else fallback to `requestId`.
-- On invalid correlation header: log `correlation_invalid` with safe metadata (no echo of raw).
-
-### C) Tenant isolation enforcement
-- Tenant identity is backend-derived only (verified auth + entitlements).
-- Never accept tenant_id from request body, query, or headers.
-- `tenantId` must not appear in logs until tenant context is resolved.
-
-### D) Lifecycle vs domain eventTypes
-- Lifecycle eventTypes are owned by wrapper.
-- Domain eventTypes live in handler logic (e.g., `athlete_created`, `athlete_listed`, `athlete_fetched`).
+- `requestId` canonical = Lambda `context.awsRequestId`
+- `apigwRequestId` logged separately when available
+- `correlationId`:
+  - accept validated client `x-correlation-id`
+  - otherwise fallback to `requestId`
+  - log `correlation_invalid` safely (no echo)
+- Tenant isolation enforced:
+  - tenantId derived only from verified claims + entitlements
+  - never from client input
+  - never logged before tenant context resolves
+- Lifecycle vs domain events:
+  - wrapper owns lifecycle events
+  - handlers emit domain events (`athlete_created`, etc.)
 
 ---
 
-## Validation and evidence (what we proved)
+## Validation and evidence
 
-### API URL (Dev)
-- `https://<api-id>.execute-api.us-east-1.amazonaws.com/`
+### Dev API + Logs
+- API URL: `https://<api-id>.execute-api.us-east-1.amazonaws.com/`
+- Log groups:
+  - `/aws/lambda/sic-club-vivo-me-dev`
+  - `/aws/lambda/sic-club-vivo-athletes-dev`
 
 ### Correlation propagation
-- `/me` returned:
+- `/me` returns:
   - `x-correlation-id: abc_def-1234`
   - `X-Correlation-Id: abc_def-1234`
-
-- `/athletes` without client correlation returned generated correlation id.
-
-- Invalid correlation input produced:
+- `/athletes` without correlation returns generated id.
+- Invalid correlation input triggers:
   - `correlation_invalid` WARN
-  - correlation fallback to requestId-derived correlation id
+  - fallback correlationId
 
-### Log story completeness
-For correlationId `abc_def-1234` we observed (athletes):
-- `request_start`
-- `tenant_context_resolved`
-- `athlete_created` (201, replayed=false)
-- `request_end`
-and for replay:
-- `athlete_created` (200, replayed=true)
-- `request_end`
+### Domain + lifecycle chain (athletes)
+For correlationId `abc_def-1234`:
+- create: `athlete_created` (201, replayed=false) + `request_end`
+- replay: `athlete_created` (200, replayed=true) + `request_end`
 
 ### Latency diagnostics
-Tenant context logs included:
-- `ddbLatencyMs` for entitlements lookup
-- cold-start behavior accounted for by increasing timeouts
+Tenant context logs include `ddbLatencyMs` and show cold-start impact; timeouts adjusted accordingly.
+
+### Evidence queries (saved)
+See:
+- `docs/architecture/platform-observability.md` → “Saved evidence queries (Week 4 Day 1)”
 
 ---
 
-## Observability / Security / Cost notes
+## Cost / Observability / Security notes
 
 ### Observability
-- Structured logs are now queryable by:
-  - `correlationId`, `requestId`, `apigwRequestId`, `tenantId`, `userId`
-- Evidence queries stored in doc:
-  - `docs/architecture/platform-observability.md` → “Saved evidence queries (Week 4 Day 1)”
+- Logs are queryable by: `correlationId`, `requestId`, `apigwRequestId`, `tenantId`, `userId`
+- Evidence queries are stored in the platform doc.
 
 ### Security
-- Tenant boundary is enforced (fail-closed):
-  - `tenantId` derived only from entitlements store
-- Sensitive data policy established:
-  - never log tokens, Authorization headers, or full request bodies
+- Fail-closed tenant boundary with entitlements as source of truth.
+- No credentials/PII logging policy established.
 
 ### Cost
-- Lambda timeouts increased to avoid false failures under cold start + DDB.
-- Metric filters/alarms already exist, but note: legacy filters rely on `eventCode` (old scheme). We migrated to `eventType`; metric filters should be updated in a later pass.
+- Increased timeouts to reduce false failure rate from cold starts + DDB latency.
+- Follow-up required: metric filters still reference legacy `eventCode`; migrate to `eventType`.
 
 ---
 
-## Commits (chronological, relevant highlights)
-- `a4603fb` docs: add platform observability contract
-- `6a11fcb` chore: ignore local snapshot zips
-- `c2973a4` notes: update session Q&A log
-- `ce5fdc0` feat(obs): add structured logger utility
-- `f214f34` feat(obs): add correlation id resolver
-- `8dd8fdb` feat(obs): normalize structured error logs
-- `b526e70` fix(obs): lazy-load tenant context in platform wrapper
-- `b723fcf` refactor(obs): wrap me handler with platform middleware
-- `d902dd0` chore(api): add aws sdk deps for local dev and packaging
-- `e9a4c63` refactor(obs): wrap athletes handler with platform middleware
-- `16ca642` chore(obs): align athletes eventTypes with platform contract
-- `95efa5b` fix(obs): always return correlation id header
-- `8052fca` fix(obs): increase api timeouts and add tenant-context diagnostics
-- `af29a05` chore(obs): clarify apigwRequestId in tenant context logs and save insights queries
+## Commits (high-level highlights)
+- `logger.js` + correlation resolver + normalized error logs
+- platform wrapper (`with-platform.js`)
+- `/me` + `/athletes` wrapped
+- API-local AWS SDK deps
+- lambda timeout hardening + diagnostics
+- platform doc updated with saved evidence queries
+- `apigwRequestId` clarity change deployed
 
 ---
 
-## Next session starting point (Week 4 Day 2)
-Focus: reliability + metrics + alarms aligned to new `eventType` contract.
-
-Priority TODOs:
-1) Update CloudWatch MetricFilters/Alarms to match `eventType` fields (stop relying on legacy `eventCode`).
-2) Decide and document error code taxonomy expansion (domain errors vs platform errors).
-3) Add structured `http.method/path/statusCode` consistently for domain events where appropriate (or keep domain events minimal).
-4) Consider adopting AWS Lambda Powertools for Node.js (if allowed) or keep lightweight custom logger.
+## Next session (Week 4 Day 2) starting point
+1) Update CloudWatch MetricFilters/Alarms to match `eventType` (stop using legacy `eventCode`).
+2) Decide error code taxonomy expansion (platform vs domain error namespace).
+3) Formalize a small “operability Definition of Done” checklist for every new endpoint.
+4) (Optional) Evaluate Powertools for Node.js vs staying lightweight custom logging.
 
 ---
 
-## Certification mapping paragraph
+## Certification mapping
 
-### DVA-C02 (Developer Associate)
-Implemented operational best practices for serverless:
-- standardized structured logging
-- correlation and request tracing
-- API Gateway + Lambda integration behavior validation
-- CloudWatch log groups, metric filters, alarms, dashboard awareness
-- deployment via CDK and troubleshooting runtime failures (timeouts, packaging, env config)
+### DVA-C02
+Serverless operational maturity:
+- CloudWatch logging, metrics, alarms
+- API Gateway + Lambda integration debugging
+- CDK deployments and runtime troubleshooting (timeouts, packaging)
 
-### MLA-C01 (Machine Learning Engineer Associate)
-Platform groundwork for ML systems:
-- multi-tenant identity enforcement (critical for feature stores, inference endpoints, and data partitioning)
-- observability contract enabling reliable ML pipeline and inference debugging via correlation IDs and structured logs
+### MLA-C01
+Platform foundations for multi-tenant ML systems:
+- strict tenant isolation
+- traceable request/correlation patterns supporting ML pipelines and inference debugging
 
-### AIF-C01 (AI Fundamentals / Practitioner)
-Established safe operational controls foundational to AI systems:
-- privacy-safe logging rules (no tokens/PII)
-- traceability (correlation IDs) to support accountable debugging and incident response across AI-enabled services
-
----
+### AIF-C01
+Operational safety fundamentals:
+- privacy-safe logging
+- traceability for incident response and accountability

@@ -50,6 +50,7 @@ export class SicApiStack extends Stack {
       handler: "me/handler.handler",
       functionName: `sic-club-vivo-me-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(10),
       environment: {
         TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
       },
@@ -61,6 +62,7 @@ export class SicApiStack extends Stack {
       handler: "athletes/handler.handler",
       functionName: `sic-club-vivo-athletes-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(15),
       environment: {
         TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
         SIC_DOMAIN_TABLE: sicDomainTable.tableName,
@@ -289,7 +291,7 @@ export class SicApiStack extends Stack {
       threshold: 1,
       evaluationPeriods: 1,
     });
-    
+
     // Lambda: Athletes Errors
     new cloudwatch.Alarm(this, "AthletesFnErrorsAlarm", {
       alarmName: `sic-${envName}-athletesfn-errors`,

@@ -20,11 +20,7 @@ function getClaims(event) {
 
 function getRequestId(event) {
   // API Gateway (HTTP API) request id
-  return (
-    event?.requestContext?.requestId ||
-    event?.requestContext?.requestId ||
-    null
-  );
+  return event?.requestContext?.requestId || null;
 }
 
 function getClaimSub(claims) {
@@ -70,6 +66,16 @@ async function buildTenantContext(event) {
   const requestId = getRequestId(event);
   const claims = getClaims(event);
 
+  // Diagnostic: confirm we have claims and can start tenant resolution
+  console.log(
+    JSON.stringify({
+      eventType: "tenant_context_start",
+      requestId,
+      hasJwtClaims: !!claims,
+      hasSub: !!claims?.sub,
+    })
+  );
+
   if (!claims) {
     throw authError(401, "missing_auth_claims", "Authentication claims not present", { requestId });
   }
@@ -81,15 +87,27 @@ async function buildTenantContext(event) {
 
   const tableName = process.env.TENANT_ENTITLEMENTS_TABLE;
   if (!tableName) {
-    throw authError(
-      500,
-      "missing_entitlements_table",
-      "TENANT_ENTITLEMENTS_TABLE not configured",
-      { requestId }
-    );
+    throw authError(500, "missing_entitlements_table", "TENANT_ENTITLEMENTS_TABLE not configured", {
+      requestId,
+    });
   }
 
+  const ddbStart = Date.now();
   const item = await fetchEntitlementsBySub({ tableName, userSub });
+  const ddbLatencyMs = Date.now() - ddbStart;
+
+  // Diagnostic: confirm DDB returned and whether an item was found
+  console.log(
+    JSON.stringify({
+      eventType: "tenant_context_entitlements_loaded",
+      requestId,
+      userSub,
+      found: !!item,
+      ddbLatencyMs,
+      tableName,
+    })
+  );
+
   if (!item) {
     throw authError(403, "missing_entitlements", "No tenant entitlements for user", {
       requestId,

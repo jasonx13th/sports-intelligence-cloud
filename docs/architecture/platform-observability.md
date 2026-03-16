@@ -183,3 +183,21 @@ fields @timestamp, level, eventType, message, correlationId, http.path, http.sta
 | sort @timestamp desc
 | limit 200
 ```
+
+### Saved evidence queries (Week 4 Day 1)
+
+#### A) Trace one correlation across the request story
+```sql
+fields @timestamp, level, eventType, message, tenantId, userId, requestId, correlationId, apigwRequestId, http.statusCode, latencyMs, replayed, idempotencyKey
+| filter correlationId = "abc_def-1234"
+| sort @timestamp asc
+```
+
+#### B) Find invalid correlation IDs
+```sql
+fields @timestamp, level, eventType, message, requestId, correlationId, apigwRequestId, suppliedLength
+| filter eventType = "correlation_invalid"
+| sort @timestamp desc
+| limit 20
+```
+

@@ -18,7 +18,7 @@ function getClaims(event) {
   return event?.requestContext?.authorizer?.jwt?.claims || null;
 }
 
-function getRequestId(event) {
+function getApigwRequestId(event) {
   // API Gateway (HTTP API) request id
   return event?.requestContext?.requestId || null;
 }
@@ -61,34 +61,37 @@ function requireStringAttr(item, attrName, errorCode) {
  * - JWT authorizer must supply claims (sub + groups)
  * - Entitlements MUST exist in DynamoDB keyed by user_sub
  * - Entitlements supply: tenant_id, role, tier (authoritative)
+ *
+ * Note: This module can only access API Gateway request id from the event.
+ * Canonical Lambda request id (context.awsRequestId) is handled by the platform wrapper.
  */
 async function buildTenantContext(event) {
-  const requestId = getRequestId(event);
+  const apigwRequestId = getApigwRequestId(event);
   const claims = getClaims(event);
 
   // Diagnostic: confirm we have claims and can start tenant resolution
   console.log(
     JSON.stringify({
       eventType: "tenant_context_start",
-      requestId,
+      apigwRequestId,
       hasJwtClaims: !!claims,
       hasSub: !!claims?.sub,
     })
   );
 
   if (!claims) {
-    throw authError(401, "missing_auth_claims", "Authentication claims not present", { requestId });
+    throw authError(401, "missing_auth_claims", "Authentication claims not present", { apigwRequestId });
   }
 
   const userSub = getClaimSub(claims);
   if (!userSub) {
-    throw authError(403, "missing_sub_claim", "User sub claim missing", { requestId });
+    throw authError(403, "missing_sub_claim", "User sub claim missing", { apigwRequestId });
   }
 
   const tableName = process.env.TENANT_ENTITLEMENTS_TABLE;
   if (!tableName) {
     throw authError(500, "missing_entitlements_table", "TENANT_ENTITLEMENTS_TABLE not configured", {
-      requestId,
+      apigwRequestId,
     });
   }
 
@@ -100,7 +103,7 @@ async function buildTenantContext(event) {
   console.log(
     JSON.stringify({
       eventType: "tenant_context_entitlements_loaded",
-      requestId,
+      apigwRequestId,
       userSub,
       found: !!item,
       ddbLatencyMs,
@@ -110,7 +113,7 @@ async function buildTenantContext(event) {
 
   if (!item) {
     throw authError(403, "missing_entitlements", "No tenant entitlements for user", {
-      requestId,
+      apigwRequestId,
       userSub,
     });
   }
@@ -124,7 +127,7 @@ async function buildTenantContext(event) {
   const tenantRegex = /^tenant_[a-z0-9-]{3,}$/;
   if (!tenantRegex.test(tenantId)) {
     throw authError(403, "invalid_tenant_id", "Tenant id invalid", {
-      requestId,
+      apigwRequestId,
       tenantId,
     });
   }
@@ -132,7 +135,10 @@ async function buildTenantContext(event) {
   const groups = getGroupsFromClaims(claims);
 
   return {
-    requestId,
+    // Back-compat: historically this field was named requestId but is actually API GW request id.
+    // Canonical requestId is the Lambda awsRequestId in the platform wrapper logs.
+    requestId: apigwRequestId,
+    apigwRequestId,
     userId: userSub,
     tenantId,
     role,

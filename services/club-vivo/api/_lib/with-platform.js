@@ -97,6 +97,8 @@ function withPlatform(inner) {
 
       const safeResp = ensureHeaders(resp);
       safeResp.headers["x-correlation-id"] = correlationId;
+      safeResp.headers["X-Correlation-Id"] = correlationId;
+
       if (!safeResp.headers["content-type"]) {
         safeResp.headers["content-type"] = "application/json";
       }
@@ -135,6 +137,7 @@ function withPlatform(inner) {
 
       resp.headers["content-type"] = "application/json";
       resp.headers["x-correlation-id"] = correlationId;
+      resp.headers["X-Correlation-Id"] = correlationId;
 
       return resp;
     }

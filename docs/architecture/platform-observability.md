@@ -1,4 +1,3 @@
-````md
 # Platform Observability Contract
 
 ## Purpose
@@ -41,6 +40,11 @@ Describe the SIC platform-wide logging, correlation, and error semantics contrac
 - `handler_error`
 - `dependency_error`
 - `ddb_error`
+- `athlete_created`
+- `athlete_listed`
+- `athlete_fetched`
+- `athlete_not_found`
+- `route_not_found`
 
 ## Conditionally required fields
 - `http.method` (required for request lifecycle events)
@@ -179,5 +183,3 @@ fields @timestamp, level, eventType, message, correlationId, http.path, http.sta
 | sort @timestamp desc
 | limit 200
 ```
-
-````

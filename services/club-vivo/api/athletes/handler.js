@@ -17,10 +17,16 @@ function assertEnv() {
   }
 }
 
-// Instantiate once per Lambda container (reuse across invocations)
-const athleteRepo = new AthleteRepository({
-  tableName: process.env.SIC_DOMAIN_TABLE,
-});
+// Lazy init so local require() doesn't explode; still reuses across Lambda invocations.
+let athleteRepo;
+function getAthleteRepo() {
+  if (!athleteRepo) {
+    athleteRepo = new AthleteRepository({
+      tableName: process.env.SIC_DOMAIN_TABLE,
+    });
+  }
+  return athleteRepo;
+}
 
 function json(statusCode, body, headers) {
   return {
@@ -45,9 +51,7 @@ async function inner({ event, tenantCtx, logger }) {
   // POST /athletes
   // -------------------------
   if (rk === "POST /athletes") {
-    const idempotencyKey =
-      event?.headers?.["Idempotency-Key"] ||
-      event?.headers?.["idempotency-key"];
+    const idempotencyKey = event?.headers?.["Idempotency-Key"] || event?.headers?.["idempotency-key"];
 
     if (!idempotencyKey) {
       logger.warn("validation_failed", "missing idempotency key", {
@@ -63,9 +67,9 @@ async function inner({ event, tenantCtx, logger }) {
     const body = parseJsonBody(event);
     requireFields(body, ["displayName"]);
 
-    const result = await athleteRepo.createAthlete(tenantCtx, body, idempotencyKey);
+    const result = await getAthleteRepo().createAthlete(tenantCtx, body, idempotencyKey);
 
-    logger.info("request_end", "athlete create completed", {
+    logger.info("athlete_created", "athlete created", {
       http: { statusCode: result.replayed ? 200 : 201 },
       resource: {
         entityType: "ATHLETE",
@@ -85,12 +89,12 @@ async function inner({ event, tenantCtx, logger }) {
     const { nextToken, cursor, limit } = event?.queryStringParameters || {};
     const effectiveNextToken = nextToken || cursor;
 
-    const result = await athleteRepo.listAthletes(tenantCtx, {
+    const result = await getAthleteRepo().listAthletes(tenantCtx, {
       limit,
       nextToken: effectiveNextToken,
     });
 
-    logger.info("request_end", "athlete list completed", {
+    logger.info("athlete_listed", "athletes listed", {
       http: { statusCode: 200 },
     });
 
@@ -110,17 +114,17 @@ async function inner({ event, tenantCtx, logger }) {
       throw err;
     }
 
-    const athlete = await athleteRepo.getAthlete(tenantCtx, athleteId);
+    const athlete = await getAthleteRepo().getAthlete(tenantCtx, athleteId);
 
     if (!athlete) {
-      logger.warn("validation_failed", "athlete not found", {
+      logger.warn("athlete_not_found", "athlete not found", {
         http: { statusCode: 404 },
         resource: { entityType: "ATHLETE", entityId: athleteId },
       });
       return json(404, { code: "athlete_not_found", message: "Athlete not found" });
     }
 
-    logger.info("request_end", "athlete get completed", {
+    logger.info("athlete_fetched", "athlete fetched", {
       http: { statusCode: 200 },
       resource: { entityType: "ATHLETE", entityId: athleteId },
     });
@@ -128,9 +132,8 @@ async function inner({ event, tenantCtx, logger }) {
     return json(200, { athlete });
   }
 
-  logger.warn("validation_failed", "route not found", {
+  logger.warn("route_not_found", "route not found", {
     http: { statusCode: 404 },
-    reason: "route_not_found",
     route: rk,
   });
   return json(404, { code: "route_not_found" });

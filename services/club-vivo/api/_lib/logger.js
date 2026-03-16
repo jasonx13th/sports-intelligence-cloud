@@ -40,6 +40,24 @@ function resolveCorrelation(headers, fallbackRequestId) {
 }
 
 /**
+ * Normalize an Error into a safe structured shape.
+ * Does NOT include stack traces by default (can be added later behind env flag).
+ * @param {any} err
+ * @returns {{name: string, code?: string, retryable?: boolean}}
+ */
+function normalizeError(err) {
+  if (!err || typeof err !== "object") {
+    return { name: "UnknownError" };
+  }
+
+  const name = typeof err.name === "string" ? err.name : "Error";
+  const code = typeof err.code === "string" ? err.code : undefined;
+  const retryable = typeof err.retryable === "boolean" ? err.retryable : undefined;
+
+  return { name, ...(code ? { code } : {}), ...(retryable !== undefined ? { retryable } : {}) };
+}
+
+/**
  * @param {object} baseContext - stable fields (service/env/requestId/correlationId/etc)
  */
 function createLogger(baseContext) {
@@ -63,7 +81,18 @@ function createLogger(baseContext) {
     debug: (eventType, message, extra) => emit("DEBUG", eventType, message, extra),
     info: (eventType, message, extra) => emit("INFO", eventType, message, extra),
     warn: (eventType, message, extra) => emit("WARN", eventType, message, extra),
-    error: (eventType, message, extra) => emit("ERROR", eventType, message, extra),
+
+    /**
+     * Log an error with normalized structured error fields.
+     * @param {string} eventType
+     * @param {string} message
+     * @param {any} err
+     * @param {object} [extra]
+     */
+    error: (eventType, message, err, extra) => {
+      const errorObj = normalizeError(err);
+      emit("ERROR", eventType, message, { ...(extra || {}), error: errorObj });
+    },
 
     /**
      * Creates a child logger with additional bound context.
@@ -75,4 +104,4 @@ function createLogger(baseContext) {
   return logger;
 }
 
-module.exports = { createLogger, resolveCorrelation };
+module.exports = { createLogger, resolveCorrelation, normalizeError };

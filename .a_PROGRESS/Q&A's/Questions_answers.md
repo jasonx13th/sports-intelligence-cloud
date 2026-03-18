@@ -372,3 +372,74 @@ These allow the request to be traced and investigated even if authentication or 
 - `tenantId`
 
 `tenantId` must never appear before `buildTenantContext` succeeds because tenant identity is derived from verified authentication context and entitlements resolution inside the backend. Allowing it earlier would risk trusting client-supplied tenant information and could break tenant isolation.
+
+---
+
+### Give 3 examples of client errors (4XX) we should never retry.
+- 400 Bad Request (invalid JSON, missing required fields)
+- 401 Unauthorized (missing or invalid authentication)
+- 403 Forbidden (authenticated but not entitled)
+
+---
+
+### Give 2 examples of platform errors (5XX) that might be retryable.
+- 503 Service Unavailable (transient downstream or dependency failure)
+- 500 Internal Server Error (only if explicitly classified as transient)
+
+---
+
+### For a POST write, why is “retry on timeout” dangerous without idempotency?
+- Because the original request may have succeeded before the timeout occurred.
+- Retrying can create duplicate records, duplicate side effects, or inconsistent system state.
+
+---
+
+### What should the client do when it receives 429 vs 503?
+- 429: Back off with jitter and retry more slowly.
+- 503: Retry only if the operation is safe to retry; for writes, idempotency is required.
+
+---
+
+### If DynamoDB starts throttling, what three signals will you see?
+
+**Client signal**
+- Increased 429 responses (or sometimes 503 depending on mapping)
+- Higher latency due to retries and backoff
+
+**Logs signal (CloudWatch)**
+- `handler_error` events with:
+  - `error.code = platform.too_many_requests`
+  - `retryable = true`
+- Normalized throttle-related errors from AWS SDK
+
+**Metrics signal**
+- DynamoDB: `ThrottledRequests` > 0
+- Lambda: increased duration and possible error count
+- API Gateway: spike in 4XX (429) or 5XX
+
+---
+
+### What’s the worst-case cost failure mode of “retry everything”?
+- A retry storm where every failure triggers multiple retries
+- Results in:
+  - Increased Lambda invocations
+  - Increased DynamoDB reads/writes
+  - Increased logging volume
+- Leads to:
+  - Cost spikes
+  - System instability
+  - Harder debugging due to noisy signals
+
+---
+
+### How does idempotency reduce both correctness risk and cost risk?
+
+**Correctness**
+- Prevents duplicate writes and side effects
+- Ensures one logical operation produces one result
+- Avoids inconsistent data (e.g., duplicate athletes)
+
+**Cost**
+- Makes retries safe and efficient
+- Allows returning cached/replayed results instead of reprocessing
+- Reduces unnecessary compute and database operations

@@ -23,8 +23,8 @@ Finish Week 2 strong by proving the system is **fail-closed** and **consistent**
   - `aws sts get-caller-identity` (Account: `<redacted-account-id>`)
   - region: `us-east-1`
 - Pulled Cognito App Client ID from CloudFormation outputs (source of truth):
-  - `aws cloudformation describe-stacks --stack-name SicAuthStack-Dev ...`
-  - Found correct client id: `4ssfq7va608hr9uolatbhsma7q` (we had a typo earlier)
+  - `aws cloudformation describe-stacks --stack-name <redacted-auth-stack> ...`
+  - Found correct client id: `<redacted-client-id>` (we had a typo earlier)
 - Fixed PowerShell issues:
   - Password contains `$`, so we had to use single quotes: `'<example-password>'`
   - `--auth-parameters` passed as a single string:
@@ -43,10 +43,10 @@ Finish Week 2 strong by proving the system is **fail-closed** and **consistent**
 
 **How**
 - Identified entitlements table from API stack output:
-  - `sic-tenant-entitlements-dev`
+  - `<redacted-entitlements-table>`
 - Deleted entitlements row (and later confirmed table empty via scan):
   - `aws dynamodb delete-item ...`
-  - `aws dynamodb scan --table-name sic-tenant-entitlements-dev ...` → `Count: 0`
+  - `aws dynamodb scan --table-name <redacted-entitlements-table> ...` → `Count: 0`
 - Called `/me` with a valid JWT:
   - Response: **403** with `error: missing_entitlements`
 
@@ -107,7 +107,7 @@ Finish Week 2 strong by proving the system is **fail-closed** and **consistent**
 - Deployed updates:
   - Required fixing PowerShell execution policy (npx blocked):
     - `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
-  - `npx cdk deploy SicApiStack-Dev`
+  - `npx cdk deploy <redacted-api-stack>`
 
 **Evidence (CloudWatch logs)**
 - `/test-tenant` log now includes:
@@ -138,7 +138,7 @@ Finish Week 2 strong by proving the system is **fail-closed** and **consistent**
 2) **CloudFormation outputs are the source of truth**
    - Wrong Cognito client id caused “client does not exist” failures.
 3) **PowerShell traps that waste hours**
-   - `$` in passwords must be single-quoted: `'$uperCoach13'`
+   - `$` in passwords must be single-quoted: `'<example-password>'`
    - Use file-based JSON (`file://item.json`, `file://key.json`) for DynamoDB CLI to avoid quoting issues.
    - Execution policy can block `npx.ps1` until `RemoteSigned` is set for CurrentUser.
 4) **Order of operations in handlers affects which error you see**

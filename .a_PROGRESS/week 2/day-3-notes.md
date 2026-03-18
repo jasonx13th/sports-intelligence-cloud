@@ -26,9 +26,9 @@ Finish Week 2 strong by proving the system is **fail-closed** and **consistent**
   - `aws cloudformation describe-stacks --stack-name SicAuthStack-Dev ...`
   - Found correct client id: `4ssfq7va608hr9uolatbhsma7q` (we had a typo earlier)
 - Fixed PowerShell issues:
-  - Password contains `$`, so we had to use single quotes: `'$'`
+  - Password contains `$`, so we had to use single quotes: `'<example-password>'`
   - `--auth-parameters` passed as a single string:
-    - `USERNAME=...,PASSWORD=...`
+    - `USERNAME=<redacted>,PASSWORD=<redacted>`
 - Result: repeatable `initiate-auth` producing valid tokens.
   - Confirmed with token lengths:
     - `ID_TOKEN.Length = 1301`

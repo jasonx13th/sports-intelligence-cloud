@@ -2,6 +2,7 @@
 "use strict";
 
 const { createLogger, resolveCorrelation } = require("./logger");
+const { toErrorResponse, InternalError } = require("./errors");
 
 function loadBuildTenantContext() {
   // Lazy-load to avoid local require-time dependency issues (AWS SDK) during simple node sanity checks.
@@ -96,6 +97,15 @@ function withPlatform(inner) {
       });
 
       const safeResp = ensureHeaders(resp);
+
+      // Ensure Lambda proxy response shape is compatible with HTTP API
+      if (safeResp.body !== undefined && typeof safeResp.body !== "string") {
+        safeResp.body = JSON.stringify(safeResp.body);
+      }
+      if (typeof safeResp.isBase64Encoded !== "boolean") {
+        safeResp.isBase64Encoded = false;
+      }
+
       safeResp.headers["x-correlation-id"] = correlationId;
       safeResp.headers["X-Correlation-Id"] = correlationId;
 
@@ -112,28 +122,53 @@ function withPlatform(inner) {
       });
 
       return safeResp;
-    } catch (err) {
-      const statusCode = err?.__sic?.statusCode || err?.statusCode || 500;
-      err = err || new Error("unknown_error");
-      err.code = err?.__sic?.code || err?.code || "INTERNAL_ERROR";
-
+    } catch (rawErr) {
       const latencyMs = Date.now() - startedAt;
 
-      baseLogger.error("handler_error", "request failed", err, {
-        http: { method, path, statusCode },
-        latencyMs,
-      });
+      // Normalize thrown values into an Error
+      const err = rawErr instanceof Error ? rawErr : new Error("non_error_thrown");
 
-      const message = statusCode < 500 ? err?.message || "Request failed" : "Internal server error";
+      // If tenancy resolved, we can include tenant/user in logs. Otherwise, stay baseLogger.
+      const errorLogger =
+        tenantCtx?.tenantId && tenantCtx?.userId
+          ? baseLogger.child({ tenantId: tenantCtx.tenantId, userId: tenantCtx.userId })
+          : baseLogger;
+
+      // Build deterministic contract response
+      const contract = toErrorResponse(err, correlationId);
+
+      // Ensure log gets stable classification fields
+      // - For unknown errors, wrap for logging classification without changing the client response shape.
+      const classifiedForLog =
+        contract.httpStatus === 500 && (!err.code || typeof err.code !== "string")
+          ? new InternalError({ cause: err })
+          : err;
+
+      // Attach code/retryable for normalized logger error shape (logger.js already extracts these)
+      if (contract?.body?.error?.code) classifiedForLog.code = contract.body.error.code;
+      if (typeof contract?.body?.error?.retryable === "boolean") {
+        classifiedForLog.retryable = contract.body.error.retryable;
+      }
+
+      errorLogger.error("handler_error", "request failed", classifiedForLog, {
+        http: { method, path, statusCode: contract.httpStatus },
+        latencyMs,
+        error: {
+          code: contract.body?.error?.code,
+          retryable: contract.body?.error?.retryable,
+        },
+      });
 
       const resp = ensureHeaders({
-        statusCode,
+        statusCode: contract.httpStatus,
         body: JSON.stringify({
-          error: { code: err.code, message },
+          ...contract.body,
           requestId,
-          correlationId,
         }),
       });
+
+      // Explicit proxy response flag (helps avoid body being dropped in some integrations)
+      resp.isBase64Encoded = false;
 
       resp.headers["content-type"] = "application/json";
       resp.headers["x-correlation-id"] = correlationId;

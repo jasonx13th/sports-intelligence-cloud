@@ -5,15 +5,20 @@ const { withPlatform } = require("../_lib/with-platform");
 const { parseJsonBody } = require("../_lib/parse-body");
 const { requireFields } = require("../_lib/validate");
 const { AthleteRepository } = require("../_lib/athlete-repository");
+const { BadRequestError, NotFoundError, InternalError } = require("../_lib/errors");
 
 function assertEnv() {
   const missing = [];
   if (!process.env.TENANT_ENTITLEMENTS_TABLE) missing.push("TENANT_ENTITLEMENTS_TABLE");
   if (!process.env.SIC_DOMAIN_TABLE) missing.push("SIC_DOMAIN_TABLE");
   if (missing.length) {
-    const err = new Error(`missing_env:${missing.join(",")}`);
-    err.__sic = { statusCode: 500, code: "misconfig_missing_env", missing };
-    throw err;
+    // Platform misconfig -> 500, do not leak config details to client
+    throw new InternalError({
+      code: "platform.misconfig.missing_env",
+      message: "Internal server error",
+      details: { missing }, // consider gating to dev-only later
+      retryable: false,
+    });
   }
 }
 
@@ -33,6 +38,7 @@ function json(statusCode, body, headers) {
     statusCode,
     headers: { "content-type": "application/json", ...(headers || {}) },
     body: JSON.stringify(body),
+    isBase64Encoded: false,
   };
 }
 
@@ -58,14 +64,27 @@ async function inner({ event, tenantCtx, logger }) {
         http: { statusCode: 400 },
         reason: "missing_idempotency_key",
       });
-      const err = new Error("Missing Idempotency-Key");
-      err.code = "VALIDATION_FAILED";
-      err.statusCode = 400;
-      throw err;
+
+      throw new BadRequestError({
+        code: "platform.bad_request",
+        message: "Bad request",
+        details: { missing: ["Idempotency-Key"] },
+      });
     }
 
     const body = parseJsonBody(event);
-    requireFields(body, ["displayName"]);
+
+    try {
+      requireFields(body, ["displayName"]);
+    } catch (e) {
+      // Normalize validation helper failures into contract error
+      throw new BadRequestError({
+        code: "platform.bad_request",
+        message: "Bad request",
+        details: { missing: ["displayName"] },
+        cause: e,
+      });
+    }
 
     const result = await getAthleteRepo().createAthlete(tenantCtx, body, idempotencyKey);
 
@@ -107,11 +126,13 @@ async function inner({ event, tenantCtx, logger }) {
   const method = event?.requestContext?.http?.method || event?.httpMethod;
   if (method === "GET" && event?.pathParameters?.athleteId) {
     const athleteId = event?.pathParameters?.athleteId;
+
     if (!athleteId) {
-      const err = new Error("Missing athleteId");
-      err.code = "VALIDATION_FAILED";
-      err.statusCode = 400;
-      throw err;
+      throw new BadRequestError({
+        code: "platform.bad_request",
+        message: "Bad request",
+        details: { missing: ["athleteId"] },
+      });
     }
 
     const athlete = await getAthleteRepo().getAthlete(tenantCtx, athleteId);
@@ -121,7 +142,13 @@ async function inner({ event, tenantCtx, logger }) {
         http: { statusCode: 404 },
         resource: { entityType: "ATHLETE", entityId: athleteId },
       });
-      return json(404, { code: "athlete_not_found", message: "Athlete not found" });
+
+      // Prefer contract error over ad-hoc 404 body
+      throw new NotFoundError({
+        code: "athletes.not_found",
+        message: "Not found",
+        details: { entityType: "ATHLETE" },
+      });
     }
 
     logger.info("athlete_fetched", "athlete fetched", {
@@ -136,7 +163,11 @@ async function inner({ event, tenantCtx, logger }) {
     http: { statusCode: 404 },
     route: rk,
   });
-  return json(404, { code: "route_not_found" });
+
+  throw new NotFoundError({
+    code: "platform.not_found",
+    message: "Not found",
+  });
 }
 
 exports.handler = withPlatform(inner);

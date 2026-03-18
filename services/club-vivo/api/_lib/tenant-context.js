@@ -1,16 +1,8 @@
 // services/club-vivo/api/_lib/tenant-context.js
-
 "use strict";
 
 const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
-
-function authError(statusCode, code, message, details = undefined) {
-  const err = new Error(message);
-  err.statusCode = statusCode;
-  err.code = code;
-  if (details !== undefined) err.details = details;
-  return err;
-}
+const { UnauthorizedError, ForbiddenError, InternalError } = require("./errors");
 
 const ddb = new DynamoDBClient({});
 
@@ -46,11 +38,15 @@ async function fetchEntitlementsBySub({ tableName, userSub }) {
   return resp.Item || null;
 }
 
-function requireStringAttr(item, attrName, errorCode) {
+function requireStringAttr(item, attrName, errorCodeForLog) {
   const v = item?.[attrName]?.S || null;
   if (!v) {
-    throw authError(403, errorCode, `Missing required entitlement attribute: ${attrName}`, {
-      attrName,
+    // Authenticated identity exists, but entitlements record is malformed -> Forbidden (fail closed).
+    // Keep client message generic; keep specifics for logs only via details (optional).
+    throw new ForbiddenError({
+      code: `platform.entitlements.${errorCodeForLog || "missing_attr"}`,
+      message: "Forbidden",
+      details: { attrName },
     });
   }
   return v;
@@ -79,19 +75,35 @@ async function buildTenantContext(event) {
     })
   );
 
+  // 401: cannot establish authenticated identity
   if (!claims) {
-    throw authError(401, "missing_auth_claims", "Authentication claims not present", { apigwRequestId });
+    throw new UnauthorizedError({
+      code: "platform.unauthorized",
+      message: "Unauthorized",
+      details: { apigwRequestId },
+    });
   }
 
   const userSub = getClaimSub(claims);
+
+  // If sub is missing, treat as auth failure (not an entitlement failure).
+  // 401: identity cannot be established from claims.
   if (!userSub) {
-    throw authError(403, "missing_sub_claim", "User sub claim missing", { apigwRequestId });
+    throw new UnauthorizedError({
+      code: "platform.unauthorized",
+      message: "Unauthorized",
+      details: { apigwRequestId },
+    });
   }
 
   const tableName = process.env.TENANT_ENTITLEMENTS_TABLE;
   if (!tableName) {
-    throw authError(500, "missing_entitlements_table", "TENANT_ENTITLEMENTS_TABLE not configured", {
-      apigwRequestId,
+    // Misconfiguration: platform fault (5XX). Do not leak internals.
+    throw new InternalError({
+      code: "platform.misconfig.entitlements_table",
+      message: "Internal server error",
+      details: { apigwRequestId },
+      retryable: false,
     });
   }
 
@@ -111,10 +123,12 @@ async function buildTenantContext(event) {
     })
   );
 
+  // 403: authenticated identity exists but no entitlement record -> fail closed
   if (!item) {
-    throw authError(403, "missing_entitlements", "No tenant entitlements for user", {
-      apigwRequestId,
-      userSub,
+    throw new ForbiddenError({
+      code: "platform.forbidden",
+      message: "Forbidden",
+      details: { apigwRequestId, userSub },
     });
   }
 
@@ -126,9 +140,10 @@ async function buildTenantContext(event) {
   // Validate tenant id format (fail closed)
   const tenantRegex = /^tenant_[a-z0-9-]{3,}$/;
   if (!tenantRegex.test(tenantId)) {
-    throw authError(403, "invalid_tenant_id", "Tenant id invalid", {
-      apigwRequestId,
-      tenantId,
+    throw new ForbiddenError({
+      code: "platform.entitlements.invalid_tenant_id",
+      message: "Forbidden",
+      details: { apigwRequestId },
     });
   }
 
@@ -148,4 +163,4 @@ async function buildTenantContext(event) {
   };
 }
 
-module.exports = { buildTenantContext, authError };
+module.exports = { buildTenantContext };

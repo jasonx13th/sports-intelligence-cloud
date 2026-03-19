@@ -13,6 +13,7 @@ This repo is a monorepo with:
 
 ## Current canonical tree (keep this stable)
 
+```text
 sports-intelligence-cloud/
 ├─ README.md
 ├─ SIC_repo_structure_draft.md
@@ -57,7 +58,7 @@ sports-intelligence-cloud/
          ├─ _lib/
          ├─ me/
          └─ test-tenant/
-
+```
 ---
 
 ## Structure discipline (non-negotiables)

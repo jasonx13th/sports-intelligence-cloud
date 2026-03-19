@@ -26,6 +26,6 @@ new SicAuthStack(app, 'SicAuthStack-Dev', {
 new SicApiStack(app, 'SicApiStack-Dev', {
   env,
   userPoolId: '<redacted-userpool-id>',
-  userPoolClientId: '4ssfq7va608hr9uolatbhsma7q',
+  userPoolClientId: '<redacted-userpool-clientid',
   description: 'Sports Intelligence Cloud - API (HTTP API + JWT authorizer) for dev environment',
 });

@@ -1,20 +1,19 @@
----
+```yaml
 name: SIC Build Agent
 description: Guardrailed agent for Sports Intelligence Cloud (SIC). Uses hooks to enforce reading docs + validation.
 hooks:
   SessionStart:
     - type: command
-      command: "echo '[SIC] SessionStart: Read docs/vision.md and docs/architecture first. No infra/IAM changes without explicit user approval.'"
+      command: "echo [SIC] SessionStart: Read docs/vision.md and docs/architecture/* first. No infra/IAM changes without explicit user approval."
     - type: command
-      command: "code -r docs/vision.md"
+      command: "echo [SIC] Open: docs/vision.md"
     - type: command
-      command: "code -r docs/architecture"
+      command: "echo [SIC] Open: docs/architecture/ (principles + diagrams + tenant-claim-contract)"
 
   UserPromptSubmit:
     - type: command
-      command: "echo '[SIC] Before edits: confirm design intent (2-3 sentences). Tenant isolation end-to-end. No new top-level folders. No IAM wildcards.'"
+      command: "echo [SIC] Before edits: confirm design intent (2-3 sentences). Tenant isolation end-to-end. No new top-level folders. No IAM wildcards."
 
   PostToolUse:
     - type: command
-      command: "echo '[SIC] After changes: run tests/lint. If infra touched: cdk synth + cdk diff. Update docs/learning log. Consider ADR for security/tenancy/dataflow changes.'"
----
+      command: "echo [SIC] After changes: run tests/lint. If infra touched: cdk synth + cdk diff. Update docs/learning log. Consider ADR for security/tenancy/dataflow changes."

@@ -2,6 +2,8 @@
 
 Purpose: single source of truth for SIC operational signals. Every alarm must map to a signal and a runbook.
 
+Runbooks live under `docs/runbooks/` and should follow `docs/runbooks/runbook-style-guide.md`.
+
 ## Signal fields
 - **signalId**: stable identifier (usually matches `eventType` or an AWS metric alarm intent)
 - **source**: `logs.eventType` | `aws.lambda` | `aws.apigw` | `custom.metric`
@@ -35,8 +37,8 @@ Purpose: single source of truth for SIC operational signals. Every alarm must ma
 ### Platform errors (logs.eventType)
 | signalId | severity | what it means | how to detect | runbook |
 |---|---:|---|---|---|
-| handler_error | error | unhandled/5XX-class failure in handler path | filter `eventType="handler_error"` | TBD |
-| dependency_error | error | downstream dependency failure (classified) | filter `eventType="dependency_error"` | TBD |
+| handler_error | error | unhandled/5XX-class failure in handler path | filter `eventType="handler_error"` | docs/runbooks/platform-5xx.md |
+| dependency_error | error | downstream dependency failure (classified) | filter `eventType="dependency_error"` | docs/runbooks/platform-5xx.md |
 | ddb_error | error | DynamoDB failure surfaced to handler | filter `eventType="ddb_error"` | docs/runbooks/dynamo-throttling.md |
 
 ### Domain events (logs.eventType)
@@ -52,14 +54,14 @@ Purpose: single source of truth for SIC operational signals. Every alarm must ma
 ### Lambda
 | signalId | severity | what it means | how to detect | runbook |
 |---|---:|---|---|---|
-| lambda.errors | page | Lambda function error count > 0 | alarm: `sic-dev-athletesfn-errors`, `sic-dev-mefn-errors` | TBD |
+| lambda.errors | page | Lambda function error count > 0 | alarm: `sic-dev-athletesfn-errors`, `sic-dev-mefn-errors` | docs/runbooks/platform-5xx.md |
 | lambda.throttles | page | Lambda throttled (concurrency) | alarm: `sic-dev-athletesfn-throttles`, `sic-dev-mefn-throttles` | docs/runbooks/dynamo-throttling.md |
 
 ### API Gateway (HTTP API)
 | signalId | severity | what it means | how to detect | runbook |
 |---|---:|---|---|---|
 | apigw.4xx | warn | client error volume elevated | alarm: `sic-dev-httpapi-4xx` | docs/runbooks/auth-failures.md |
-| apigw.5xx | page | server error volume elevated | alarm: `sic-dev-httpapi-5xx` | TBD |
+| apigw.5xx | page | server error volume elevated | alarm: `sic-dev-httpapi-5xx` | docs/runbooks/platform-5xx.md |
 
 ---
 
@@ -72,4 +74,4 @@ This is expected to migrate to `$.eventType` once infra changes are approved and
 |---|---:|---|---|---|
 | athlete_create_success | info | athlete create succeeded | metric: `SIC/ClubVivo athlete_create_success` (dashboard: `sic-dev-ops`) | TBD |
 | athlete_create_idempotent_replay | info | idempotency replay occurred | metric: `SIC/ClubVivo athlete_create_idempotent_replay` | docs/runbooks/idempotency-replays.md |
-| athlete_create_failure | warn | athlete create failed (domain failure metric) | alarm: `sic-dev-athlete-create-failures` | TBD |
+| athlete_create_failure | warn | athlete create failed (domain failure metric) | alarm: `sic-dev-athlete-create-failures` | docs/runbooks/dynamo-throttling.md |

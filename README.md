@@ -4,13 +4,13 @@ Monorepo for the Sports Intelligence Cloud (SIC) platform.
 
 ## Portfolio highlight
 
-Sports Intelligence Cloud (SIC) is a multi tenant, serverless AI and analytics platform on AWS for clubs, schools, municipalities, and individual coaches.
+Sports Intelligence Cloud (SIC) is a multi-tenant, serverless AI and analytics platform on AWS for clubs, schools, municipalities, and individual coaches.
 
 This portfolio highlight focuses on making serverless APIs predictable under pressure:
 
 - Consistent error responses across every endpoint
-- Clear guidance on what to do next, fix it or retry it
-- Fail closed access to protect multi tenant boundaries
+- Clear guidance on what to do next: fix it or retry it
+- Fail-closed access to protect multi-tenant boundaries
 - Idempotent writes to prevent duplicate payments and registrations
 - Correlation IDs for fast support tracing and operations visibility
 
@@ -24,7 +24,13 @@ More context:
 - Architecture principles: [`docs/architecture/SIC architecture principles.md`](docs/architecture/SIC%20architecture%20principles.md)
 - Architecture diagrams: [`docs/architecture/SIC Architecture Diagrams.md`](docs/architecture/SIC%20Architecture%20Diagrams.md)
 
-Public safety note: this repo contains no secrets, credentials, or real customer data.
+### Public safety note (sanitized repo)
+
+This repository is sanitized for public sharing:
+- No secrets or credentials are stored in the repo
+- No real customer data is included
+- Infrastructure-specific identifiers (e.g., AWS account IDs, API Gateway IDs, Cognito identifiers, user identifiers) have been redacted
+- Git history was rewritten to remove previously committed sensitive identifiers; documentation examples use placeholders (e.g., `<api-id>`, `<region>`, `<JWT>`, `<redacted-account-id>`)
 
 ## Mission & Users
 
@@ -37,7 +43,7 @@ Main users:
 - Schools and NGO sports programmes
 - Municipalities and public sector partners
 
-SIC is designed as a **multi tenant, serverless, AI & ML platform** on AWS.
+SIC is designed as a **multi-tenant, serverless, AI & ML platform** on AWS.
 
 ---
 
@@ -49,6 +55,6 @@ SIC is designed as a **multi tenant, serverless, AI & ML platform** on AWS.
 
 ## Pillars
 
-- **Club Vivo** – club and coach centric data ownership and athlete history (multi tenant tenants: clubs, schools, solo coach workspaces)
+- **Club Vivo** – club and coach centric data ownership and athlete history (multi-tenant tenants: clubs, schools, solo coach workspaces)
 - **Athlete Evolution AI** – dropout and injury risk intelligence
 - **Ruta Viva** – geospatial mobility and community impact analytics

@@ -136,11 +136,12 @@ function withPlatform(inner) {
 
       // Build deterministic contract response
       const contract = toErrorResponse(err, correlationId);
+      const statusCode = contract.httpStatus || 500;
 
       // Ensure log gets stable classification fields
       // - For unknown errors, wrap for logging classification without changing the client response shape.
       const classifiedForLog =
-        contract.httpStatus === 500 && (!err.code || typeof err.code !== "string")
+        statusCode >= 500 && (!err.code || typeof err.code !== "string")
           ? new InternalError({ cause: err })
           : err;
 
@@ -150,17 +151,44 @@ function withPlatform(inner) {
         classifiedForLog.retryable = contract.body.error.retryable;
       }
 
-      errorLogger.error("handler_error", "request failed", classifiedForLog, {
-        http: { method, path, statusCode: contract.httpStatus },
+      // ----- Logging semantics fix -----
+      // Reserve handler_error/ERROR for 5XX only. 4XX are expected failures -> WARN.
+      const code = contract?.body?.error?.code;
+
+      let eventType = "handler_error";
+      if (statusCode < 500) {
+        if (statusCode === 400 || code === "platform.bad_request") eventType = "validation_failed";
+        else if (statusCode === 401) eventType = "auth_unauthenticated";
+        else if (statusCode === 403) eventType = "auth_forbidden";
+        else eventType = "request_failed";
+      }
+
+      const logExtra = {
+        http: { method, path, statusCode },
         latencyMs,
         error: {
-          code: contract.body?.error?.code,
+          code,
           retryable: contract.body?.error?.retryable,
         },
-      });
+      };
+
+      if (statusCode >= 500) {
+        errorLogger.error(eventType, "request failed", classifiedForLog, logExtra);
+      } else {
+        // logger.warn signature: (eventType, message, extra)
+        errorLogger.warn(eventType, "request failed", {
+          ...logExtra,
+          // include a minimal error shape for expected failures without logging huge stacks
+          error: {
+            ...logExtra.error,
+            name: classifiedForLog?.name,
+          },
+        });
+      }
+      // ----- end fix -----
 
       const resp = ensureHeaders({
-        statusCode: contract.httpStatus,
+        statusCode,
         body: JSON.stringify({
           ...contract.body,
           requestId,

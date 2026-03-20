@@ -3,10 +3,10 @@
 // Entry point for the Sports Intelligence Cloud CDK app.
 // This wires up SicAuthStack + SicApiStack (Auth + API).
 
-import { SicApiStack } from '../lib/sic-api-stack';
-import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { SicAuthStack } from '../lib/sic-auth-stack';
+import { SicApiStack } from "../lib/sic-api-stack";
+import { SicAuthStack } from "../lib/sic-auth-stack";
+import "source-map-support/register";
+import * as cdk from "aws-cdk-lib";
 
 const app = new cdk.App();
 
@@ -16,16 +16,26 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 };
 
-// For now we just define a dev stack for SIC auth.
-new SicAuthStack(app, 'SicAuthStack-Dev', {
+// Auth stack (dev)
+new SicAuthStack(app, "SicAuthStack-Dev", {
   env,
-  description:
-    'Sports Intelligence Cloud - Auth (Cognito & IAM) for dev environment',
+  description: "Sports Intelligence Cloud - Auth (Cognito & IAM) for dev environment",
 });
 
-new SicApiStack(app, 'SicApiStack-Dev', {
+// API stack (dev) — inject sensitive IDs via environment variables (NOT committed)
+const userPoolId = process.env.SIC_USER_POOL_ID;
+const userPoolClientId = process.env.SIC_USER_POOL_CLIENT_ID;
+
+if (!userPoolId || !userPoolClientId) {
+  throw new Error(
+    "Missing required env vars for CDK deploy: SIC_USER_POOL_ID and/or SIC_USER_POOL_CLIENT_ID"
+  );
+}
+
+new SicApiStack(app, "SicApiStack-Dev", {
   env,
-  userPoolId: '<redacted-userpool-id>',
-  userPoolClientId: '<redacted-userpool-clientid',
-  description: 'Sports Intelligence Cloud - API (HTTP API + JWT authorizer) for dev environment',
+  userPoolId,
+  userPoolClientId,
+  description:
+    "Sports Intelligence Cloud - API (HTTP API + JWT authorizer) for dev environment",
 });

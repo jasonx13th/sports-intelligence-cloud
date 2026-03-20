@@ -443,3 +443,64 @@ These allow the request to be traced and investigated even if authentication or 
 - Makes retries safe and efficient
 - Allows returning cached/replayed results instead of reprocessing
 - Reduces unnecessary compute and database operations
+
+### Why is it dangerous to alarm on all 4XX? Give one example where 4XX is “healthy.”
+**Answer:**  
+Alarming on all 4XX creates alert fatigue because many 4XX are **expected client behavior** (bad input, unauthorized users, expired tokens). It drowns out real incidents (5XX/platform failures).  
+**Healthy 4XX example:** `400 Bad Request` for missing `Idempotency-Key` or `404 Not Found` when a resource truly doesn’t exist.
+
+### In your error contract, what’s the difference between `retryable=true` vs “safe to retry”?
+**Answer:**  
+- **`retryable=true`** means the server believes retrying *might succeed* (often transient: throttling, dependency hiccup).  
+- **Safe to retry** depends on **operation semantics**: the client must only retry if the operation is **idempotent** or protected by idempotency keys/conditional writes.  
+So: `retryable=true` is a signal; “safe to retry” is a **client decision** based on whether repeating the request can cause harm.
+
+### Why do we treat authorizer-layer 401s differently (what can’t we guarantee)?
+**Answer:**  
+Because authorizer-level rejections happen **before** your Lambda handler runs, you can’t guarantee:
+- your standardized error envelope body,
+- your correlation headers (`x-correlation-id`),
+- your structured logs for that request path.  
+Your contract guarantees behavior **post-authorizer** only.
+
+---
+
+### What is the canonical log field we should use for metric filters now (`eventType`), and why deprecate `eventCode`?
+**Answer:**  
+`eventType` is the canonical, platform-wide structured logging field emitted by the logger and used consistently across services. `eventCode` is legacy and causes drift/confusion (code emits `eventType` while filters looked for `eventCode`). The migration aligns logs → metrics → alarms with one stable schema.
+
+### Which alarms do we want at platform level vs endpoint level?
+**Answer:**  
+- **Platform-level:** API Gateway 5XX, Lambda Errors/Throttles, high-level latency, dependency failures. These indicate systemic incidents.  
+- **Endpoint-level / domain-level:** business process signals like athlete-create failure/replay rates, validation spikes (careful), or tenant-specific anomalies. These help diagnose behavior without paging on expected client mistakes.
+
+### How will a responder go from alarm → logs query → mitigation in <10 minutes?
+**Answer:**  
+1) Alarm fires (e.g., `apigw.5xx`, `lambda.errors`).  
+2) Open linked runbook (e.g., `platform-5xx.md`).  
+3) Run the provided Logs Insights query to isolate route + pull a `correlationId`.  
+4) Trace a single request by `correlationId` to classify root cause (code bug vs dependency vs throttling).  
+5) Apply safe mitigation (rollback load-increasing deploy, enforce backoff, reduce burst, follow throttling runbook).  
+6) Create follow-up prevention item (dashboard/metric filter/ADR).
+
+---
+
+### If replay rate spikes to 80%, what are the top 3 likely causes and what do you do first?
+**Answer:**  
+**Likely causes:**
+1) Client retry loop bug (retries even on success, or retries without backoff).  
+2) Network instability/timeouts causing clients to retry aggressively.  
+3) Platform transient failures (5XX/throttles) prompting retries (especially if clients ignore retry rules).
+
+**What I do first:**
+- Check if replay spike correlates with **failures/5XX** or is replay-only.  
+- Identify whether it’s **tenant/client-version concentrated** via logs.  
+- Communicate immediate client guidance: **retry only when retryable=true**, exponential backoff + jitter, cap retries, ensure idempotency keys.
+
+### If 403s spike only for one tenant, what does that imply about entitlements vs code?
+**Answer:**  
+It strongly implies an **entitlements issue** (missing/incorrect tenant entitlements record, role mapping removed, onboarding drift) rather than a global code regression. If code were broken, multiple tenants would spike simultaneously. First action: verify authoritative entitlements for that tenant and confirm tenant context resolution logs.
+
+### How do you detect a hot partition in your tenant-partitioned Dynamo model without scanning data?
+**Answer:**  
+Use **CloudWatch DynamoDB metrics** (ConsumedRead/WriteCapacityUnits, ThrottledRequests) broken down by table/index, and correlate with application logs showing throttling exceptions. Then use log analysis to identify which **tenantId / access pattern** dominates throttled requests (Query/Get only). Hot partitions show up as throttling under bursty access to the same partition key—no Scan required.

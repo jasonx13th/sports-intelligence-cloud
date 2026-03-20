@@ -22,3 +22,7 @@ infra/cdk/idem-logs.json
 services.zip
 
 replace.txt
+
+# local CLI captures
+tmp_alarms.json
+tmp_alarms.json

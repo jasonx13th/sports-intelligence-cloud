@@ -26,3 +26,5 @@ replace.txt
 # local CLI captures
 tmp_alarms.json
 tmp_alarms.json
+# accidental local artifact
+infra/cdk/git

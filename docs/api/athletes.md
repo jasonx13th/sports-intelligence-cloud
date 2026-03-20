@@ -142,21 +142,35 @@ Fetch a single athlete (tenant-safe lookup).
 
 ## Observability Signals (CloudWatch)
 
-Structured logs emit `eventCode` values used for metric filters:
+### Structured logs (source of truth)
+Handlers emit structured logs with the field:
 
+- `eventType` (stable enum-like string)
+
+Examples used by this API:
+- `athlete_created`
+- `validation_failed`
+- `athlete_not_found`
+- `handler_error`
+- `request_start` / `request_end`
+
+See: `docs/architecture/platform-observability.md` for the platform-wide schema and queries.
+
+### Metrics (current state)
+**Current deployed metric filters** for athlete create are still based on a legacy field name (`eventCode`) and produce these custom metrics:
+
+- `SIC/ClubVivo` namespace
 - `athlete_create_success`
 - `athlete_create_idempotent_replay`
 - `athlete_create_failure`
-
-Metrics:
-- Namespace: `SIC/ClubVivo`
-- Metric names match the event codes above (value `1` per occurrence)
 
 Alarm:
 - `sic-<env>-athlete-create-failures` triggers on `athlete_create_failure >= 1` (5 min window)
 
 Dashboard:
 - `sic-<env>-ops` shows baseline panels for create success / replay / failure.
+
+> Migration note: metric filters will be updated to use `eventType` once the infra change is approved and deployed. Until then, custom metrics may not reflect the new structured logging field names.
 
 ---
 

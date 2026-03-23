@@ -299,13 +299,13 @@ Second, JSON makes logs **consistent across handlers**. When every Lambda writes
 
 The following fields must never appear in logs:
 
-- **Raw JWTs or access tokens**  
+- **Raw JWTs or access tokens**
   These are sensitive credentials and exposing them would create a serious security risk.
 
-- **Authorization headers**  
+- **Authorization headers**
   These often contain bearer tokens that could be used to impersonate users.
 
-- **Full request bodies containing user or athlete data**  
+- **Full request bodies containing user or athlete data**
   Request payloads may contain PII or business-sensitive information that should never be written to logs.
 
 ---
@@ -320,7 +320,7 @@ It is non negotiable because **tenant identity is a security boundary**. If the 
 
 ### If API Gateway retries or a client retries, how does correlation help debug duplicate writes?
 
-Correlation allows all retry attempts to be traced back to the same logical request.  
+Correlation allows all retry attempts to be traced back to the same logical request.
 By searching the `correlationId`, you can see the full sequence of events such as the original request, any retries, and whether the system treated the second attempt as an idempotency replay or a duplicate write.
 
 This makes it easy to understand whether the duplicate came from:
@@ -332,7 +332,7 @@ This makes it easy to understand whether the duplicate came from:
 
 ### Why is “scan logs and filter in your head” not acceptable at platform scale?
 
-At platform scale, the volume of logs is far too large for manual interpretation.  
+At platform scale, the volume of logs is far too large for manual interpretation.
 Without structured fields, engineers would need to read thousands of lines of text to understand a single request.
 
 Structured logs allow automated filtering, aggregation, dashboards, alerts, and metric extraction. This enables fast debugging and reliable operations across large distributed systems.
@@ -445,93 +445,114 @@ These allow the request to be traced and investigated even if authentication or 
 - Reduces unnecessary compute and database operations
 
 ### Why is it dangerous to alarm on all 4XX? Give one example where 4XX is “healthy.”
-**Answer:**  
-Alarming on all 4XX creates alert fatigue because many 4XX are **expected client behavior** (bad input, unauthorized users, expired tokens). It drowns out real incidents (5XX/platform failures).  
+**Answer:**
+Alarming on all 4XX creates alert fatigue because many 4XX are **expected client behavior** (bad input, unauthorized users, expired tokens). It drowns out real incidents (5XX/platform failures).
 **Healthy 4XX example:** `400 Bad Request` for missing `Idempotency-Key` or `404 Not Found` when a resource truly doesn’t exist.
 
 ### In your error contract, what’s the difference between `retryable=true` vs “safe to retry”?
-**Answer:**  
-- **`retryable=true`** means the server believes retrying *might succeed* (often transient: throttling, dependency hiccup).  
-- **Safe to retry** depends on **operation semantics**: the client must only retry if the operation is **idempotent** or protected by idempotency keys/conditional writes.  
+**Answer:**
+- **`retryable=true`** means the server believes retrying *might succeed* (often transient: throttling, dependency hiccup).
+- **Safe to retry** depends on **operation semantics**: the client must only retry if the operation is **idempotent** or protected by idempotency keys/conditional writes.
 So: `retryable=true` is a signal; “safe to retry” is a **client decision** based on whether repeating the request can cause harm.
 
 ### Why do we treat authorizer-layer 401s differently (what can’t we guarantee)?
-**Answer:**  
+**Answer:**
 Because authorizer-level rejections happen **before** your Lambda handler runs, you can’t guarantee:
 - your standardized error envelope body,
 - your correlation headers (`x-correlation-id`),
-- your structured logs for that request path.  
+- your structured logs for that request path.
 Your contract guarantees behavior **post-authorizer** only.
 
 ---
 
 ### What is the canonical log field we should use for metric filters now (`eventType`), and why deprecate `eventCode`?
-**Answer:**  
+**Answer:**
 `eventType` is the canonical, platform-wide structured logging field emitted by the logger and used consistently across services. `eventCode` is legacy and causes drift/confusion (code emits `eventType` while filters looked for `eventCode`). The migration aligns logs → metrics → alarms with one stable schema.
 
 ### Which alarms do we want at platform level vs endpoint level?
-**Answer:**  
-- **Platform-level:** API Gateway 5XX, Lambda Errors/Throttles, high-level latency, dependency failures. These indicate systemic incidents.  
+**Answer:**
+- **Platform-level:** API Gateway 5XX, Lambda Errors/Throttles, high-level latency, dependency failures. These indicate systemic incidents.
 - **Endpoint-level / domain-level:** business process signals like athlete-create failure/replay rates, validation spikes (careful), or tenant-specific anomalies. These help diagnose behavior without paging on expected client mistakes.
 
 ### How will a responder go from alarm → logs query → mitigation in <10 minutes?
-**Answer:**  
-1) Alarm fires (e.g., `apigw.5xx`, `lambda.errors`).  
-2) Open linked runbook (e.g., `platform-5xx.md`).  
-3) Run the provided Logs Insights query to isolate route + pull a `correlationId`.  
-4) Trace a single request by `correlationId` to classify root cause (code bug vs dependency vs throttling).  
-5) Apply safe mitigation (rollback load-increasing deploy, enforce backoff, reduce burst, follow throttling runbook).  
+**Answer:**
+1) Alarm fires (e.g., `apigw.5xx`, `lambda.errors`).
+2) Open linked runbook (e.g., `platform-5xx.md`).
+3) Run the provided Logs Insights query to isolate route + pull a `correlationId`.
+4) Trace a single request by `correlationId` to classify root cause (code bug vs dependency vs throttling).
+5) Apply safe mitigation (rollback load-increasing deploy, enforce backoff, reduce burst, follow throttling runbook).
 6) Create follow-up prevention item (dashboard/metric filter/ADR).
 
 ---
 
 ### If replay rate spikes to 80%, what are the top 3 likely causes and what do you do first?
-**Answer:**  
+**Answer:**
 **Likely causes:**
-1) Client retry loop bug (retries even on success, or retries without backoff).  
-2) Network instability/timeouts causing clients to retry aggressively.  
+1) Client retry loop bug (retries even on success, or retries without backoff).
+2) Network instability/timeouts causing clients to retry aggressively.
 3) Platform transient failures (5XX/throttles) prompting retries (especially if clients ignore retry rules).
 
 **What I do first:**
-- Check if replay spike correlates with **failures/5XX** or is replay-only.  
-- Identify whether it’s **tenant/client-version concentrated** via logs.  
+- Check if replay spike correlates with **failures/5XX** or is replay-only.
+- Identify whether it’s **tenant/client-version concentrated** via logs.
 - Communicate immediate client guidance: **retry only when retryable=true**, exponential backoff + jitter, cap retries, ensure idempotency keys.
 
 ### If 403s spike only for one tenant, what does that imply about entitlements vs code?
-**Answer:**  
+**Answer:**
 It strongly implies an **entitlements issue** (missing/incorrect tenant entitlements record, role mapping removed, onboarding drift) rather than a global code regression. If code were broken, multiple tenants would spike simultaneously. First action: verify authoritative entitlements for that tenant and confirm tenant context resolution logs.
 
 ### How do you detect a hot partition in your tenant-partitioned Dynamo model without scanning data?
-**Answer:**  
+**Answer:**
 Use **CloudWatch DynamoDB metrics** (ConsumedRead/WriteCapacityUnits, ThrottledRequests) broken down by table/index, and correlate with application logs showing throttling exceptions. Then use log analysis to identify which **tenantId / access pattern** dominates throttled requests (Query/Get only). Hot partitions show up as throttling under bursty access to the same partition key—no Scan required.
 
 ---
 
 ### Why is scan-then-filter forbidden in SIC?
-**Answer:**  
+**Answer:**
 Scan-then-filter is forbidden because it breaks predictable cost/latency and weakens tenant isolation guarantees. SIC requires tenant isolation to be enforced “by construction” (key-scoped queries), not by filtering after reading unrelated items.
 
 ### Sketch DynamoDB keys for a Session that supports list-by-time + get-by-id (without scan)
-**Answer:**  
+**Answer:**
 Use tenant-partitioned single-table keys and a companion lookup item:
 
-- **Session item**  
-  `PK = TENANT#<tenantId>`  
+- **Session item**
+  `PK = TENANT#<tenantId>`
   `SK = SESSION#<createdAtIso>#<sessionId>`
 
-- **Lookup item**  
-  `PK = TENANT#<tenantId>`  
-  `SK = SESSIONLOOKUP#<sessionId>`  
+- **Lookup item**
+  `PK = TENANT#<tenantId>`
+  `SK = SESSIONLOOKUP#<sessionId>`
   points to `targetPK/targetSK` for the session item.
 
 ### What layer produces `tenantId` and why can’t the client provide it?
-**Answer:**  
+**Answer:**
 `tenantId` comes from verified auth context via JWT claims + authoritative entitlements lookup inside `buildTenantContext(event)`. The client cannot provide it because any client-supplied tenant identifier would enable cross-tenant escalation or data leakage; tenancy must be derived from trusted identity + entitlements only.
 
 ### For the lookup pattern: how do you keep lookup + session consistent on create/update/delete?
-**Answer (verbatim):**  
+**Answer (verbatim):**
 “I keep the lookup item consistent by writing the session item and its SESSIONLOOKUP#<sessionId> companion in the same TransactWriteItems operation, and I use conditional expressions so create fails if either already exists, while update/delete modifies or removes both atomically.”
 
 ### For `GET /sessions`, return full `activities[]` or a summary?
-**Answer (verbatim):**  
+**Answer (verbatim):**
 “For GET /sessions, I would return a summary, because list endpoints should stay lightweight and fast, while full activities[] belongs in GET /sessions/{sessionId} where the client is asking for one specific session.”
+
+### Why is `cdk diff` considered *required evidence* (not optional)?
+
+**Answer:**
+- Because it’s the only reliable, reviewable proof of **what infrastructure will change** before you deploy (IaC truth source).
+- It catches unintended resources/permissions/routes **before** they hit AWS (prevents “I thought I changed X” mistakes).
+- It supports auditability + disciplined change control: you can show exactly what changed and why.
+
+### What is the security failure mode if IAM accidentally allowed `dynamodb:Scan` here?
+
+**Answer :**
+- `Scan` enables broad table reads, which can turn into **cross-tenant data exposure** (read everything then filter in code).
+- It increases blast radius and cost (large reads), and undermines “tenant-scoped by construction.”
+- It violates least privilege and can mask design flaws (lazy access patterns).
+
+### Where is tenant isolation enforced in this feature path (name the layers)?
+
+**Answer:**
+- **Auth layer:** verified identity/claims come from the authorizer (not client input).
+- **API/handler layer:** build tenant context server-side (fail-closed; reject unknown `tenantId` fields).
+- **Data access layer:** DynamoDB access patterns are tenant-scoped by key/prefix/query construction (no scan-then-filter) + IAM restricts allowed actions.

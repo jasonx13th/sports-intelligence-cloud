@@ -82,6 +82,19 @@ export class SicApiStack extends Stack {
       },
     });
 
+    // Lambda: /session-packs
+    // NOTE: Session packs are stateless today (no domain table needed). Keep env minimal.
+    const sessionPacksFn = new lambda.Function(this, "SessionPacksFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "session-packs/handler.handler",
+      functionName: `sic-club-vivo-session-packs-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(15),
+      environment: {
+        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+      },
+    });
+
     // -----------------------------
     // IAM grants (least privilege)
     // -----------------------------
@@ -104,7 +117,15 @@ export class SicApiStack extends Stack {
       })
     );
 
-    // Domain table: explicit allow-list (NO Scan) + writes for idempotent create (+ audit)
+    // Entitlements: explicit allow-list for /session-packs (NO Scan)
+    sessionPacksFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
+        resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
+    // Domain table: explicit allow-list (NO Scan) + writes
     const domainAccessActions = [
       // reads
       "dynamodb:Query",
@@ -206,6 +227,14 @@ export class SicApiStack extends Stack {
       path: "/sessions/{sessionId}",
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwv2Integrations.HttpLambdaIntegration("SessionByIdIntegration", sessionsFn),
+      authorizer,
+    });
+
+    // Routes: /session-packs
+    api.addRoutes({
+      path: "/session-packs",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("SessionPacksIntegration", sessionPacksFn),
       authorizer,
     });
 

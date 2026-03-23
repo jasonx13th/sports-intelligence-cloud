@@ -504,3 +504,34 @@ It strongly implies an **entitlements issue** (missing/incorrect tenant entitlem
 ### How do you detect a hot partition in your tenant-partitioned Dynamo model without scanning data?
 **Answer:**  
 Use **CloudWatch DynamoDB metrics** (ConsumedRead/WriteCapacityUnits, ThrottledRequests) broken down by table/index, and correlate with application logs showing throttling exceptions. Then use log analysis to identify which **tenantId / access pattern** dominates throttled requests (Query/Get only). Hot partitions show up as throttling under bursty access to the same partition key—no Scan required.
+
+---
+
+### Why is scan-then-filter forbidden in SIC?
+**Answer:**  
+Scan-then-filter is forbidden because it breaks predictable cost/latency and weakens tenant isolation guarantees. SIC requires tenant isolation to be enforced “by construction” (key-scoped queries), not by filtering after reading unrelated items.
+
+### Sketch DynamoDB keys for a Session that supports list-by-time + get-by-id (without scan)
+**Answer:**  
+Use tenant-partitioned single-table keys and a companion lookup item:
+
+- **Session item**  
+  `PK = TENANT#<tenantId>`  
+  `SK = SESSION#<createdAtIso>#<sessionId>`
+
+- **Lookup item**  
+  `PK = TENANT#<tenantId>`  
+  `SK = SESSIONLOOKUP#<sessionId>`  
+  points to `targetPK/targetSK` for the session item.
+
+### What layer produces `tenantId` and why can’t the client provide it?
+**Answer:**  
+`tenantId` comes from verified auth context via JWT claims + authoritative entitlements lookup inside `buildTenantContext(event)`. The client cannot provide it because any client-supplied tenant identifier would enable cross-tenant escalation or data leakage; tenancy must be derived from trusted identity + entitlements only.
+
+### For the lookup pattern: how do you keep lookup + session consistent on create/update/delete?
+**Answer (verbatim):**  
+“I keep the lookup item consistent by writing the session item and its SESSIONLOOKUP#<sessionId> companion in the same TransactWriteItems operation, and I use conditional expressions so create fails if either already exists, while update/delete modifies or removes both atomically.”
+
+### For `GET /sessions`, return full `activities[]` or a summary?
+**Answer (verbatim):**  
+“For GET /sessions, I would return a summary, because list endpoints should stay lightweight and fast, while full activities[] belongs in GET /sessions/{sessionId} where the client is asking for one specific session.”

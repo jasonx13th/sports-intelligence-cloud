@@ -56,7 +56,19 @@ async function inner({ event, tenantCtx, logger }) {
   // POST /sessions
   // -------------------------
   if (rk === "POST /sessions") {
-    const body = parseJsonBody(event);
+    let body;
+    try {
+      body = parseJsonBody(event);
+    } catch (e) {
+      // parseJsonBody throws { statusCode: 400, code: "invalid_json" }
+      // Wrap into a typed platform error so withPlatform maps it to 400 instead of 500.
+      throw new BadRequestError({
+        code: e?.code || "platform.bad_request",
+        message: "Bad request",
+        details: e?.details || {},
+        cause: e,
+      });
+    }
 
     let sessionInput;
     try {

@@ -69,6 +69,19 @@ export class SicApiStack extends Stack {
       },
     });
 
+    // Lambda: /sessions
+    const sessionsFn = new lambda.Function(this, "SessionsFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "sessions/handler.handler",
+      functionName: `sic-club-vivo-sessions-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(15),
+      environment: {
+        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
+      },
+    });
+
     // -----------------------------
     // IAM grants (least privilege)
     // -----------------------------
@@ -77,6 +90,14 @@ export class SicApiStack extends Stack {
 
     // Entitlements: explicit allow-list for /athletes (NO Scan)
     athletesFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
+        resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
+    // Entitlements: explicit allow-list for /sessions (NO Scan)
+    sessionsFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
         resources: [tenantEntitlementsTable.tableArn],
@@ -96,6 +117,13 @@ export class SicApiStack extends Stack {
     ];
 
     athletesFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: domainAccessActions,
+        resources: [sicDomainTable.tableArn],
+      })
+    );
+
+    sessionsFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: domainAccessActions,
         resources: [sicDomainTable.tableArn],
@@ -163,6 +191,21 @@ export class SicApiStack extends Stack {
       path: "/athletes/{athleteId}",
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwv2Integrations.HttpLambdaIntegration("AthleteByIdIntegration", athletesFn),
+      authorizer,
+    });
+
+    // Routes: /sessions
+    api.addRoutes({
+      path: "/sessions",
+      methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.GET],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("SessionsIntegration", sessionsFn),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/sessions/{sessionId}",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("SessionByIdIntegration", sessionsFn),
       authorizer,
     });
 

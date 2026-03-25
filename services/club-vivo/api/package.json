@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
+  "scripts": {
+    "test": "node --test --test-concurrency=1"
+  },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1009.0",
     "@aws-sdk/util-dynamodb": "^3.996.2"

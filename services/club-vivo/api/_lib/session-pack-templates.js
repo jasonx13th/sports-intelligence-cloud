@@ -17,15 +17,30 @@ function minutesSum(activities) {
 function padWithCoolDown({ durationMin, activities }) {
   const used = minutesSum(activities);
   const remaining = durationMin - used;
+  const cooldownCap = 10;
 
   if (remaining <= 0) return activities;
 
-  // Add a simple cooldown/reflection block if there is time left.
+  if (remaining <= cooldownCap) {
+    return activities.concat([
+      {
+        name: "Cooldown",
+        minutes: remaining,
+        description: "Low-intensity cooldown.",
+      },
+    ]);
+  }
+
   return activities.concat([
     {
-      name: "Cooldown & reflection",
-      minutes: Math.min(remaining, 10),
-      description: "Light movement, hydration, and quick reflection prompts.",
+      name: "Low-intensity technical reps",
+      minutes: remaining - cooldownCap,
+      description: "Low-intensity technical reps.",
+    },
+    {
+      name: "Cooldown",
+      minutes: cooldownCap,
+      description: "Low-intensity cooldown.",
     },
   ]);
 }
@@ -150,4 +165,4 @@ function generatePack({ sport, ageBand, durationMin, theme, sessionsCount }) {
   };
 }
 
-module.exports = { generatePack };
+module.exports = { generatePack, normalizeTheme, minutesSum };

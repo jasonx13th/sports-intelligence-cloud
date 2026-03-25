@@ -41,170 +41,179 @@ function inferService() {
  * inner signature:
  *   async ({ event, context, tenantCtx, logger, requestId, correlationId }) => response
  */
-function withPlatform(inner) {
-  return async function platformHandler(event, context) {
-    const startedAt = Date.now();
+function createWithPlatform({
+  loadBuildTenantContextFn = loadBuildTenantContext,
+  createLoggerFn = createLogger,
+  resolveCorrelationFn = resolveCorrelation,
+  toErrorResponseFn = toErrorResponse,
+} = {}) {
+  return function withPlatform(inner) {
+    return async function platformHandler(event, context) {
+      const startedAt = Date.now();
 
-    const requestId = context?.awsRequestId || event?.requestContext?.requestId || "unknown";
-    const apigwRequestId = event?.requestContext?.requestId;
+      const requestId = context?.awsRequestId || event?.requestContext?.requestId || "unknown";
+      const apigwRequestId = event?.requestContext?.requestId;
 
-    const { correlationId, correlationInvalid, suppliedLength } = resolveCorrelation(
-      event?.headers,
-      requestId
-    );
+      const { correlationId, correlationInvalid, suppliedLength } = resolveCorrelationFn(
+        event?.headers,
+        requestId
+      );
 
-    const baseLogger = createLogger({
-      service: inferService(),
-      env: inferEnv(),
-      requestId,
-      correlationId,
-      ...(apigwRequestId ? { apigwRequestId } : {}),
-    });
-
-    const method = getHttpMethod(event);
-    const path = getHttpPath(event);
-
-    baseLogger.info("request_start", "request started", {
-      http: { method, path },
-    });
-
-    if (correlationInvalid) {
-      baseLogger.warn("correlation_invalid", "invalid x-correlation-id; using fallback", {
-        suppliedLength,
-      });
-    }
-
-    let tenantCtx;
-    try {
-      // fail-closed: do not touch data before tenancy resolves
-      const buildTenantContext = loadBuildTenantContext();
-      tenantCtx = await buildTenantContext(event);
-
-      const logger = baseLogger.child({
-        tenantId: tenantCtx.tenantId,
-        userId: tenantCtx.userId,
-      });
-
-      logger.info("tenant_context_resolved", "tenant context resolved");
-
-      const resp = await inner({
-        event,
-        context,
-        tenantCtx,
-        logger,
+      const baseLogger = createLoggerFn({
+        service: inferService(),
+        env: inferEnv(),
         requestId,
         correlationId,
+        ...(apigwRequestId ? { apigwRequestId } : {}),
       });
 
-      const safeResp = ensureHeaders(resp);
+      const method = getHttpMethod(event);
+      const path = getHttpPath(event);
 
-      // Ensure Lambda proxy response shape is compatible with HTTP API
-      if (safeResp.body !== undefined && typeof safeResp.body !== "string") {
-        safeResp.body = JSON.stringify(safeResp.body);
-      }
-      if (typeof safeResp.isBase64Encoded !== "boolean") {
-        safeResp.isBase64Encoded = false;
-      }
-
-      safeResp.headers["x-correlation-id"] = correlationId;
-      safeResp.headers["X-Correlation-Id"] = correlationId;
-
-      if (!safeResp.headers["content-type"]) {
-        safeResp.headers["content-type"] = "application/json";
-      }
-
-      const statusCode = safeResp.statusCode || 200;
-      const latencyMs = Date.now() - startedAt;
-
-      logger.info("request_end", "request completed", {
-        http: { method, path, statusCode },
-        latencyMs,
+      baseLogger.info("request_start", "request started", {
+        http: { method, path },
       });
 
-      return safeResp;
-    } catch (rawErr) {
-      const latencyMs = Date.now() - startedAt;
-
-      // Normalize thrown values into an Error
-      const err = rawErr instanceof Error ? rawErr : new Error("non_error_thrown");
-
-      // If tenancy resolved, we can include tenant/user in logs. Otherwise, stay baseLogger.
-      const errorLogger =
-        tenantCtx?.tenantId && tenantCtx?.userId
-          ? baseLogger.child({ tenantId: tenantCtx.tenantId, userId: tenantCtx.userId })
-          : baseLogger;
-
-      // Build deterministic contract response
-      const contract = toErrorResponse(err, correlationId);
-      const statusCode = contract.httpStatus || 500;
-
-      // Ensure log gets stable classification fields
-      // - For unknown errors, wrap for logging classification without changing the client response shape.
-      const classifiedForLog =
-        statusCode >= 500 && (!err.code || typeof err.code !== "string")
-          ? new InternalError({ cause: err })
-          : err;
-
-      // Attach code/retryable for normalized logger error shape (logger.js already extracts these)
-      if (contract?.body?.error?.code) classifiedForLog.code = contract.body.error.code;
-      if (typeof contract?.body?.error?.retryable === "boolean") {
-        classifiedForLog.retryable = contract.body.error.retryable;
-      }
-
-      // ----- Logging semantics fix -----
-      // Reserve handler_error/ERROR for 5XX only. 4XX are expected failures -> WARN.
-      const code = contract?.body?.error?.code;
-
-      let eventType = "handler_error";
-      if (statusCode < 500) {
-        if (statusCode === 400 || code === "platform.bad_request") eventType = "validation_failed";
-        else if (statusCode === 401) eventType = "auth_unauthenticated";
-        else if (statusCode === 403) eventType = "auth_forbidden";
-        else eventType = "request_failed";
-      }
-
-      const logExtra = {
-        http: { method, path, statusCode },
-        latencyMs,
-        error: {
-          code,
-          retryable: contract.body?.error?.retryable,
-        },
-      };
-
-      if (statusCode >= 500) {
-        errorLogger.error(eventType, "request failed", classifiedForLog, logExtra);
-      } else {
-        // logger.warn signature: (eventType, message, extra)
-        errorLogger.warn(eventType, "request failed", {
-          ...logExtra,
-          // include a minimal error shape for expected failures without logging huge stacks
-          error: {
-            ...logExtra.error,
-            name: classifiedForLog?.name,
-          },
+      if (correlationInvalid) {
+        baseLogger.warn("correlation_invalid", "invalid x-correlation-id; using fallback", {
+          suppliedLength,
         });
       }
-      // ----- end fix -----
 
-      const resp = ensureHeaders({
-        statusCode,
-        body: JSON.stringify({
-          ...contract.body,
+      let tenantCtx;
+      try {
+        // fail-closed: do not touch data before tenancy resolves
+        const buildTenantContext = loadBuildTenantContextFn();
+        tenantCtx = await buildTenantContext(event);
+
+        const logger = baseLogger.child({
+          tenantId: tenantCtx.tenantId,
+          userId: tenantCtx.userId,
+        });
+
+        logger.info("tenant_context_resolved", "tenant context resolved");
+
+        const resp = await inner({
+          event,
+          context,
+          tenantCtx,
+          logger,
           requestId,
-        }),
-      });
+          correlationId,
+        });
 
-      // Explicit proxy response flag (helps avoid body being dropped in some integrations)
-      resp.isBase64Encoded = false;
+        const safeResp = ensureHeaders(resp);
 
-      resp.headers["content-type"] = "application/json";
-      resp.headers["x-correlation-id"] = correlationId;
-      resp.headers["X-Correlation-Id"] = correlationId;
+        // Ensure Lambda proxy response shape is compatible with HTTP API
+        if (safeResp.body !== undefined && typeof safeResp.body !== "string") {
+          safeResp.body = JSON.stringify(safeResp.body);
+        }
+        if (typeof safeResp.isBase64Encoded !== "boolean") {
+          safeResp.isBase64Encoded = false;
+        }
 
-      return resp;
-    }
+        safeResp.headers["x-correlation-id"] = correlationId;
+        safeResp.headers["X-Correlation-Id"] = correlationId;
+
+        if (!safeResp.headers["content-type"]) {
+          safeResp.headers["content-type"] = "application/json";
+        }
+
+        const statusCode = safeResp.statusCode || 200;
+        const latencyMs = Date.now() - startedAt;
+
+        logger.info("request_end", "request completed", {
+          http: { method, path, statusCode },
+          latencyMs,
+        });
+
+        return safeResp;
+      } catch (rawErr) {
+        const latencyMs = Date.now() - startedAt;
+
+        // Normalize thrown values into an Error
+        const err = rawErr instanceof Error ? rawErr : new Error("non_error_thrown");
+
+        // If tenancy resolved, we can include tenant/user in logs. Otherwise, stay baseLogger.
+        const errorLogger =
+          tenantCtx?.tenantId && tenantCtx?.userId
+            ? baseLogger.child({ tenantId: tenantCtx.tenantId, userId: tenantCtx.userId })
+            : baseLogger;
+
+        // Build deterministic contract response
+        const contract = toErrorResponseFn(err, correlationId);
+        const statusCode = contract.httpStatus || 500;
+
+        // Ensure log gets stable classification fields
+        // - For unknown errors, wrap for logging classification without changing the client response shape.
+        const classifiedForLog =
+          statusCode >= 500 && (!err.code || typeof err.code !== "string")
+            ? new InternalError({ cause: err })
+            : err;
+
+        // Attach code/retryable for normalized logger error shape (logger.js already extracts these)
+        if (contract?.body?.error?.code) classifiedForLog.code = contract.body.error.code;
+        if (typeof contract?.body?.error?.retryable === "boolean") {
+          classifiedForLog.retryable = contract.body.error.retryable;
+        }
+
+        // ----- Logging semantics fix -----
+        // Reserve handler_error/ERROR for 5XX only. 4XX are expected failures -> WARN.
+        const code = contract?.body?.error?.code;
+
+        let eventType = "handler_error";
+        if (statusCode < 500) {
+          if (statusCode === 400 || code === "platform.bad_request") eventType = "validation_failed";
+          else if (statusCode === 401) eventType = "auth_unauthenticated";
+          else if (statusCode === 403) eventType = "auth_forbidden";
+          else eventType = "request_failed";
+        }
+
+        const logExtra = {
+          http: { method, path, statusCode },
+          latencyMs,
+          error: {
+            code,
+            retryable: contract.body?.error?.retryable,
+          },
+        };
+
+        if (statusCode >= 500) {
+          errorLogger.error(eventType, "request failed", classifiedForLog, logExtra);
+        } else {
+          // logger.warn signature: (eventType, message, extra)
+          errorLogger.warn(eventType, "request failed", {
+            ...logExtra,
+            // include a minimal error shape for expected failures without logging huge stacks
+            error: {
+              ...logExtra.error,
+              name: classifiedForLog?.name,
+            },
+          });
+        }
+        // ----- end fix -----
+
+        const resp = ensureHeaders({
+          statusCode,
+          body: JSON.stringify({
+            ...contract.body,
+            requestId,
+          }),
+        });
+
+        // Explicit proxy response flag (helps avoid body being dropped in some integrations)
+        resp.isBase64Encoded = false;
+
+        resp.headers["content-type"] = "application/json";
+        resp.headers["x-correlation-id"] = correlationId;
+        resp.headers["X-Correlation-Id"] = correlationId;
+
+        return resp;
+      }
+    };
   };
 }
 
-module.exports = { withPlatform };
+const withPlatform = createWithPlatform();
+
+module.exports = { withPlatform, createWithPlatform };

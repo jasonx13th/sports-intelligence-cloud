@@ -2,7 +2,11 @@
   "name": "sic-post-confirmation",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "test": "node --test --test-concurrency=1 ./handler.test.js"
+  },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.600.0"
+    "@aws-sdk/client-cognito-identity-provider": "^3.600.0",
+    "@aws-sdk/client-dynamodb": "^3.600.0"
   }
 }

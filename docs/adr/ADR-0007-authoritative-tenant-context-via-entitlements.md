@@ -47,6 +47,6 @@ For protected requests, the platform will resolve an authoritative tenant contex
 
 ## Alternatives considered
 
-1. Derive tenant identity exclusively from JWT claims (rejected; see ADR-0002)
+1. Derive tenant identity exclusively from JWT claims (rejected; see ADR-0002 (superseded))
 2. Accept `x-tenant-id` header for routing (rejected; client-controlled)
 3. Scan-and-filter data by tenantId (rejected; violates tenant isolation by construction)

@@ -8,6 +8,17 @@ node_modules/
 # Logs
 *.log
 
+# Env / secrets (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+.DS_Store
+
 # CDK / build
 cdk.out/
 
@@ -16,19 +27,18 @@ infra/cdk/ddb-key.json
 infra/cdk/entitlements-backup.json
 infra/cdk/idem-logs.json
 
-# Local session/progress notes (do not commit)
-
 # Local archives (do not commit)
 services.zip
-
 replace.txt
 
-# local CLI captures
+# Local CLI captures (do not commit)
 tmp_alarms.json
-tmp_alarms.json
-# accidental local artifact
+
+# Accidental local artifact
 infra/cdk/git
 
 # Personal progress logs (kept local unless explicitly shared)
 .a_PROGRESS/
-CODEX.md
+
+# Private local Codex contract (do not commit)
+CHAT/CODEX.private.md

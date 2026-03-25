@@ -30,7 +30,7 @@ export class SicAuthStack extends Stack {
     const userPool = new cognito.UserPool(this, 'SicUserPool', {
       userPoolName: `sic-user-pool-${envName}`,
       signInAliases: { email: true },
-      selfSignUpEnabled: false,
+      selfSignUpEnabled: envName === 'dev',
       passwordPolicy: {
         minLength: 12,
         requireDigits: true,

@@ -11,6 +11,7 @@ import * as logs from "aws-cdk-lib/aws-logs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as s3 from "aws-cdk-lib/aws-s3";
 
 export interface SicApiStackProps extends StackProps {
   readonly userPoolId: string;
@@ -42,6 +43,17 @@ export class SicApiStack extends Stack {
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY, // dev only; later RETAIN
+    });
+
+    const isDev = envName === "dev";
+
+    const sessionPdfBucket = new s3.Bucket(this, "SessionPdfBucket", {
+      bucketName: `sic-session-pdfs-${envName}-${Stack.of(this).account}-${Stack.of(this).region}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+      autoDeleteObjects: isDev,
     });
 
     // Lambda: /me
@@ -79,6 +91,8 @@ export class SicApiStack extends Stack {
       environment: {
         TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
         SIC_DOMAIN_TABLE: sicDomainTable.tableName,
+        PDF_BUCKET_NAME: sessionPdfBucket.bucketName,
+        PDF_URL_TTL_SECONDS: "300",
       },
     });
 
@@ -114,6 +128,13 @@ export class SicApiStack extends Stack {
       new iam.PolicyStatement({
         actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
         resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
+    sessionsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject", "s3:GetObject"],
+        resources: [sessionPdfBucket.arnForObjects("*")],
       })
     );
 
@@ -227,6 +248,13 @@ export class SicApiStack extends Stack {
       path: "/sessions/{sessionId}",
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwv2Integrations.HttpLambdaIntegration("SessionByIdIntegration", sessionsFn),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/sessions/{sessionId}/pdf",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("SessionPdfIntegration", sessionsFn),
       authorizer,
     });
 

@@ -27,15 +27,15 @@ const userPoolId = process.env.SIC_USER_POOL_ID;
 const userPoolClientId = process.env.SIC_USER_POOL_CLIENT_ID;
 
 if (!userPoolId || !userPoolClientId) {
-  throw new Error(
-    "Missing required env vars for CDK deploy: SIC_USER_POOL_ID and/or SIC_USER_POOL_CLIENT_ID"
+  console.warn(
+    "Skipping SicApiStack-Dev: SIC_USER_POOL_ID and/or SIC_USER_POOL_CLIENT_ID not set. Synth/diff will include only stacks that do not require these values."
   );
+} else {
+  new SicApiStack(app, "SicApiStack-Dev", {
+    env,
+    userPoolId,
+    userPoolClientId,
+    description:
+      "Sports Intelligence Cloud - API (HTTP API + JWT authorizer) for dev environment",
+  });
 }
-
-new SicApiStack(app, "SicApiStack-Dev", {
-  env,
-  userPoolId,
-  userPoolClientId,
-  description:
-    "Sports Intelligence Cloud - API (HTTP API + JWT authorizer) for dev environment",
-});

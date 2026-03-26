@@ -182,23 +182,35 @@ function createSessionsInner({
         });
       }
 
-      const pdfBuffer = createSessionPdfBufferFn({
-        tenantId: tenantCtx.tenantId,
-        session,
-      });
+      let url;
+      let expiresInSeconds;
 
-      const storage = getSessionPdfStorageFn();
+      try {
+        const pdfBuffer = createSessionPdfBufferFn({
+          tenantId: tenantCtx.tenantId,
+          session,
+        });
 
-      await storage.putSessionPdf({
-        tenantId: tenantCtx.tenantId,
-        sessionId,
-        pdfBuffer,
-      });
+        const storage = getSessionPdfStorageFn();
 
-      const { url, expiresInSeconds } = await storage.presignSessionPdfGet({
-        tenantId: tenantCtx.tenantId,
-        sessionId,
-      });
+        await storage.putSessionPdf({
+          tenantId: tenantCtx.tenantId,
+          sessionId,
+          pdfBuffer,
+        });
+
+        ({ url, expiresInSeconds } = await storage.presignSessionPdfGet({
+          tenantId: tenantCtx.tenantId,
+          sessionId,
+        }));
+      } catch (err) {
+        logger.error("pdf_export_failed", "pdf export failed", err, {
+          http: { method: getHttpMethod(event), path: getRequestPath(event) },
+          route: routeKey(event),
+          resource: { entityType: "SESSION", entityId: sessionId },
+        });
+        throw err;
+      }
 
       logger.info("session_pdf_exported", "session pdf exported", {
         http: { statusCode: 200 },

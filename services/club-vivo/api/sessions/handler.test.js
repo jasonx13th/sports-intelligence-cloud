@@ -11,6 +11,14 @@ function makeLogger(events) {
       events.push({ level: "INFO", eventType, message, ...extra }),
     warn: (eventType, message, extra = {}) =>
       events.push({ level: "WARN", eventType, message, ...extra }),
+    error: (eventType, message, err, extra = {}) =>
+      events.push({
+        level: "ERROR",
+        eventType,
+        message,
+        error: { name: err?.name, message: err?.message },
+        ...extra,
+      }),
   };
 }
 
@@ -212,4 +220,61 @@ test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from ten
   ]);
 
   assert.equal(loggerEvents[0].eventType, "session_pdf_exported");
+});
+
+test("GET /sessions/{sessionId}/pdf logs pdf_export_failed and rethrows the original error", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+  process.env.PDF_BUCKET_NAME = "pdf-bucket";
+
+  const loggerEvents = [];
+  const tenantCtx = makeTenantCtx();
+  const session = {
+    sessionId: "session-123",
+    createdAt: "2026-03-25T00:00:00.000Z",
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 75,
+    objectiveTags: ["pressing"],
+    activities: [{ title: "Warm-up" }],
+  };
+  const originalError = new Error("s3 put failed");
+
+  const inner = createSessionsInner({
+    getSessionRepoFn: () => ({
+      getSessionById: async () => session,
+    }),
+    createSessionPdfBufferFn: () => Buffer.from("%PDF-1.4\nfake\n", "utf8"),
+    getSessionPdfStorageFn: () => ({
+      putSessionPdf: async () => {
+        throw originalError;
+      },
+      presignSessionPdfGet: async () => {
+        throw new Error("presign should not be called");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          routeKey: "GET /sessions/{sessionId}/pdf",
+          rawPath: "/sessions/session-123/pdf",
+        }),
+        tenantCtx,
+        logger: makeLogger(loggerEvents),
+      }),
+    (err) => {
+      assert.equal(err, originalError);
+      return true;
+    }
+  );
+
+  const errorEvent = loggerEvents.find((entry) => entry.eventType === "pdf_export_failed");
+  assert.ok(errorEvent);
+  assert.equal(errorEvent.level, "ERROR");
+  assert.equal(errorEvent.http.method, "GET");
+  assert.equal(errorEvent.resource.entityId, "session-123");
+  assert.equal(errorEvent.route, "GET /sessions/{sessionId}/pdf");
 });

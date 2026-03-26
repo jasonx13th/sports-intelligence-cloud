@@ -293,6 +293,18 @@ export class SicApiStack extends Stack {
       `/aws/lambda/${athletesFn.functionName}`
     );
 
+    const sessionsLogGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "SessionsFnLogGroup",
+      `/aws/lambda/${sessionsFn.functionName}`
+    );
+
+    const sessionPacksLogGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "SessionPacksFnLogGroup",
+      `/aws/lambda/${sessionPacksFn.functionName}`
+    );
+
     new logs.MetricFilter(this, "AthleteCreateSuccessMetricFilter", {
       logGroup: athletesLogGroup,
       metricNamespace: "SIC/ClubVivo",
@@ -314,6 +326,54 @@ export class SicApiStack extends Stack {
       metricNamespace: "SIC/ClubVivo",
       metricName: "athlete_create_failure",
       filterPattern: logs.FilterPattern.stringValue("$.eventCode", "=", "athlete_create_failure"),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "SessionCreateSuccessMetricFilter", {
+      logGroup: sessionsLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "session_create_success",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "session_created" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "SessionPackSuccessMetricFilter", {
+      logGroup: sessionPacksLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "session_pack_success",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "pack_generated_success" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "PdfExportSuccessMetricFilter", {
+      logGroup: sessionsLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "pdf_export_success",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "session_pdf_exported" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "PdfExportFailureMetricFilter", {
+      logGroup: sessionsLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "pdf_export_failure",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "pdf_export_failed" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "SessionsHandlerErrorMetricFilter", {
+      logGroup: sessionsLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "handler_error",
+      filterPattern: logs.FilterPattern.literal('{ $.level = "ERROR" && $.eventType = "handler_error" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "SessionPacksHandlerErrorMetricFilter", {
+      logGroup: sessionPacksLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "handler_error",
+      filterPattern: logs.FilterPattern.literal('{ $.level = "ERROR" && $.eventType = "handler_error" }'),
       metricValue: "1",
     });
 
@@ -373,6 +433,73 @@ export class SicApiStack extends Stack {
         left: [failureMetric],
       })
     );
+
+    const coachLoopDashboard = new cloudwatch.Dashboard(this, "ClubVivoCoachLoopDashboard", {
+      dashboardName: `sic-club-vivo-${envName}`,
+    });
+
+    const sessionCreateSuccessMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "session_create_success",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const sessionPackSuccessMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "session_pack_success",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const pdfExportSuccessMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "pdf_export_success",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const pdfExportFailureMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "pdf_export_failure",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const handlerErrorMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "handler_error",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    coachLoopDashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: "Session Create Success",
+        left: [sessionCreateSuccessMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Session Pack Success",
+        left: [sessionPackSuccessMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "PDF Export Success / Failure",
+        left: [pdfExportSuccessMetric, pdfExportFailureMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Handler Error",
+        left: [handlerErrorMetric],
+      })
+    );
+
+    new cloudwatch.Alarm(this, "PdfExportFailureAlarm", {
+      alarmName: `sic-${envName}-pdf-export-failures`,
+      alarmDescription: "PDF export failures in dev",
+      metric: pdfExportFailureMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
 
     // --- CloudWatch Alarms ---
 

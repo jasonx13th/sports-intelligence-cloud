@@ -17,19 +17,110 @@ jobs:
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep
 
-      - name: Fail on banned tenant-id patterns in services
+      - name: Fail on banned tenant-id patterns (client-controlled tenant scope)
         shell: bash
         run: |
           set -euo pipefail
 
-          if rg -n -i 'x-tenant-id' services/; then
-            echo "Found banned tenant header usage under services/."
+          echo "[tenant-guardrails] Starting scan..."
+
+          # ---- Search scope: scan only code roots that exist ----
+          CANDIDATE_DIRS=("apps" "services" "packages" "src" "lambdas" "lambda" "backend")
+          SEARCH_DIRS=()
+          for d in "${CANDIDATE_DIRS[@]}"; do
+            if [[ -d "$d" ]]; then
+              SEARCH_DIRS+=("$d")
+            fi
+          done
+
+          if [[ ${#SEARCH_DIRS[@]} -eq 0 ]]; then
+            echo "[tenant-guardrails] No known code roots found (${CANDIDATE_DIRS[*]}). Skipping scan."
+            exit 0
+          fi
+
+          echo "[tenant-guardrails] Scanning directories: ${SEARCH_DIRS[*]}"
+
+          # ---- Exclusions to reduce false positives (docs, build outputs, tests) ----
+          RG_EXCLUDES=(
+            # Docs / text
+            --glob '!**/*.md'
+            --glob '!**/*.txt'
+            --glob '!**/*.log'
+
+            # Binary/media
+            --glob '!**/*.pdf'
+            --glob '!**/*.png'
+            --glob '!**/*.jpg'
+            --glob '!**/*.jpeg'
+            --glob '!**/*.gif'
+            --glob '!**/*.svg'
+
+            # Build artifacts / deps
+            --glob '!**/*.lock'
+            --glob '!**/node_modules/**'
+            --glob '!**/dist/**'
+            --glob '!**/build/**'
+            --glob '!**/.next/**'
+            --glob '!**/.turbo/**'
+            --glob '!**/.serverless/**'
+            --glob '!**/coverage/**'
+
+            # Tests (allow spoofing tests to contain banned header strings)
+            --glob '!**/__tests__/**'
+            --glob '!**/test/**'
+            --glob '!**/tests/**'
+            --glob '!**/*.test.*'
+            --glob '!**/*.spec.*'
+          )
+
+          # ---- Banned patterns ----
+          BANNED_PATTERNS=(
+            "x-tenant-id"
+            "x_tenant_id"
+
+            "tenant_id[[:space:]]*\\((headers|query|body)\\)"
+            "tenantId[[:space:]]*\\((headers|query|body)\\)"
+
+            "queryStringParameters\\.(tenant_id|tenantId)"
+            "queryStringParameters\\[[\"'](tenant_id|tenantId)[\"']\\]"
+            "event\\.queryStringParameters\\.(tenant_id|tenantId)"
+            "event\\.queryStringParameters\\[[\"'](tenant_id|tenantId)[\"']\\]"
+
+            "headers\\.(tenant_id|tenantId)"
+            "headers\\[[\"'](x-tenant-id|x_tenant_id|tenant_id|tenantId)[\"']\\]"
+            "event\\.headers\\.(tenant_id|tenantId)"
+            "event\\.headers\\[[\"'](x-tenant-id|x_tenant_id|tenant_id|tenantId)[\"']\\]"
+
+            "body\\.(tenant_id|tenantId)"
+            "body\\[[\"'](tenant_id|tenantId)[\"']\\]"
+            "req\\.body\\.(tenant_id|tenantId)"
+            "req\\.body\\[[\"'](tenant_id|tenantId)[\"']\\]"
+
+            "req\\.query\\.(tenant_id|tenantId)"
+            "req\\.query\\[[\"'](tenant_id|tenantId)[\"']\\]"
+
+            "req\\.get\\([\"'](x-tenant-id|x_tenant_id|tenant_id|tenantId)[\"']\\)"
+            "request\\.headers\\.get\\([\"'](x-tenant-id|x_tenant_id|tenant_id|tenantId)[\"']\\)"
+          )
+
+          FAIL=0
+          for pat in "${BANNED_PATTERNS[@]}"; do
+            if rg -n -I -S "${RG_EXCLUDES[@]}" -e "$pat" "${SEARCH_DIRS[@]}"; then
+              echo ""
+              echo "[tenant-guardrails] ERROR: Found banned pattern: $pat"
+              FAIL=1
+            fi
+          done
+
+          if [[ "$FAIL" -ne 0 ]]; then
+            printf "\n[tenant-guardrails] Why this fails:\n"
+            printf -- "- SIC is multi-tenant. Tenant scope must come from VERIFIED auth context (JWT/Cognito/entitlements),\n"
+            printf -- "  never from client-controlled inputs (headers/query/body).\n\n"
+            printf "Fix guidance:\n"
+            printf -- "- Remove reads of tenant_id/tenantId from request inputs.\n"
+            printf -- "- Use buildTenantContext(event) (or equivalent) from verified auth context.\n"
+            printf -- "- Ensure data access is tenant-scoped by construction (no scan-then-filter).\n\n"
             exit 1
           fi
 
-          if rg -n -i 'tenant_id.*(headers|query|body)' services/; then
-            echo "Found tenant_id derived from client-controlled input under services/."
-            exit 1
-          fi
-
-          echo "Tenant guardrails passed."
+          echo "[tenant-guardrails] Passed."

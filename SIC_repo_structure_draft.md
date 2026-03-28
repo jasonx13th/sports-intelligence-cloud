@@ -17,21 +17,12 @@ This repo is a monorepo with:
 sports-intelligence-cloud/
 ├─ README.md
 ├─ SIC_repo_structure_draft.md
-├─ .a_PROGRESS/
-│  ├─ week 0/
-│  ├─ week 1/
-│  ├─ week 2/
-│  └─ week 3/
-├─ .github/
-│  ├─ copilot-instructions.md          # VS Code Copilot Chat repo guardrails (must keep)
-│  ├─ hooks/
-│  │  └─ sic-hooks.json                # VS Code Copilot Chat hooks (must keep)
-│  └─ workflows/                       # CI (add as you wire pipelines)
-├─ apps/
-│  ├─ club-vivo/
-│  ├─ athlete-evolution-ai/
-│  └─ ruta-viva/
 ├─ docs/
+│  ├─ progress/
+│  │  ├─ week_0/
+│  │  ├─ week_1/
+│  │  ├─ week_2/
+│  │  └─ week_3/
 │  ├─ vision.md
 │  ├─ architecture/
 │  │  ├─ SIC architecture principles.md
@@ -41,6 +32,15 @@ sports-intelligence-cloud/
 │  │  ├─ tenant-entitlements-onboarding.md
 │  │  └─ auth-api-alarms.md
 │  └─ adr/                             # create when first ADR is needed
+├─ .github/
+│  ├─ copilot-instructions.md          # VS Code Copilot Chat repo guardrails (must keep)
+│  ├─ hooks/
+│  │  └─ sic-hooks.json                # VS Code Copilot Chat hooks (must keep)
+│  └─ workflows/                       # CI (add as you wire pipelines)
+├─ apps/
+│  ├─ club-vivo/
+│  ├─ athlete-evolution-ai/
+│  └─ ruta-viva/
 ├─ infra/
 │  └─ cdk/
 │     ├─ bin/
@@ -73,7 +73,7 @@ sports-intelligence-cloud/
    - `docs/architecture/` (principles/contracts)
    - `docs/runbooks/` (operations/how-to)
    - `docs/adr/` (decision records)
-   - `.a_PROGRESS/` (weekly build logs)
+   - `docs/progress/` (weekly build logs)
 
 ---
 

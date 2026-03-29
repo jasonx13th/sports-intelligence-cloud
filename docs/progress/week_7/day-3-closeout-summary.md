@@ -10,28 +10,37 @@ Track: Domain export contract v1 (lake-ready)
 ## What We Built
 - `docs/runbooks/domain-exports.md`
 - `infra/cdk/lib/sic-api-stack.ts` (domain export log metric filters and alarms)
-- Operational runbook guidance for `POST /exports/domain`, manifest validation, and S3 prefix checks.
+- Operational guidance for running `POST /exports/domain`, validating `manifest.json`, and verifying tenant-prefixed S3 output keys.
 
 ## Tenancy / Security Guarantees
 - Tenant scope is derived from verified auth context + entitlements (`tenantCtx`) only.
 - Never accepts `tenant_id` / `tenantId` / `x-tenant-id` from request body, query, or headers.
-- Domain exports are written under tenant-partitioned S3 prefixes, preserving isolation at the storage layer.
-- Alarms and metrics are built around explicit export success/failure events, not broad wildcard signals.
+- Domain exports are written under tenant-partitioned S3 prefixes, preserving isolation at the storage layer:
+  `exports/domain/<schema>/v=1/tenant_id=<TENANT_ID>/...`
+- Observability is based on explicit export lifecycle signals:
+  - Success: `eventType = "domain_export_completed"`
+  - Failure: `level = "ERROR"` and `eventType = "handler_error"`
 
 ## Commits
-- 0e82fad — Week 7 Day 3: domain exports runbook
-- 3c41083 — Week 7 Day 3: export alarms (failure + no-success)
+- `0e82fad` — Week 7 Day 3: domain exports runbook
+- `3c41083` — Week 7 Day 3: export alarms (failure + no-success)
 
 ## Validation
 - `npm test --prefix services/club-vivo/api`
   - Recorded outcome: `48/48 pass`
 - `npx cdk diff SicApiStack-Dev`
-  - Recorded outcome: showed new `DomainExportSuccessMetricFilter`, `DomainExportFailureMetricFilter`, `DomainExportFailureAlarm`, and `DomainExportNoSuccessAlarm`.
+  - Recorded outcome: showed new:
+    - `DomainExportSuccessMetricFilter`
+    - `DomainExportFailureMetricFilter`
+    - `DomainExportFailureAlarm`
+    - `DomainExportNoSuccessAlarm`
 
 ## Decisions / Notes
-- Documented how to validate export manifests and tenant-prefixed output keys.
-- Created the operational alarm approach: failure alarm on errors and no-success alarm for 24-hour export drift.
-- Reinforced that tenant safety and least privilege remain core observability requirements.
+- Documented how to validate export manifests and tenant-prefixed output keys (operator checklist).
+- Implemented alarms:
+  - **Failure alarm**: export failures in a 5-minute window.
+  - **No-success alarm**: no successful exports in 24 hours (treat missing data as breaching).
+- Reinforced that tenant safety and least privilege apply equally to observability (signals should be precise and actionable).
 
 ## Next Session Starting Point
 Begin Week 8 with testing and CI hardening sprint #1, focusing on export contract validation and pipeline quality gates.

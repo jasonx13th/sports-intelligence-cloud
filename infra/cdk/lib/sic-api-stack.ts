@@ -411,6 +411,13 @@ export class SicApiStack extends Stack {
       `/aws/lambda/${sessionPacksFn.functionName}`
     );
 
+    // NEW: ExportsDomain log group (for metric filters + alarms)
+    const exportsDomainLogGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "ExportsDomainFnLogGroup",
+      `/aws/lambda/${exportsDomainFn.functionName}`
+    );
+
     new logs.MetricFilter(this, "AthleteCreateSuccessMetricFilter", {
       logGroup: athletesLogGroup,
       metricNamespace: "SIC/ClubVivo",
@@ -483,6 +490,24 @@ export class SicApiStack extends Stack {
       metricValue: "1",
     });
 
+    // NEW: Domain export success metric (log-based)
+    new logs.MetricFilter(this, "DomainExportSuccessMetricFilter", {
+      logGroup: exportsDomainLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "domain_export_success",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "domain_export_completed" }'),
+      metricValue: "1",
+    });
+
+    // NEW: Domain export failure metric (log-based)
+    new logs.MetricFilter(this, "DomainExportFailureMetricFilter", {
+      logGroup: exportsDomainLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "domain_export_failure",
+      filterPattern: logs.FilterPattern.literal('{ $.level = "ERROR" && $.eventType = "handler_error" }'),
+      metricValue: "1",
+    });
+
     const athleteCreateFailureMetric = new cloudwatch.Metric({
       namespace: "SIC/ClubVivo",
       metricName: "athlete_create_failure",
@@ -495,6 +520,40 @@ export class SicApiStack extends Stack {
       metric: athleteCreateFailureMetric,
       threshold: 1,
       evaluationPeriods: 1,
+    });
+
+    // NEW: Domain export alarms
+    const domainExportFailureMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "domain_export_failure",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    new cloudwatch.Alarm(this, "DomainExportFailureAlarm", {
+      alarmName: `sic-${envName}-domain-export-failures`,
+      alarmDescription: "Domain export failures",
+      metric: domainExportFailureMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    const domainExportSuccessMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "domain_export_success",
+      period: Duration.hours(24),
+      statistic: "Sum",
+    });
+
+    new cloudwatch.Alarm(this, "DomainExportNoSuccessAlarm", {
+      alarmName: `sic-${envName}-domain-export-no-success-24h`,
+      alarmDescription: "No successful domain exports in the last 24 hours",
+      metric: domainExportSuccessMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.BREACHING,
     });
 
     // -----------------------------

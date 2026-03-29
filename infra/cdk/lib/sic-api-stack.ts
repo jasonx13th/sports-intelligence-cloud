@@ -96,6 +96,19 @@ export class SicApiStack extends Stack {
       },
     });
 
+    // Lambda: /memberships
+    const membershipsFn = new lambda.Function(this, "MembershipsFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "memberships/handler.handler",
+      functionName: `sic-club-vivo-memberships-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(15),
+      environment: {
+        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
+      },
+    });
+
     // Lambda: /session-packs
     // NOTE: Session packs are stateless today (no domain table needed). Keep env minimal.
     const sessionPacksFn = new lambda.Function(this, "SessionPacksFn", {
@@ -131,6 +144,14 @@ export class SicApiStack extends Stack {
       })
     );
 
+    // Entitlements: explicit allow-list for /memberships (NO Scan)
+    membershipsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
+        resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
     sessionsFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["s3:PutObject", "s3:GetObject"],
@@ -146,8 +167,8 @@ export class SicApiStack extends Stack {
       })
     );
 
-    // Domain table: explicit allow-list (NO Scan) + writes
-    const domainAccessActions = [
+    // Domain table: explicit allow-list (NO Scan)
+    const domainReadWriteActions = [
       // reads
       "dynamodb:Query",
       "dynamodb:GetItem",
@@ -155,19 +176,29 @@ export class SicApiStack extends Stack {
       "dynamodb:DescribeTable",
       // writes
       "dynamodb:PutItem",
-      "dynamodb:TransactWriteItems",
     ];
+
+    // Keep TransactWriteItems only where truly needed (leave existing behavior for now)
+    const domainReadWriteActionsWithTransact = [...domainReadWriteActions, "dynamodb:TransactWriteItems"];
 
     athletesFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: domainAccessActions,
+        actions: domainReadWriteActionsWithTransact,
         resources: [sicDomainTable.tableArn],
       })
     );
 
     sessionsFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: domainAccessActions,
+        actions: domainReadWriteActionsWithTransact,
+        resources: [sicDomainTable.tableArn],
+      })
+    );
+
+    // Memberships v1 does not use transactions; keep permission tight
+    membershipsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: domainReadWriteActions,
         resources: [sicDomainTable.tableArn],
       })
     );
@@ -255,6 +286,14 @@ export class SicApiStack extends Stack {
       path: "/sessions/{sessionId}/pdf",
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwv2Integrations.HttpLambdaIntegration("SessionPdfIntegration", sessionsFn),
+      authorizer,
+    });
+
+    // Routes: /memberships
+    api.addRoutes({
+      path: "/memberships",
+      methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.GET],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("MembershipsIntegration", membershipsFn),
       authorizer,
     });
 

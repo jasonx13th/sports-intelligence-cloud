@@ -96,7 +96,7 @@ This roadmap reflects progress through Week 3 and defines the next build phases 
 
 ---
 
-## WEEK 5 — Domain v3: Sessions/Workouts + Event Timeline
+## WEEK 5 (COMPLETED)— Domain v3: Sessions/Workouts + Event Timeline
 **Goal:** ship the first real coach-facing demo (session planning + pack generation) and start time-series-ish records for downstream analytics.
 ### Day 1 — Session Domain (CRUD, tenant-scoped)
 - **Learn:** DynamoDB time-ordered modeling (range keys, pagination), tenant-scoped access by construction (no scan-then-filter)

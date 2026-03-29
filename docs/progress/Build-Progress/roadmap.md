@@ -111,7 +111,7 @@ This roadmap reflects progress through Week 3 and defines the next build phases 
 - **Build:** metrics + dashboards; runbooks (S3 denied, Dynamo throttling, PDF failure); demo narrative script
 - **Evidence:** weekly architecture note + LinkedIn post
 
-## WEEK 6 — Domain v2: Clubs/Teams + Membership + RBAC Checks
+## WEEK 6 (COMPLETED) — Domain v2: Clubs/Teams + Membership + RBAC Checks
 **Goal:** expand domain relationships + governance after the coach-value wedge exists.
 ### Day 1 — Clubs + Teams (tenant-scoped relationships)
 - **Learn:** DynamoDB single-table relationship patterns (adjacency lists, GSIs) and hierarchical modeling

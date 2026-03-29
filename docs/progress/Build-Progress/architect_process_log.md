@@ -10,6 +10,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 3](#week-3)
 - [Week 4](#week-4)
 - [Week 5](#week-5)
+- [Week 6](#week-6)
 
 ## Week 0
 
@@ -640,3 +641,92 @@ Week 0 notes are sparse and mostly foundational. This section stays minimal on p
 - Add the new Week 5 demo runbook to the broader runbook index/signals mapping if it becomes a regular operator artifact.
 - Decide lifecycle/retention policy for session PDF exports as the artifact volume grows.
 - Resolve local CDK account-resolution friction so `cdk diff` can be used consistently for API-only review.
+
+## Week 6
+
+### Goals
+
+- Expand Club Vivo from coach-facing session flows into governance-oriented domain relationships.
+- Ship Clubs, Teams, and Memberships as tenant-safe domain slices with fail-closed RBAC.
+- Wire Memberships into the deployed API with least-privilege IAM.
+- Document upgrade and active-tenant-selection direction without weakening the tenant authority model.
+
+### Work completed
+
+- Shipped the Clubs slice:
+  - `POST /clubs`
+  - `GET /clubs`
+- Added tenant-safe RBAC tests for Clubs.
+- Shipped the Teams slice:
+  - `POST /teams`
+  - `GET /teams`
+- Added tenant-safe RBAC tests for Teams.
+- Shipped the Memberships slice:
+  - `POST /memberships`
+  - `GET /memberships`
+- Added Memberships tests proving spoofed tenant input is not propagated.
+- Wired Memberships into CDK with:
+  - `MembershipsFn`
+  - authenticated `/memberships` routes behind the existing JWT authorizer
+- Added the Week 6 Day 3 closeout note:
+  - `docs/progress/week_6/day-3-notes.md`
+- Added ADR:
+  - `docs/adr/ADR-0008-coach-basic-to-org-premium-upgrade-and-active-tenant-selection.md`
+
+### Key decisions + tradeoffs
+
+- Keep tenant authority in verified auth plus entitlements rather than domain membership records.
+  - Why: preserves the fail-closed security boundary established earlier in the platform.
+  - Tradeoff: membership is useful for org modeling and application logic, but cannot be treated as the authorization source of truth.
+- Ship Memberships with a dedicated Lambda and route family.
+  - Why: matches the existing per-resource API stack pattern and keeps ownership clear.
+  - Tradeoff: adds another Lambda/function resource to manage in CDK.
+- Keep IAM least-privilege and table-specific for memberships.
+  - Why: aligns with SIC security doctrine and avoids accidental permission creep.
+  - Tradeoff: permissions must be maintained explicitly as the memberships feature grows.
+
+### Tenancy/security checks
+
+- Clubs, Teams, and Memberships derive tenant scope from `tenantCtx` only.
+- Tenant context remains derived from verified JWT identity plus authoritative entitlements.
+- Memberships handler never trusts `tenant_id`, `tenantId`, or `x-tenant-id` from request input.
+- Spoofed tenant fields are not propagated to the memberships repository.
+- DynamoDB access remains tenant-scoped by construction:
+  - `PK = TENANT#<tenantId>`
+  - entity-specific `SK` prefixes
+- Memberships CDK IAM stayed least-privilege:
+  - no wildcard `Action`
+  - no wildcard `Resource`
+  - no `Scan`
+  - `membershipsFn` does not receive `TransactWriteItems`
+
+### Observability notes
+
+- Memberships routes inherit the platform wrapper path:
+  - JWT authorizer
+  - `withPlatform`
+  - `buildTenantContext(event)`
+- Existing structured request lifecycle logging continues to apply to the new Memberships handler.
+- Week 6 documentation now includes a closeout note and ADR so the governance expansion is traceable in repo docs.
+
+### Evidence
+
+- Closeout note:
+  - `docs/progress/week_6/day-3-notes.md`
+- ADR:
+  - `docs/adr/ADR-0008-coach-basic-to-org-premium-upgrade-and-active-tenant-selection.md`
+- Key commits:
+  - `e6550c3`
+  - `bd3ac7f`
+  - `b99d6c1`
+  - `c450705`
+
+### Issues/bugs + fixes
+
+- No new cross-tenant access pattern was introduced in Week 6 work.
+- A key correction during the memberships wiring pass was to keep IAM narrower than the reusable write list used elsewhere, specifically avoiding unnecessary `TransactWriteItems`.
+
+### Next steps
+
+- Move into Week 7 domain export contract work for lake-ready entity data.
+- Decide whether Clubs and Teams should now be wired into the deployed API using the same authenticated route pattern as Memberships.

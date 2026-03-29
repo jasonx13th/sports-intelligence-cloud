@@ -152,3 +152,24 @@ Required process:
 - Export writers must build `tenantCtx` from verified auth context + entitlements.
 - Export writers must not accept `tenant_id`, `tenantId`, or `x-tenant-id` in request body/query/headers.
 - All data access must be tenant-scoped by construction (no scan-then-filter).
+
+---
+
+## 8. Consumer rules (normative)
+
+Consumers of v1 exports MUST:
+- Treat unknown fields as ignorable (forward-compatible parsing).
+- Treat missing optional fields as acceptable (backward-compatible parsing).
+- Use `schema_name` + `schema_version` to select parsing logic.
+- Treat `tenant_id` as a partition/join key only; **tenant authority remains server-controlled** and is not derived from export contents.
+
+## 9. Compatibility checklist (for contributors)
+
+Before shipping any change to a v1 schema:
+- [ ] Additive change only (new field is optional)
+- [ ] No renames, removals, or type changes
+- [ ] No semantics/unit changes
+- [ ] Examples updated (if needed)
+- [ ] If breaking: bump major version and dual-publish under new `v=2` path
+- [ ] Tenant safety preserved: export scope comes from `tenantCtx` only (no client-supplied tenant identifiers)
+---

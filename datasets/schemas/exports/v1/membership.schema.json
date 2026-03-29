@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sic://exports/domain/membership/1.0",
+  "title": "SIC Domain Export - Membership (v1.0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "exported_at",
+    "export_run_id",
+    "tenant_id",
+    "entity_id",
+    "operation",
+    "source_system",
+    "payload"
+  ],
+  "properties": {
+    "schema_name": { "const": "membership" },
+    "schema_version": { "type": "string", "pattern": "^1\\.(0|[1-9][0-9]*)$" },
+    "exported_at": { "type": "string", "format": "date-time" },
+    "export_run_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "entity_id": { "type": "string", "minLength": 1 },
+    "operation": { "type": "string", "enum": ["upsert", "delete"] },
+    "source_system": { "type": "string", "enum": ["sic"] },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user_sub", "role", "status"],
+      "properties": {
+        "user_sub": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "club_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "team_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

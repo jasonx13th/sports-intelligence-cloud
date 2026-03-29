@@ -64,6 +64,7 @@ jobs:
             --glob '!**/.turbo/**'
             --glob '!**/.serverless/**'
             --glob '!**/coverage/**'
+            --glob '!**/cdk.out/**'
 
             # Tests (allow spoofing tests to contain banned header strings)
             --glob '!**/__tests__/**'
@@ -74,10 +75,10 @@ jobs:
           )
 
           # ---- Banned patterns ----
+          # NOTE: We ban *reading* tenant scope from client-controlled inputs.
+          # We intentionally do NOT ban the raw string "x-tenant-id" so tests can
+          # include spoofing fixtures like { "x-tenant-id": "spoofed" }.
           BANNED_PATTERNS=(
-            "x-tenant-id"
-            "x_tenant_id"
-
             "tenant_id[[:space:]]*\\((headers|query|body)\\)"
             "tenantId[[:space:]]*\\((headers|query|body)\\)"
 

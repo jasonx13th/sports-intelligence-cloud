@@ -47,6 +47,9 @@ export class SicApiStack extends Stack {
 
     const isDev = envName === "dev";
 
+    // -----------------------------
+    // S3 Buckets
+    // -----------------------------
     const sessionPdfBucket = new s3.Bucket(this, "SessionPdfBucket", {
       bucketName: `sic-session-pdfs-${envName}-${Stack.of(this).account}-${Stack.of(this).region}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -55,6 +58,20 @@ export class SicApiStack extends Stack {
       removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDev,
     });
+
+    // NEW: Domain export bucket (lake-ready domain datasets; NOT PDFs)
+    const domainExportBucket = new s3.Bucket(this, "DomainExportBucket", {
+      bucketName: `sic-domain-exports-${envName}-${Stack.of(this).account}-${Stack.of(this).region}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+      autoDeleteObjects: isDev,
+    });
+
+    // -----------------------------
+    // Lambdas
+    // -----------------------------
 
     // Lambda: /me
     const meFn = new lambda.Function(this, "MeFn", {
@@ -122,9 +139,24 @@ export class SicApiStack extends Stack {
       },
     });
 
+    // NEW: /exports/domain (domain export job; admin-only enforced in handler)
+    const exportsDomainFn = new lambda.Function(this, "ExportsDomainFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "exports-domain/handler.handler",
+      functionName: `sic-club-vivo-exports-domain-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(30),
+      environment: {
+        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
+        DOMAIN_EXPORT_BUCKET: domainExportBucket.bucketName,
+      },
+    });
+
     // -----------------------------
     // IAM grants (least privilege)
     // -----------------------------
+
     // Entitlements: read-only for /me (NOTE: grantReadData includes Scan; we’ll tighten later)
     tenantEntitlementsTable.grantReadData(meFn);
 
@@ -152,10 +184,27 @@ export class SicApiStack extends Stack {
       })
     );
 
+    // Entitlements: explicit allow-list for /exports/domain (NO Scan)
+    exportsDomainFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
+        resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
+    // S3: session PDFs (existing behavior; consider tightening later to a prefix)
     sessionsFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["s3:PutObject", "s3:GetObject"],
         resources: [sessionPdfBucket.arnForObjects("*")],
+      })
+    );
+
+    // S3: domain exports — PUT ONLY to exports/domain/*
+    exportsDomainFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject"],
+        resources: [domainExportBucket.arnForObjects("exports/domain/*")],
       })
     );
 
@@ -199,6 +248,16 @@ export class SicApiStack extends Stack {
     membershipsFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: domainReadWriteActions,
+        resources: [sicDomainTable.tableArn],
+      })
+    );
+
+    // Exports only need reads from domain table (keep tight)
+    const domainReadActions = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:BatchGetItem", "dynamodb:DescribeTable"];
+
+    exportsDomainFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: domainReadActions,
         resources: [sicDomainTable.tableArn],
       })
     );
@@ -302,6 +361,14 @@ export class SicApiStack extends Stack {
       path: "/session-packs",
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwv2Integrations.HttpLambdaIntegration("SessionPacksIntegration", sessionPacksFn),
+      authorizer,
+    });
+
+    // NEW: Routes: /exports/domain
+    api.addRoutes({
+      path: "/exports/domain",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("ExportsDomainIntegration", exportsDomainFn),
       authorizer,
     });
 

@@ -10,6 +10,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
+import * as assets from "aws-cdk-lib/aws-s3-assets";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as notifications from "aws-cdk-lib/aws-s3-notifications";
@@ -177,6 +178,81 @@ export class SicApiStack extends Stack {
       },
       recrawlPolicy: {
         recrawlBehavior: "CRAWL_NEW_FOLDERS_ONLY",
+      },
+    });
+
+    const lakeEtlScriptAsset = new assets.Asset(this, "LakeEtlScriptAsset", {
+      path: path.join(__dirname, "../../../services/club-vivo/api/lake-etl/etl.py"),
+    });
+
+    const bronzeToSilverSessionsJobRole = new iam.Role(this, "BronzeToSilverSessionsJobRole", {
+      assumedBy: new iam.ServicePrincipal("glue.amazonaws.com"),
+      description: "Least-privilege Glue job role for bronze sessions to silver sessions ETL.",
+    });
+
+    bronzeToSilverSessionsJobRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:ListBucket"],
+        resources: [lakeBucket.bucketArn],
+        conditions: {
+          StringLike: {
+            "s3:prefix": [
+              "bronze/sessions/v=1/",
+              "bronze/sessions/v=1/*",
+              "silver/sessions/v=1/",
+              "silver/sessions/v=1/*",
+            ],
+          },
+        },
+      })
+    );
+
+    bronzeToSilverSessionsJobRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:GetObject"],
+        resources: [lakeBucket.arnForObjects("bronze/sessions/v=1/*")],
+      })
+    );
+
+    bronzeToSilverSessionsJobRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject"],
+        resources: [lakeBucket.arnForObjects("silver/sessions/v=1/*")],
+      })
+    );
+
+    bronzeToSilverSessionsJobRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
+        resources: [
+          this.formatArn({
+            service: "logs",
+            resource: "log-group",
+            resourceName: "/aws-glue/jobs/*",
+          }),
+        ],
+      })
+    );
+
+    new glue.CfnJob(this, "BronzeToSilverSessionsJob", {
+      name: `sic-club-vivo-bronze-to-silver-sessions-${envName}`,
+      role: bronzeToSilverSessionsJobRole.roleArn,
+      command: {
+        name: "glueetl",
+        pythonVersion: "3",
+        scriptLocation: lakeEtlScriptAsset.s3ObjectUrl,
+      },
+      glueVersion: "3.0",
+      maxCapacity: 2,
+      defaultArguments: {
+        "--TempDir": `s3://${lakeBucket.bucketName}/glue-temp/`,
+        "--job-bookmark-option": "job-bookmark-disable",
+        "--LAKE_BUCKET": lakeBucket.bucketName,
+        "--BRONZE_PREFIX": "bronze/sessions/v=1",
+        "--SILVER_PREFIX": "silver/sessions/v=1",
+      },
+      executionProperty: {
+        maxConcurrentRuns: 1,
       },
     });
 

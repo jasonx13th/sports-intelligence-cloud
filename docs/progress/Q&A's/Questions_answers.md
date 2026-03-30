@@ -1,4 +1,4 @@
-# Week 3   Tenancy, DynamoDB Patterns, Idempotency, and Ops Q&A
+# Tenancy, DynamoDB Patterns, Idempotency, and Ops Q&A
 
 ## One tenant becomes huge (100k athletes). What breaks first? What do you do?
 
@@ -586,9 +586,93 @@ The wrapper tests still force tenant resolution through `buildTenantContext(even
 **Answer:**
 The local validation command is `cd services/club-vivo/api && npm test`, and the expected evidence is `19 pass`. That run exercises the current `_lib` tests, including `services/club-vivo/api/_lib/tenant-context.test.js`, `services/club-vivo/api/_lib/with-platform.test.js`, and `services/club-vivo/api/_lib/session-pack-templates.test.js`.
 
-# Week 5 Day 3 - Notes
+# Week 7 — Domain Export Contract v1 (Lake-ready)
 
-## Did Week 5 Day 3 change infra/IAM/CDK?
+## Q1. You must export multi-tenant domain data to S3 for analytics. Which S3 layout best enforces tenant isolation?
+**A.** Use tenant-partitioned prefixes (and include schema version), e.g.:
+`exports/domain/<schema>/v=1/tenant_id=<TENANT_ID>/export_date=YYYY-MM-DD/run_id=<RUN_ID>/...`
 
-**Answer:**
-No. Week 5 Day 3 stayed inside the Club Vivo API service and test files. Observability changes were limited to logging behavior and test coverage in `services/club-vivo/api/_lib/with-platform.js` and `services/club-vivo/api/_lib/with-platform.test.js`; there were no infra, IAM, or CDK changes.
+**Why:** Enforces isolation at the storage boundary; simplifies IAM policies and prevents accidental cross-tenant mixing.
+
+---
+
+## Q2. An export job may produce millions of records. What is the most reliable serverless approach for writing the export output?
+**A.** Stream or incrementally write NDJSON objects (per entity) to S3 and write a `manifest.json` describing the run (schema/version/files/counts).
+
+**Why:** Avoids Lambda memory blowups, avoids huge in-memory buffers, and improves operational debugging/replay.
+
+---
+
+## Q3. In a multi-tenant DynamoDB table, what is the *most correct* way to read data for export?
+**A.** Use **Query/GetItem** with tenant-scoped partition keys; never `Scan` then filter.
+
+**Why:** Query enforces tenant scoping “by construction,” and Scan creates security/cost risks as the table grows.
+
+---
+
+## Q4. What should an export manifest contain to support downstream consumers (Athena/Glue/ETL) reliably?
+**A.** Minimum:
+- `schema_name`, `schema_version`
+- `tenant_id`
+- `export_date`, `run_id`
+- list of output files (paths + entity type)
+- record counts (per entity and total)
+- timestamps (start/end) and outcome status
+
+**Why:** Consumers need a stable contract to validate completeness and version compatibility.
+
+---
+
+## Q5. What are the *two most actionable* alarms for export pipelines?
+**A.**
+1) **Export failure** alarm (detects explicit failure quickly)
+2) **No-success window** alarm (detects silent stalls)
+
+**Why:** Failure catches active breakage; no-success catches stalled pipelines that didn’t emit failures.
+
+---
+
+# Week 8 — Testing & CI Hardening Sprint #1
+
+## Q1. Your platform is multi-tenant. Which CI check most directly prevents cross-tenant access bugs from being introduced?
+**A.** A static guardrail that fails PRs when code reads tenant scope from client-controlled inputs (body/query/headers like `x-tenant-id`).
+
+**Why:** It blocks a high-severity class of bugs early, before review fatigue or missed cases.
+
+---
+
+## Q2. What is the minimum CI gate set that should block regressions for this repo today?
+**A.**
+- Tenant guardrails scan (PR/push)
+- Unit tests for the Club Vivo API (PR/push)
+- Export schema parse/validation (PR/push)
+
+**Why:** This combination protects the tenancy boundary, functional correctness, and schema integrity.
+
+---
+
+## Q3. Your GitHub Actions smoke test fails with `401` but local smoke passes. What is the most likely root cause?
+**A.** The token is invalid for the authorizer (expired, wrong type, or missing `Bearer ` prefix).
+
+**Why:** Short-lived access tokens commonly expire; using `id_token` instead of `access_token` can also fail depending on JWT authorizer config.
+
+---
+
+## Q4. For an API Gateway JWT authorizer with Cognito, which token type is most appropriate to use for runtime API calls in smoke tests?
+**A.** **Bearer access_token** (not id_token).
+
+**Why:** Many API authorizers are configured around access token semantics (scopes/audience). id_token is primarily identity claims and can be rejected.
+
+---
+
+## Q5. Why use a manual `workflow_dispatch` smoke test workflow instead of running smoke on every PR?
+**A.** To avoid storing/rotating secrets in CI and to avoid PR flakiness due to environment availability.
+
+**Why:** Manual smoke is a controlled “environment sanity check” until secrets management and environment stability mature.
+
+---
+
+## Bonus (DVA-C02 CI/CD): Why pin Node version in GitHub Actions?
+**A.** It makes builds deterministic and reduces failures due to runner image updates.
+
+**Why:** CI should be reproducible; pinning reduces “works yesterday, fails today” drift.

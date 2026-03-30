@@ -482,6 +482,12 @@ export class SicApiStack extends Stack {
       `/aws/lambda/${exportsDomainFn.functionName}`
     );
 
+    const lakeIngestLogGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "LakeIngestFnLogGroup",
+      `/aws/lambda/${lakeIngestFn.functionName}`
+    );
+
     new logs.MetricFilter(this, "AthleteCreateSuccessMetricFilter", {
       logGroup: athletesLogGroup,
       metricNamespace: "SIC/ClubVivo",
@@ -572,6 +578,22 @@ export class SicApiStack extends Stack {
       metricValue: "1",
     });
 
+    new logs.MetricFilter(this, "LakeIngestSuccessMetricFilter", {
+      logGroup: lakeIngestLogGroup,
+      metricNamespace: "SIC/Lake",
+      metricName: "lake_ingest_success",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "lake_ingest_success" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "LakeIngestFailureMetricFilter", {
+      logGroup: lakeIngestLogGroup,
+      metricNamespace: "SIC/Lake",
+      metricName: "lake_ingest_failure",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "lake_ingest_failure" }'),
+      metricValue: "1",
+    });
+
     const athleteCreateFailureMetric = new cloudwatch.Metric({
       namespace: "SIC/ClubVivo",
       metricName: "athlete_create_failure",
@@ -614,6 +636,39 @@ export class SicApiStack extends Stack {
       alarmName: `sic-${envName}-domain-export-no-success-24h`,
       alarmDescription: "No successful domain exports in the last 24 hours",
       metric: domainExportSuccessMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+    });
+
+    const lakeIngestFailureMetric = new cloudwatch.Metric({
+      namespace: "SIC/Lake",
+      metricName: "lake_ingest_failure",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    new cloudwatch.Alarm(this, "LakeIngestFailureAlarm", {
+      alarmName: `sic-${envName}-lake-ingest-failures`,
+      alarmDescription: "Lake ingest failures. See docs/runbooks/lake-ingest-failure.md",
+      metric: lakeIngestFailureMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    const lakeIngestSuccessMetric = new cloudwatch.Metric({
+      namespace: "SIC/Lake",
+      metricName: "lake_ingest_success",
+      period: Duration.hours(24),
+      statistic: "Sum",
+    });
+
+    new cloudwatch.Alarm(this, "LakeIngestNoSuccess24hAlarm", {
+      alarmName: `sic-${envName}-lake-ingest-no-success-24h`,
+      alarmDescription: "No successful lake ingest events in the last 24 hours. See docs/runbooks/lake-ingest-failure.md",
+      metric: lakeIngestSuccessMetric,
       threshold: 1,
       evaluationPeriods: 1,
       comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,

@@ -1,0 +1,27 @@
+# Normalize line endings repo-wide
+* text=auto eol=lf
+
+# GitHub Actions + shell scripts must be LF
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+
+# JS/TS/JSON/MD should be LF for consistent diffs
+*.js text eol=lf
+*.cjs text eol=lf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Windows scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary

@@ -13,6 +13,7 @@ import * as path from "path";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as notifications from "aws-cdk-lib/aws-s3-notifications";
+import * as glue from "aws-cdk-lib/aws-glue";
 
 export interface SicApiStackProps extends StackProps {
   readonly userPoolId: string;
@@ -84,6 +85,99 @@ export class SicApiStack extends Stack {
           expiration: Duration.days(30),
         },
       ],
+    });
+
+    const lakeGlueDatabaseName = `sic_lake_${envName}`;
+
+    new glue.CfnDatabase(this, "LakeGlueDatabase", {
+      catalogId: Stack.of(this).account,
+      databaseInput: {
+        name: lakeGlueDatabaseName,
+      },
+    });
+
+    const bronzeSessionsCrawlerRole = new iam.Role(this, "BronzeSessionsCrawlerRole", {
+      assumedBy: new iam.ServicePrincipal("glue.amazonaws.com"),
+      description: "Least-privilege role for the Glue crawler that catalogs bronze sessions data.",
+    });
+
+    bronzeSessionsCrawlerRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:ListBucket"],
+        resources: [lakeBucket.bucketArn],
+        conditions: {
+          StringLike: {
+            // FIXED: "bonze" -> "bronze"
+            "s3:prefix": ["bronze/sessions/v=1/", "bronze/sessions/v=1/*"],
+          },
+        },
+      })
+    );
+
+    bronzeSessionsCrawlerRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:GetObject"],
+        resources: [lakeBucket.arnForObjects("bronze/sessions/v=1/*")],
+      })
+    );
+
+    bronzeSessionsCrawlerRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "glue:GetDatabase",
+          "glue:GetTable",
+          "glue:CreateTable",
+          "glue:UpdateTable",
+          "glue:GetPartition",
+          "glue:GetPartitions",
+          "glue:BatchCreatePartition",
+        ],
+        resources: [
+          this.formatArn({
+            service: "glue",
+            resource: "database",
+            resourceName: lakeGlueDatabaseName,
+          }),
+          this.formatArn({
+            service: "glue",
+            resource: "table",
+            resourceName: `${lakeGlueDatabaseName}/*`,
+          }),
+        ],
+      })
+    );
+
+    bronzeSessionsCrawlerRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
+        resources: [
+          this.formatArn({
+            service: "logs",
+            resource: "log-group",
+            resourceName: "/aws-glue/crawlers/*",
+          }),
+        ],
+      })
+    );
+
+    new glue.CfnCrawler(this, "BronzeSessionsCrawler", {
+      role: bronzeSessionsCrawlerRole.roleArn,
+      databaseName: lakeGlueDatabaseName,
+      targets: {
+        s3Targets: [
+          {
+            path: `s3://${lakeBucket.bucketName}/bronze/sessions/v=1/`,
+          },
+        ],
+      },
+      tablePrefix: "bronze_sessions_",
+      schemaChangePolicy: {
+        updateBehavior: "UPDATE_IN_DATABASE",
+        deleteBehavior: "LOG",
+      },
+      recrawlPolicy: {
+        recrawlBehavior: "CRAWL_NEW_FOLDERS_ONLY",
+      },
     });
 
     // Lake ingest function

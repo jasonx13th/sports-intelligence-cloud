@@ -1,0 +1,44 @@
+name: CI Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            services/club-vivo/api/package-lock.json
+
+      - name: Install dependencies (Club Vivo API)
+        working-directory: services/club-vivo/api
+        run: npm ci
+
+      - name: Run unit tests (Club Vivo API)
+        run: npm test --prefix services/club-vivo/api
+
+  export-schemas-parse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Parse export schemas (v1)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in datasets/schemas/exports/v1/*.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
+            echo "OK: $f"
+          done

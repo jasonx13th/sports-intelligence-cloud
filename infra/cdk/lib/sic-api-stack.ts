@@ -69,6 +69,16 @@ export class SicApiStack extends Stack {
       autoDeleteObjects: isDev,
     });
 
+    // NEW: Data lake bucket (bronze/silver/gold). App-only access in v1.
+    const lakeBucket = new s3.Bucket(this, "LakeBucket", {
+      bucketName: `sic-data-lake-${envName}-${Stack.of(this).account}-${Stack.of(this).region}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+      autoDeleteObjects: isDev,
+    });
+
     // -----------------------------
     // Lambdas
     // -----------------------------
@@ -388,6 +398,17 @@ export class SicApiStack extends Stack {
     new CfnOutput(this, "SicDomainTableName", {
       value: sicDomainTable.tableName,
       exportName: `SicDomainTableName-${envName}`,
+    });
+
+    // Lake outputs (FIX: use imported CfnOutput, not cdk.CfnOutput)
+    new CfnOutput(this, "LakeBucketName", {
+      value: lakeBucket.bucketName,
+      exportName: `LakeBucketName-${envName}`,
+    });
+
+    new CfnOutput(this, "LakeBucketArn", {
+      value: lakeBucket.bucketArn,
+      exportName: `LakeBucketArn-${envName}`,
     });
 
     // -----------------------------

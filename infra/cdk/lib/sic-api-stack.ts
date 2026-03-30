@@ -12,6 +12,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as notifications from "aws-cdk-lib/aws-s3-notifications";
 
 export interface SicApiStackProps extends StackProps {
   readonly userPoolId: string;
@@ -77,7 +78,49 @@ export class SicApiStack extends Stack {
       enforceSSL: true,
       removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDev,
+      lifecycleRules: [
+        {
+          prefix: "bronze/",
+          expiration: Duration.days(30),
+        },
+      ],
     });
+
+    // Lake ingest function
+    const lakeIngestFn = new lambda.Function(this, "LakeIngestFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "lake-ingest/handler.handler",
+      functionName: `sic-club-vivo-lake-ingest-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(30),
+      environment: {
+        DOMAIN_EXPORT_BUCKET: domainExportBucket.bucketName,
+        LAKE_BUCKET: lakeBucket.bucketName,
+      },
+    });
+
+    domainExportBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED_PUT,
+      new notifications.LambdaDestination(lakeIngestFn),
+      {
+        prefix: "exports/domain/",
+        suffix: ".ndjson",
+      }
+    );
+
+    lakeIngestFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:GetObject", "s3:HeadObject"],
+        resources: [domainExportBucket.arnForObjects("exports/domain/*")],
+      })
+    );
+
+    lakeIngestFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject", "s3:HeadObject"],
+        resources: [lakeBucket.arnForObjects("bronze/*")],
+      })
+    );
 
     // -----------------------------
     // Lambdas

@@ -1,0 +1,24 @@
+name: Smoke Tests (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Base URL for API (e.g. https://xxxx.execute-api.us-east-1.amazonaws.com)"
+        required: true
+      token:
+        description: "Bearer access token (paste securely; avoid sharing publicly)"
+        required: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run smoke tests
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+          TOKEN: ${{ inputs.token }}
+        run: node scripts/smoke/smoke.mjs

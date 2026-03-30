@@ -7,6 +7,12 @@
 - Documented the dataset, partition contract, and crawler expectations.
 - Progress note: ETL and ops will be added in later Week 10 PRs.
 
+## Day 2 — ETL v1 bronze → silver
+
+- Added a Glue ETL job for sessions that reads bronze NDJSON and writes silver Parquet.
+- Added a least-privilege Glue job role scoped to bronze and silver session prefixes.
+- Added ETL documentation and a lightweight path/partition validation test.
+
 ## Validation
 
 - CDK synth and diff should show the new Glue database and crawler.

@@ -128,7 +128,7 @@ This roadmap reflects progress through Week 3 and defines the next build phases 
 
 ---
 
-## WEEK 7 — Domain export contract v1 (lake-ready)
+## WEEK 7 (COMPLETED)— Domain export contract v1 (lake-ready)
 **Goal:** define stable data contracts and export strategy for analytics.
 ### Day 1 — Schema contracts + versioning
 - **Learn:** schema versioning + backward compatibility
@@ -143,7 +143,7 @@ This roadmap reflects progress through Week 3 and defines the next build phases 
 - **Build:** runbook + alarms for export failures and volume anomalies
 - **Evidence:** weekly post
 
-## WEEK 8 — Testing & CI hardening sprint #1
+## WEEK 8 (COMPLETED)— Testing & CI hardening sprint #1
 **Goal:** raise quality bar: automated tests, CI gates, safer deployments.
 ### Day 1 — Unit + contract testing baseline
 - **Learn:** test pyramid for serverless; contract testing
@@ -158,7 +158,7 @@ This roadmap reflects progress through Week 3 and defines the next build phases 
 - **Build:** CI runbook + “how to ship” doc
 - **Evidence:** weekly post
 
-## WEEK 9 — S3 Data Lake foundations (tenant-safe)
+## WEEK 9 (COMPLETED)— S3 Data Lake foundations (tenant-safe)
 **Goal:** tenant-safe data lake layout that supports analytics and ML.
 ### Day 1 — Lake layout + access controls
 - **Learn:** S3 prefixing, bucket policies, least privilege
@@ -173,7 +173,7 @@ This roadmap reflects progress through Week 3 and defines the next build phases 
 - **Build:** runbooks + alarms (access denied, volume anomalies)
 - **Evidence:** weekly post
 
-## WEEK 10 — Glue Catalog + ETL v1
+## WEEK 10 (COMPLETED)— Glue Catalog + ETL v1
 **Goal:** make lake data queryable and transformable.
 ### Day 1 — Glue Catalog basics
 - **Learn:** crawlers, tables, partitions

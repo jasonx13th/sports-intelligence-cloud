@@ -13,6 +13,12 @@
 - Added a least-privilege Glue job role scoped to bronze and silver session prefixes.
 - Added ETL documentation and a lightweight path/partition validation test.
 
+## Day 3 — ETL ops for Glue catalog and job monitoring
+
+- Added CloudWatch alarms for Glue crawler failures and Glue ETL job failures.
+- Added runbooks for Glue crawler failure, ETL job failure, and partition/contract mismatch.
+- Updated progress documentation for Week 10 ops coverage.
+
 ## Validation
 
 - CDK synth and diff should show the new Glue database and crawler.

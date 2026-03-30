@@ -161,7 +161,8 @@ export class SicApiStack extends Stack {
       })
     );
 
-    new glue.CfnCrawler(this, "BronzeSessionsCrawler", {
+    const bronzeSessionsCrawler = new glue.CfnCrawler(this, "BronzeSessionsCrawler", {
+      name: `sic-club-vivo-bronze-sessions-crawler-${envName}`,
       role: bronzeSessionsCrawlerRole.roleArn,
       databaseName: lakeGlueDatabaseName,
       targets: {
@@ -234,8 +235,10 @@ export class SicApiStack extends Stack {
       })
     );
 
+    const lakeEtlJobName = `sic-club-vivo-bronze-to-silver-sessions-${envName}`;
+
     new glue.CfnJob(this, "BronzeToSilverSessionsJob", {
-      name: `sic-club-vivo-bronze-to-silver-sessions-${envName}`,
+      name: lakeEtlJobName,
       role: bronzeToSilverSessionsJobRole.roleArn,
       command: {
         name: "glueetl",
@@ -843,6 +846,44 @@ export class SicApiStack extends Stack {
       evaluationPeriods: 1,
       comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
       treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+    });
+
+    const glueCrawlerFailureMetric = new cloudwatch.Metric({
+      namespace: "AWS/Glue",
+      metricName: "CrawlerRunsFailed",
+      dimensionsMap: {
+        CrawlerName: bronzeSessionsCrawler.ref,
+      },
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    new cloudwatch.Alarm(this, "BronzeSessionsCrawlerFailureAlarm", {
+      alarmName: `sic-${envName}-glue-crawler-failures`,
+      alarmDescription: "Glue crawler failure count for bronze sessions. See docs/runbooks/glue-crawler-failure.md",
+      metric: glueCrawlerFailureMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    const glueEtlJobFailureMetric = new cloudwatch.Metric({
+      namespace: "AWS/Glue",
+      metricName: "JobsFailed",
+      dimensionsMap: {
+        JobName: lakeEtlJobName,
+      },
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    new cloudwatch.Alarm(this, "BronzeToSilverSessionsJobFailureAlarm", {
+      alarmName: `sic-${envName}-glue-etl-job-failures`,
+      alarmDescription: "Glue ETL job failures for bronze-to-silver sessions. See docs/runbooks/etl-job-failure.md",
+      metric: glueEtlJobFailureMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
     // -----------------------------

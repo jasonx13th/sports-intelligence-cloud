@@ -23,6 +23,7 @@ Use Postman in VS Code as the primary API contract validation tool for SIC.
 3. Protected folders use `Bearer {{accessToken}}`
 
 ## Validated requests
+- `GET /me`
 - `GET /sessions`
 - `GET /sessions/{sessionId}`
 - `POST /sessions`
@@ -45,6 +46,8 @@ Use Postman in VS Code as the primary API contract validation tool for SIC.
 - In the invalid-body test only, `tenantId` is intentionally included to prove the API rejects client-supplied tenant-like fields.
 
 ## Expected security behavior
+- Valid `GET /me` returns `200 OK`
+- `GET /me` response includes `ok`, `userId`, `tenantId`, `role`, and `tier`
 - Missing auth returns `401 Unauthorized`
 - Invalid session id returns `404 Not Found`
 - Valid `POST /session-packs` returns `201 Created`

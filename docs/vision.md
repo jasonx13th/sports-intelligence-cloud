@@ -1,151 +1,188 @@
 # Sports Intelligence Cloud (SIC) Vision
 
-Sports Intelligence Cloud (SIC) is a multi tenant, cloud native platform that helps clubs, schools, municipalities, and individual coaches turn everyday sports and mobility data into actionable insights, while preserving clear data ownership and staying operationally lightweight and price accessible through tiered plans, with subsidised options for low resource contexts.
+Sports Intelligence Cloud (SIC) is a multi-tenant, cloud-native sports platform that begins with practical tools for coaches and evolves into a broader operating system for sports organizations.
+
+SIC is designed to help coaches, clubs, academies, and sports programs run better workflows, retain institutional knowledge, and build toward more intelligent decision-making over time.
 
 ---
 
 ## 1. Mission
 
-Give sports communities true ownership and intelligence over their data.
+Help sports communities plan better, operate better, and own their data with secure, accessible, and intelligence-ready software.
 
-SIC turns training, competition, wellness, and mobility signals into actionable insights that keep people active longer, safer, and happier without requiring a dedicated IT or data team.
-
----
-
-## 2. Target Users (Who SIC is for)
-
-SIC serves four primary user groups:
-
-- **Sports Clubs and Academies**  
-  Centralise long term athlete development history across seasons, regardless of coach turnover or tooling changes.
-
-- **Individual Coaches and Practitioners**  
-  Run a lightweight mini platform to plan sessions, track athletes, and organise data without high costs or complex setup.
-
-- **Schools and Educational Programs**  
-  Monitor participation, wellbeing, and risk with low operational overhead and clear role based access.
-
-- **Municipalities and Public Sector Partners**  
-  Generate geospatial and social impact insights from route and participation data to support policy, investment, and tourism decisions.
+SIC begins by solving practical day-to-day coaching problems and grows toward a platform that supports long-term development, organizational continuity, and responsible AI-driven insight.
 
 ---
 
-## 3. Product Pillars (What SIC delivers)
+## 2. Product Direction
 
-SIC is one platform with three core product pillars built on a shared serverless, multi tenant AWS foundation.
+SIC is being built in stages.
 
-### 3.1 Club Vivo (Club and Coach Data Ownership)
+### Stage 1 — Coach-first product
+The first product focus is helping coaches create and run sessions under real-world constraints such as:
 
-**Vision:** Make the club or training environment, not individual apps, the long term owner of athlete data, while still supporting independent coaches without a formal organisation.
+- player count
+- age and level
+- time available
+- field or space limitations
+- equipment available
+- training objective
 
-**Capabilities**
-- Multi tenant org structure:
-  - Club and academy tenants: `club -> teams -> athletes`
-  - Solo coach tenants: `coach -> groups -> athletes`
-- Centralised tracking: attendance, training load, wellness, injuries, participation history.
-- Role based access: admins, coaches, medical staff, optional family views.
-- Dashboards and season reports for training and resource decisions.
+This entry point is the **Session Builder**.
 
-**Outcome**
-- Clubs retain athlete history over years and reduce data loss from staff and tool changes.
-- Solo coaches get a structured workspace without needing an IT team.
+### Stage 2 — Team workflows
+Once coaches can reliably create and reuse sessions, SIC expands into lightweight team workflows such as:
+
+- team session assignment
+- attendance
+- session history
+- simple planning views
+
+### Stage 3 — Club and academy workflows
+As usage grows, SIC expands into organization-level workflows such as:
+
+- multi-coach environments
+- shared session libraries
+- club templates
+- organization-owned history
+- basic governance and continuity
+
+### Stage 4 — Sports Organization OS
+Long term, SIC can evolve into a broader platform for clubs, academies, NGOs, schools, and sports programs that need one operational system across coaching, planning, reporting, and organizational processes.
+
+### Stage 5 — Intelligence layer
+AI and ML remain part of SIC’s long-term direction, but only after real workflows and structured data exist.
+
+This includes things like:
+
+- training insights
+- progression summaries
+- coach-ready narrative reporting
+- future risk and development models
 
 ---
 
-### 3.2 Athlete Evolution AI (Intelligence and Risk Management)
+## 3. Primary Users
 
-**Vision:** Provide early warning signals and development insights so coaches can act before dropout or injury happens.
+SIC currently prioritizes:
 
-**Capabilities**
-- Predict athlete dropout risk in the next 60 to 90 days.
-- Estimate injury and overload risk from load, recovery, and history.
-- Track progression curves and benchmarks across seasons.
-- Provide explainable outputs and coach friendly narratives that show why risk is rising.
+- individual coaches
+- assistant coaches
+- small academies
+- clubs with multiple coaches
 
-**Outcome**
-- Coaches move from intuition only to evidence supported decisions that improve retention, safety, and fairness.
+Over time, SIC can support:
 
----
+- larger academies
+- sports organizations
+- schools and NGOs
+- structured development programs
 
-### 3.3 Ruta Viva (Geospatial and Community Impact Analytics)
-
-**Vision:** Turn cycling routes and mobility data into evidence of health, tourism, and economic impact.
-
-**Capabilities**
-- Ingest ride telemetry in GPX or CSV and map to routes and geofences.
-- Analyse route usage, intensity, rider segments, and time patterns.
-- Generate municipality ready reports for infrastructure and tourism planning.
-- Provide geospatial dashboards and story driven stakeholder outputs.
-
-**Outcome**
-- Cities justify investments in active mobility using real data, not anecdotes.
+At this stage, municipalities and mobility analytics are **not** the active product focus.
 
 ---
 
 ## 4. Core Problems SIC Solves
 
-1. **Athlete data fragmentation**  
-   Today: data is scattered across chats, spreadsheets, notebooks, and single purpose apps.  
-   SIC: a unified multi tenant system with clear ownership and durable storage.
+### 4.1 Coaches lose time planning sessions
+Many coaches still rely on scattered notes, memory, chats, or generic templates.
 
-2. **Dropout risk in youth sports**  
-   Today: athletes disappear without warning.  
-   SIC: predicts risk and surfaces early interventions.
+SIC helps coaches turn constraints into a practical session they can actually run.
 
-3. **Injury and overload risk without visibility**  
-   Today: load, wellness, and injury history is rarely analysed systematically.  
-   SIC: aggregates signals, produces risk scores, and explains drivers.
+### 4.2 Good coaching knowledge is not retained
+Sessions, adjustments, and practical lessons often disappear over time.
 
-4. **Lack of route and mobility analytics for cities**  
-   Today: limited evidence for usage and impact.  
-   SIC: ingests geospatial telemetry and produces actionable metrics.
+SIC helps store, reuse, and improve that knowledge.
 
-5. **Manual, time consuming impact reporting**  
-   Today: clubs and NGOs compile sponsor and municipality reports by hand.  
-   SIC: curated data lake plus AI assisted narrative generation.
+### 4.3 Clubs lose continuity when staff changes
+Training ideas, athlete context, and program consistency are often tied to individuals instead of the organization.
 
-6. **Limited access to affordable analytics and AI**  
-   Today: small orgs cannot hire data teams and solo coaches have little access.  
-   SIC: cost aware multi tenant SaaS patterns with secure defaults and accessible tiers.
+SIC helps clubs move toward durable organizational knowledge.
 
----
+### 4.4 Teams and clubs lack lightweight systems
+Many organizations are too small for expensive, complex software but still need structure.
 
-## 5. Engineering Guardrails (Non negotiables)
+SIC aims to provide secure and practical tools without requiring a full IT team.
 
-- **Multi tenant first:** every request is bound to a verified tenant context, with isolation enforced at auth, API, app logic, and data and storage layers.
-- **Serverless first:** prefer managed AWS services such as Lambda, API Gateway, DynamoDB, S3, Glue, and SageMaker to minimise operational load.
-- **ML lifecycle completeness:** data quality, evaluation, deployment, monitoring, drift detection, and retraining are required for production models.
-- **Security and observability by default:** encryption, least privilege IAM, structured logging, metrics, and alarms are part of done.
-- **Accessibility by design:** features and pricing must support low resource contexts without weakening security or data quality.
+### 4.5 AI and analytics are often added too early or without structure
+SIC takes the opposite approach.
+
+The platform first creates structured workflows and then introduces intelligence features on top of real usage and validated data.
 
 ---
 
-## 6. Tenant Types and Onboarding (Conceptual)
+## 5. Current Product Wedge
 
-SIC models access around tenants, each with a unique tenant identifier, running on shared infrastructure.
+The first active wedge is the **SIC Session Builder**.
 
-- **Solo coach tenant (`tenant_type="solo-coach"`)**
-  - Low friction self sign up.
-  - Primary user acts as both admin and coach for the tenant.
+Its job is simple:
 
-- **Club and organisation tenant (`tenant_type="club"`)**
-  - Create club or academy onboarding, optional verification.
-  - First user is an admin who can invite staff such as coaches and medical staff.
+- collect coach environment and constraints
+- generate a structured training session
+- support quick edits
+- save sessions for reuse
+- export a session pack
+- later connect that work to teams and clubs
 
-Both tenant types:
-- Use a shared identity system with tenant claims and role based groups.
-- Enforce isolation deterministically at auth, API, and data layers.
-
----
-
-## 7. Sustainable Access (Pricing Philosophy)
-
-SIC is designed to be sustainably priced so the platform can remain reliable and improve over time.
-
-We use tiered plans aligned to tenant types such as solo coach, club or school, and municipality, with predictable usage limits on compute heavy features. Low resource contexts are supported through subsidised tiers, sponsored seats, and program partnerships without compromising security, data isolation, or quality.
+This wedge matters because it creates immediate value for coaches while also laying the data foundation for future SIC features.
 
 ---
 
-## 8. Long term Vision
+## 6. Platform Principles That Shape the Vision
 
-SIC becomes the default AI and ML platform for community sports and active mobility, enabling any club, city, or coach, regardless of budget, to make high quality decisions that improve participation, safety, and community wellbeing.
+SIC is built around a few non-negotiable ideas:
+
+- multi-tenant by design
+- fail-closed tenant isolation
+- tenant context derived only from verified authentication
+- serverless-first architecture
+- minimal but real observability
+- security by default
+- cost-aware design
+- product value before platform expansion
+
+These are not just technical choices. They shape what SIC is allowed to become and how it grows.
+
+---
+
+## 7. Tenant Model
+
+SIC is organized around tenants running on shared infrastructure.
+
+### Solo coach tenant
+A single coach or small independent practitioner can use SIC with low friction and limited setup.
+
+### Club or academy tenant
+A sports organization can onboard multiple coaches and teams while keeping data ownership and organizational continuity.
+
+In both cases:
+
+- tenant boundaries are enforced server-side
+- tenant identity is never trusted from client input
+- tiering affects capabilities, not isolation
+
+---
+
+## 8. Pricing Philosophy
+
+SIC is intended to stay operationally lightweight and cost-aware.
+
+The platform should be accessible to smaller sports environments while still supporting sustainable growth.
+
+That means:
+
+- simple tiers
+- predictable usage boundaries
+- server-side entitlements
+- future premium capabilities for organization workflows
+- no weakening of security or data isolation to lower cost
+
+---
+
+## 9. Long-Term Vision
+
+Long term, SIC aims to become a trusted sports platform where coaching workflows, team operations, organizational continuity, and intelligence features are connected in one system.
+
+The goal is not to build every capability at once.
+
+The goal is to grow from a useful coach product into a durable platform for sports organizations, one thin and valuable layer at a time.

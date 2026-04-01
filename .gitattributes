@@ -6,7 +6,7 @@
 *.yaml text eol=lf
 *.sh text eol=lf
 
-# JS/TS/JSON/MD should be LF for consistent diffs
+# JS / TS / JSON / docs should be LF for consistent diffs
 *.js text eol=lf
 *.cjs text eol=lf
 *.mjs text eol=lf
@@ -25,3 +25,5 @@
 *.jpeg binary
 *.gif binary
 *.pdf binary
+*.zip binary
+*.ico binary

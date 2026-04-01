@@ -1,60 +1,156 @@
 # Sports Intelligence Cloud
 
-Monorepo for the Sports Intelligence Cloud (SIC) platform.
+Sports Intelligence Cloud (SIC) is a multi-tenant, serverless sports platform on AWS.
 
-## Portfolio highlight
+SIC starts with **coach workflow tools** that help coaches create and run training sessions under real-world constraints. Over time, it is designed to evolve into a **Sports Organization OS** for clubs, academies, and sports programs.
 
-Sports Intelligence Cloud (SIC) is a multi-tenant, serverless AI and analytics platform on AWS for clubs, schools, municipalities, and individual coaches.
+This repository is both:
 
-This portfolio highlight focuses on making serverless APIs predictable under pressure:
+- a real product build in progress
+- a cloud and AI engineering portfolio project
 
-- Consistent error responses across every endpoint
-- Clear guidance on what to do next: fix it or retry it
-- Fail-closed access to protect multi-tenant boundaries
-- Idempotent writes to prevent duplicate payments and registrations
-- Correlation IDs for fast support tracing and operations visibility
+---
 
-If you only read two docs, start here:
+## Current Product Focus
 
-- Error contract and response envelope: [`docs/errors/`](docs/errors/)
-- Tenant identity and claims: [`docs/architecture/tenant-claim-contract.md`](docs/architecture/tenant-claim-contract.md)
+SIC is currently focused on the **Session Builder** as its first product wedge.
 
-More context:
+The goal is to help coaches:
 
+- generate training sessions from real constraints
+- save and reuse sessions
+- export session packs
+- organize work by team over time
+- provide lightweight feedback signals for future intelligence features
+
+Current expansion path:
+
+1. Coach Session Builder
+2. Coach Workspace
+3. Team Layer
+4. Club Layer
+5. Sports Organization OS foundations
+6. Intelligence features built on real usage data
+
+---
+
+## Why SIC Exists
+
+Coaches and sports organizations often work with fragmented tools, scattered notes, spreadsheets, chats, and inconsistent workflows.
+
+SIC aims to solve this by creating a platform where:
+
+- coaches can plan and run training more easily
+- clubs can retain institutional knowledge over time
+- organizations can own their data instead of losing it when staff changes
+- future AI and ML features can be built on structured, trustworthy workflows
+
+---
+
+## Architecture Direction
+
+SIC is being built with the following non-negotiable platform principles:
+
+- multi-tenant by design
+- fail-closed tenant isolation
+- tenant context derived only from verified auth
+- serverless-first architecture
+- minimal but real observability
+- cost-aware service selection
+- product value before platform expansion
+
+The active near-term AWS service set is intentionally small:
+
+- Cognito
+- API Gateway
+- Lambda
+- DynamoDB
+- S3
+- CloudWatch
+- optional limited Bedrock usage
+
+This keeps SIC low-cost, operationally simple, and realistic for a solo builder.
+
+---
+
+## Repo Highlights
+
+This repository demonstrates:
+
+- multi-tenant SaaS design
+- fail-closed authorization patterns
+- tenant-safe DynamoDB access patterns
+- structured logging and observability
+- export workflows
+- product-first architecture sequencing
+- AI-assisted feature design with validation guardrails
+
+---
+
+## Current Documentation
+
+Start here:
+
+- Vision: [`docs/vision.md`](docs/vision.md)
 - Architecture principles: [`docs/architecture/SIC architecture principles.md`](docs/architecture/SIC%20architecture%20principles.md)
+- Tenant claim contract: [`docs/architecture/tenant-claim-contract.md`](docs/architecture/tenant-claim-contract.md)
 - Architecture diagrams: [`docs/architecture/SIC Architecture Diagrams.md`](docs/architecture/SIC%20Architecture%20Diagrams.md)
+- Product spec: [`docs/product/SIC-session-builder.md`](docs/product/SIC-session-builder.md)
+- Active roadmap: [`docs/progress/Build-Progress/roadmap-vnext.md`](docs/progress/Build-Progress/roadmap-vnext.md)
 
-### Public safety note (sanitized repo)
+---
 
-This repository is sanitized for public sharing:
+## Public Repo Safety Note
+
+This repository is sanitized for public sharing.
+
 - No secrets or credentials are stored in the repo
 - No real customer data is included
-- Infrastructure-specific identifiers (e.g., AWS account IDs, API Gateway IDs, Cognito identifiers, user identifiers) have been redacted
-- Git history was rewritten to remove previously committed sensitive identifiers; documentation examples use placeholders (e.g., `<api-id>`, `<region>`, `<JWT>`, `<redacted-account-id>`)
-
-## Mission & Users
-
-Sports Intelligence Cloud (SIC) helps **clubs, schools, municipalities and individual coaches** own and control their sports data and turn it into actionable insights.
-
-Main users:
-
-- Sports clubs and academies
-- Individual coaches and practitioners (solo coach workspaces)
-- Schools and NGO sports programmes
-- Municipalities and public sector partners
-
-SIC is designed as a **multi-tenant, serverless, AI & ML platform** on AWS.
+- Infrastructure-specific identifiers are redacted
+- Documentation examples use placeholders where needed
 
 ---
 
-## Docs
+## Strategic Positioning
 
-- **Vision:** [`docs/vision.md`](docs/vision.md)
+SIC is not being built as a full-scale startup all at once.
+
+The current strategy is:
+
+- job-first
+- product-first
+- low-cost
+- architecture-strong
+- AI/ML ready over time
+
+That means the platform is intentionally evolving through thin, usable vertical slices instead of building full analytics, MLOps, or organization-wide infrastructure too early.
 
 ---
 
-## Pillars
+## Long-Term Direction
 
-- **Club Vivo** – club and coach centric data ownership and athlete history (multi-tenant tenants: clubs, schools, solo coach workspaces)
-- **Athlete Evolution AI** – dropout and injury risk intelligence
-- **Ruta Viva** – geospatial mobility and community impact analytics
+Long term, SIC is intended to evolve from coach tools into a broader platform for:
+
+- teams
+- clubs
+- academies
+- sports organizations
+
+AI and ML remain important to SIC, but they are introduced in stages, grounded in real workflows and real data rather than premature infrastructure.
+
+---
+
+## Portfolio Context
+
+SIC is also part of a long-term AWS and AI engineering journey.
+
+It is being used to deepen practical skills across:
+
+- AWS Developer
+- AI Practitioner
+- AI / ML Engineering
+- platform design
+- secure multi-tenant architecture
+- observability and cost discipline
+
+---

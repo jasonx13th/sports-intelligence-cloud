@@ -79,52 +79,36 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/sessions"
-            },
-            "description": "List sessions for the authenticated tenant. Uses bearer auth from {{accessToken}}."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Authenticated sessions list returns 200\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
             }
-          ]
+          },
+          "response": []
         },
         {
           "name": "GET /sessions - no auth",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/sessions"
-            },
-            "description": "Verify missing auth returns 401 Unauthorized."
-          },
-          "response": [],
-          "auth": {
-            "type": "noauth"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Missing auth returns 401\", function () {",
-                  "    pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
             }
-          ]
+          },
+          "response": []
         },
         {
           "name": "GET /sessions/{sessionId}",
@@ -132,9 +116,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/sessions/{{sessionId}}"
-            },
-            "description": "Fetch a session by id. Set {{sessionId}} in the environment before running."
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}"
+              ]
+            }
           },
           "response": []
         },
@@ -144,35 +134,23 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/sessions/00000000-0000-0000-0000-000000000000"
-            },
-            "description": "Invalid session id validation of 404 behavior."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Invalid session id returns 404\", function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});"
-                ]
-              }
+              "raw": "{{baseUrl}}/sessions/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "00000000-0000-0000-0000-000000000000"
+              ]
             }
-          ]
+          },
+          "response": []
         },
         {
           "name": "POST /sessions",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "body": {
               "mode": "raw",
               "raw": "{\r\n  \"sport\": \"soccer\",\r\n  \"ageBand\": \"u14\",\r\n  \"durationMin\": 45,\r\n  \"objectiveTags\": [\"pressing\"],\r\n  \"activities\": [\r\n    {\r\n      \"name\": \"Warm-up\",\r\n      \"description\": \"Dynamic movement prep\",\r\n      \"minutes\": 10\r\n    },\r\n    {\r\n      \"name\": \"Pressing game\",\r\n      \"description\": \"Small-sided pressing exercise\",\r\n      \"minutes\": 20\r\n    },\r\n    {\r\n      \"name\": \"Conditioned game\",\r\n      \"description\": \"Finish with an 8v8 conditioned game\",\r\n      \"minutes\": 15\r\n    }\r\n  ]\r\n}",
@@ -183,24 +161,168 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/sessions"
-            },
-            "description": "Create a session with authenticated tenant context. Do not include tenant_id or tenantId in the request body."
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            }
           },
-          "response": [],
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{accessToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Session Packs",
+      "item": [
+        {
+          "name": "POST /session-packs",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Session creation returns 200 or 201\", function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "pm.test(\"status is 201\", function () {\r",
+                  "  pm.response.to.have.status(201);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has pack\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"pack\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"pack has core fields\", function () {\r",
+                  "  pm.expect(json.pack).to.have.property(\"packId\");\r",
+                  "  pm.expect(json.pack).to.have.property(\"createdAt\");\r",
+                  "  pm.expect(json.pack).to.have.property(\"sport\", \"soccer\");\r",
+                  "  pm.expect(json.pack).to.have.property(\"ageBand\", \"u14\");\r",
+                  "  pm.expect(json.pack).to.have.property(\"durationMin\", 60);\r",
+                  "  pm.expect(json.pack).to.have.property(\"theme\", \"pressing\");\r",
+                  "  pm.expect(json.pack).to.have.property(\"sessionsCount\", 3);\r",
+                  "  pm.expect(json.pack).to.have.property(\"sessions\");\r",
+                  "  pm.expect(json.pack.sessions).to.be.an(\"array\");\r",
                   "});"
-                ]
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sport\": \"soccer\",\r\n  \"ageBand\": \"u14\",\r\n  \"durationMin\": 60,\r\n  \"theme\": \"pressing\",\r\n  \"sessionsCount\": 3\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/session-packs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "session-packs"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /session-packs - invalid body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 400\", function () {\r",
+                  "  pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error shape exists\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"platform.bad_request\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"unknown field is tenantId\", function () {\r",
+                  "  pm.expect(json.error).to.have.property(\"details\");\r",
+                  "  pm.expect(json.error.details).to.have.property(\"unknown\");\r",
+                  "  pm.expect(json.error.details.unknown).to.include(\"tenantId\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sport\": \"soccer\",\r\n  \"ageBand\": \"u14\",\r\n  \"durationMin\": 60,\r\n  \"theme\": \"pressing\",\r\n  \"sessionsCount\": 3,\r\n  \"tenantId\": \"should-not-be-here\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/session-packs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "session-packs"
+              ]
+            }
+          },
+          "response": []
         }
       ],
       "auth": {

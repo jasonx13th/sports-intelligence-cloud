@@ -1,0 +1,64 @@
+{
+	"id": "40aba74d-b662-40e0-a70f-a3d0bbb3b5b0",
+	"name": "local.template",
+	"values": [
+		{
+			"key": "baseUrl",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "region",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "userPoolId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "userPoolClientId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "username",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "password",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "idToken",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "sessionId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"color": null,
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2026-04-01T18:29:40.282Z",
+	"_postman_exported_using": "Postman/12.4.3-260401-0231"
+}

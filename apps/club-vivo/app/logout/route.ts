@@ -1,19 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const ACCESS_COOKIE = "sic_access_token";
+import { clearAuthCookies } from "../../lib/auth";
 
-export async function GET(request: Request) {
-  const response = NextResponse.redirect(new URL("/login", request.url));
-
-  response.cookies.set({
-    name: ACCESS_COOKIE,
-    value: "",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0
-  });
+export async function GET(request: NextRequest) {
+  const response = NextResponse.redirect(new URL("/login?loggedOut=1", request.url));
+  clearAuthCookies(response);
 
   return response;
 }

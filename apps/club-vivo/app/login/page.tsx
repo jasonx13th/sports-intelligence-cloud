@@ -2,13 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 type LoginPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     loggedOut?: string;
-  };
+  }>;
 };
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  if (searchParams?.loggedOut !== "1") {
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+
+  if (resolvedSearchParams?.loggedOut !== "1") {
     redirect("/login/start");
   }
 

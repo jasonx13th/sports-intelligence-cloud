@@ -6,6 +6,10 @@ const { parseJsonBody } = require("../_lib/parse-body");
 const { SessionRepository } = require("../_lib/session-repository");
 const { createSessionPdfBuffer } = require("../_lib/session-pdf");
 const { createSessionPdfStorage } = require("../_lib/session-pdf-storage");
+const {
+  persistSession,
+  exportPersistedSession,
+} = require("../_lib/session-builder-pipeline");
 const { validateCreateSession } = require("../_lib/session-validate");
 const { BadRequestError, NotFoundError, InternalError } = require("../_lib/errors");
 
@@ -88,6 +92,8 @@ function createSessionsInner({
   getSessionRepoFn = getSessionRepo,
   createSessionPdfBufferFn = createSessionPdfBuffer,
   getSessionPdfStorageFn = getSessionPdfStorage,
+  persistSessionFn = persistSession,
+  exportPersistedSessionFn = exportPersistedSession,
 } = {}) {
   return async function inner({ event, tenantCtx, logger }) {
     const rk = routeKey(event);
@@ -122,14 +128,18 @@ function createSessionsInner({
         });
       }
 
-      const result = await getSessionRepoFn().createSession(tenantCtx, sessionInput);
+      const persistResult = await persistSessionFn({
+        tenantCtx,
+        normalizedInput: sessionInput,
+        sessionRepository: getSessionRepoFn(),
+      });
 
       logger.info("session_created", "session created", {
         http: { statusCode: 201 },
-        resource: { entityType: "SESSION", entityId: result.session?.sessionId },
+        resource: { entityType: "SESSION", entityId: persistResult.persistedSession?.sessionId },
       });
 
-      return json(201, result);
+      return json(201, { session: persistResult.persistedSession });
     }
 
     // -------------------------
@@ -182,27 +192,21 @@ function createSessionsInner({
         });
       }
 
-      let url;
-      let expiresInSeconds;
-
       try {
-        const pdfBuffer = createSessionPdfBufferFn({
-          tenantId: tenantCtx.tenantId,
-          session,
+        const exportPipelineResult = await exportPersistedSessionFn({
+          tenantCtx,
+          persistedSession: session,
+          sessionId,
+          createSessionPdfBufferFn,
+          sessionPdfStorage: getSessionPdfStorageFn(),
         });
 
-        const storage = getSessionPdfStorageFn();
-
-        await storage.putSessionPdf({
-          tenantId: tenantCtx.tenantId,
-          sessionId,
-          pdfBuffer,
+        logger.info("session_pdf_exported", "session pdf exported", {
+          http: { statusCode: 200 },
+          resource: { entityType: "SESSION", entityId: sessionId },
         });
 
-        ({ url, expiresInSeconds } = await storage.presignSessionPdfGet({
-          tenantId: tenantCtx.tenantId,
-          sessionId,
-        }));
+        return json(200, exportPipelineResult.exportResult);
       } catch (err) {
         logger.error("pdf_export_failed", "pdf export failed", err, {
           http: { method: getHttpMethod(event), path: getRequestPath(event) },
@@ -211,13 +215,6 @@ function createSessionsInner({
         });
         throw err;
       }
-
-      logger.info("session_pdf_exported", "session pdf exported", {
-        http: { statusCode: 200 },
-        resource: { entityType: "SESSION", entityId: sessionId },
-      });
-
-      return json(200, { url, expiresInSeconds });
     }
 
     // Ensure baseline env for non-pdf routes

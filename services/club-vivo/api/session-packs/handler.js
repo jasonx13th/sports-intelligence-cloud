@@ -3,8 +3,7 @@
 
 const { withPlatform } = require("../_lib/with-platform");
 const { parseJsonBody } = require("../_lib/parse-body");
-const { generatePack } = require("../_lib/session-pack-templates");
-const { validateCreateSessionPack } = require("../_lib/session-pack-validate");
+const { processSessionPackRequest } = require("../_lib/session-builder-pipeline");
 const { BadRequestError, NotFoundError, InternalError } = require("../_lib/errors");
 
 function assertEnv() {
@@ -35,59 +34,71 @@ function routeKey(event) {
   return `${method} ${path}`;
 }
 
-async function inner({ event, tenantCtx, logger }) {
-  assertEnv();
+function createSessionPacksInner({
+  processSessionPackFn = processSessionPackRequest,
+} = {}) {
+  return async function inner({ event, tenantCtx, logger }) {
+    assertEnv();
 
-  const rk = routeKey(event);
+    const rk = routeKey(event);
 
-  // -------------------------
-  // POST /session-packs
-  // -------------------------
-  if (rk === "POST /session-packs") {
-    let body;
-    try {
-      body = parseJsonBody(event);
-    } catch (e) {
-      throw new BadRequestError({
-        code: e?.code || "platform.bad_request",
-        message: "Bad request",
-        details: e?.details || {},
-        cause: e,
+    // -------------------------
+    // POST /session-packs
+    // -------------------------
+    if (rk === "POST /session-packs") {
+      let body;
+      try {
+        body = parseJsonBody(event);
+      } catch (e) {
+        throw new BadRequestError({
+          code: e?.code || "platform.bad_request",
+          message: "Bad request",
+          details: e?.details || {},
+          cause: e,
+        });
+      }
+
+      let pipelineResult;
+      try {
+        pipelineResult = processSessionPackFn(body);
+      } catch (e) {
+        if (e?.statusCode === 400) {
+          throw new BadRequestError({
+            code: "platform.bad_request",
+            message: "Bad request",
+            details: e?.details || {},
+            cause: e,
+          });
+        }
+        throw e;
+      }
+
+      const pack = pipelineResult.validatedPack;
+
+      logger.info("pack_generated_success", "session pack generated", {
+        http: { statusCode: 201 },
+        tenant: { tenantId: tenantCtx?.tenantId, role: tenantCtx?.role, tier: tenantCtx?.tier },
+        pack: { packId: pack.packId, sessionsCount: pack.sessionsCount, theme: pack.theme },
       });
+
+      return json(201, { pack });
     }
 
-    let packReq;
-    try {
-      packReq = validateCreateSessionPack(body);
-    } catch (e) {
-      throw new BadRequestError({
-        code: "platform.bad_request",
-        message: "Bad request",
-        details: e?.details || {},
-        cause: e,
-      });
-    }
-
-    const pack = generatePack(packReq);
-
-    logger.info("pack_generated_success", "session pack generated", {
-      http: { statusCode: 201 },
-      tenant: { tenantId: tenantCtx?.tenantId, role: tenantCtx?.role, tier: tenantCtx?.tier },
-      pack: { packId: pack.packId, sessionsCount: pack.sessionsCount, theme: pack.theme },
+    logger.warn("route_not_found", "route not found", {
+      http: { statusCode: 404 },
+      route: rk,
     });
 
-    return json(201, { pack });
-  }
-
-  logger.warn("route_not_found", "route not found", {
-    http: { statusCode: 404 },
-    route: rk,
-  });
-
-  throw new NotFoundError({
-    code: "platform.not_found",
-    message: "Not found",
-  });
+    throw new NotFoundError({
+      code: "platform.not_found",
+      message: "Not found",
+    });
+  };
 }
 
-exports.handler = withPlatform(inner);
+const inner = createSessionPacksInner();
+
+module.exports = {
+  handler: withPlatform(inner),
+  createSessionPacksInner,
+};

@@ -46,34 +46,68 @@ Lambda Services
 ## 2) Session Builder request flow
 
 ```text
-Coach enters session constraints
+Coach / Client
   |
   v
-Web App sends authenticated request
+Send authenticated request
   |
   v
-API Gateway
+API Gateway + verified auth context
   |
   v
-Lambda builds tenant context
+Lambda handler builds tenantContext from verified claims + entitlements
   |
-  v
-Normalize and validate input
+  +--> POST /session-packs
+  |      |
+  |      v
+  |    session-packs handler
+  |      |
+  |      v
+  |    session-builder-pipeline
+  |      |
+  |      +--> normalize input
+  |      +--> generate pack from templates
+  |      +--> validate generated pack
+  |      |
+  |      v
+  |    Return validated pack
   |
-  +--> Optional AI generation step
+  +--> POST /sessions
+  |      |
+  |      v
+  |    sessions handler
+  |      |
+  |      +--> validate request
+  |      +--> persist stage
+  |      |
+  |      v
+  |    Session repository
+  |      |
+  |      v
+  |    DynamoDB (tenant-scoped session data)
+  |      |
+  |      v
+  |    Return persisted session
   |
-  v
-Validate structured session output
-  |
-  +--> Save session to DynamoDB
-  |
-  +--> Export PDF to S3 (optional)
-  |
-  v
-Return session pack to coach
+  +--> GET /sessions/{sessionId}/pdf
+         |
+         v
+       sessions handler
+         |
+         +--> tenant-scoped session read
+         +--> export stage
+         |
+         v
+       Session repository --> DynamoDB
+         |
+         v
+       PDF helpers --> S3 tenant-scoped PDF object
+         |
+         v
+       Return presigned PDF URL
 ```
 
-**Key idea:** AI can assist generation, but validation and tenant safety remain deterministic.
+**Key idea:** Week 11 uses explicit internal stages for generate, persist, and export while keeping tenant scope server-derived and all data access tenant-scoped by construction.
 
 ---
 

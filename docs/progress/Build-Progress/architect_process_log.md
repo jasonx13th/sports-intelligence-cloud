@@ -15,6 +15,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 8](#week-8)
 - [Week 9](#week-9)
 - [Week 10](#week-10)
+- [Week 11](#week-11)
 
 ## Week 0
 
@@ -363,3 +364,49 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Expand catalog + ETL coverage to additional datasets.
 - Add scheduling if “no success in 24h” alarms are desired/meaningful.
 - Add DQ metrics (row counts, schema drift) per dataset.
+
+
+## Week 11 — Session Builder hardening
+
+### Goals
+- Stabilize the Session Builder into a production-ready MVP core.
+- Freeze the coach-facing API contract, harden validation, and make the runtime pipeline explicit.
+
+### Work completed
+- Frozen Session Builder v1 API contract covering:
+  - `POST /session-packs`
+  - `POST /sessions`
+  - `GET /sessions`
+  - `GET /sessions/{sessionId}`
+  - `GET /sessions/{sessionId}/pdf`
+- Hardened validation behavior for:
+  - duration totals
+  - supported `ageBand` values
+  - narrow deterministic equipment compatibility
+- Made the internal coach-facing runtime pipeline explicit across existing endpoints:
+  - `POST /session-packs` = normalize → generate → validate
+  - `POST /sessions` = persist
+  - `GET /sessions/{sessionId}/pdf` = export
+- Added architecture and demo evidence documenting the Week 11 runtime and request flow.
+
+### Tenancy/security checks
+- No request contract accepts `tenant_id`, `tenantId`, or `x-tenant-id`.
+- Tenant scope remains server-derived from verified auth plus authoritative entitlements.
+- Session repository and PDF export paths remain tenant-scoped by construction.
+- Admin domain export remains separate from the coach-facing Session Builder flow.
+
+### Observability notes
+- Week 11 did not introduce a new observability subsystem.
+- Existing structured logging remains the main runtime evidence surface for session generation, persistence, and PDF export outcomes.
+- No new alarms or dashboards were required for this slice.
+
+### Evidence
+- `docs/api/session-builder-v1-contract.md`
+- `docs/architecture/session-builder-week11.md`
+- `docs/architecture/Architecture-Diagrams.md`
+- `docs/runbooks/club-vivo-week-11-demo.md`
+- `docs/progress/week_11/closeoutsummary.md`
+
+### Next steps
+- Begin Week 12 web application foundation work against the frozen Week 11 Session Builder API.
+- Build the first protected coach-facing UI for session generation, session create/list/detail, and basic PDF export entry points.

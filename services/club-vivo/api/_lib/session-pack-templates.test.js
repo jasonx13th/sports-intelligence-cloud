@@ -12,6 +12,7 @@ function stripPackMeta(pack) {
     durationMin: pack.durationMin,
     theme: pack.theme,
     sessionsCount: pack.sessionsCount,
+    equipment: pack.equipment,
     sessions: pack.sessions,
   };
 }
@@ -46,16 +47,16 @@ test("generatePack pads generated sessions to the requested duration", () => {
   const pack = generatePack({
     sport: "soccer",
     ageBand: "u12",
-    durationMin: 60,
-    theme: "Finishing",
+    durationMin: 65,
+    theme: "Pressing",
     sessionsCount: 3,
   });
 
   assert.equal(pack.sessions.length, 3);
 
   for (const session of pack.sessions) {
-    assert.equal(session.durationMin, 60);
-    assert.equal(minutesSum(session.activities), 60);
+    assert.equal(session.durationMin, 65);
+    assert.equal(minutesSum(session.activities), 65);
     assert.equal(session.activities.at(-2).name, "Low-intensity technical reps");
     assert.equal(session.activities.at(-2).minutes, 5);
     assert.equal(session.activities.at(-1).name, "Cooldown");
@@ -96,4 +97,22 @@ test("generatePack fallback theme stays valid and tenant-neutral", () => {
   assert.equal(minutesSum(session.activities), 75);
   assert.equal(Object.hasOwn(session, "tenantId"), false);
   assert.equal(Object.hasOwn(session, "tenant_id"), false);
+});
+
+test("generatePack carries equipment to the pack and generated sessions when provided", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 2,
+    equipment: ["cones", "balls"],
+  });
+
+  assert.deepEqual(pack.equipment, ["cones", "balls"]);
+  assert.equal(pack.sessions.length, 2);
+
+  for (const session of pack.sessions) {
+    assert.deepEqual(session.equipment, ["cones", "balls"]);
+  }
 });

@@ -1,6 +1,7 @@
 "use strict";
 
 const { validateCreateSession } = require("./session-validate");
+const { validationError } = require("./validate");
 
 // Deterministic templates first. No Bedrock here.
 function normalizeTheme(theme) {
@@ -45,20 +46,31 @@ function padWithCoolDown({ durationMin, activities }) {
   ]);
 }
 
-function baseSession({ sport, ageBand, durationMin, objectiveTags, activities }) {
+function baseSession({ sport, ageBand, durationMin, objectiveTags, equipment, activities }) {
   const session = {
     sport,
     ageBand,
     durationMin,
     objectiveTags: objectiveTags || [],
+    ...(Array.isArray(equipment) && equipment.length ? { equipment } : {}),
     activities: padWithCoolDown({ durationMin, activities }),
   };
 
   // Fail closed: validate generator output with the same validator used for user input.
-  return validateCreateSession(session);
+  const validated = validateCreateSession(session);
+
+  if (minutesSum(validated.activities) !== durationMin) {
+    throw validationError("invalid_field", "Generated session duration total must equal durationMin", {
+      reason: "invalid_generated_duration_total",
+      durationMin,
+      totalMinutes: minutesSum(validated.activities),
+    });
+  }
+
+  return validated;
 }
 
-function templatePassingShape({ sport, ageBand, durationMin }) {
+function templatePassingShape({ sport, ageBand, durationMin, equipment }) {
   const activities = [
     { name: "Dynamic warmup + ball mastery", minutes: 10, description: "Dynamic movement, then touches." },
     { name: "Rondo (numbers up)", minutes: 15, description: "Emphasis: angles, scanning, first touch." },
@@ -70,11 +82,12 @@ function templatePassingShape({ sport, ageBand, durationMin }) {
     ageBand,
     durationMin,
     objectiveTags: ["passing", "shape"],
+    equipment,
     activities,
   });
 }
 
-function templateFinishing({ sport, ageBand, durationMin }) {
+function templateFinishing({ sport, ageBand, durationMin, equipment }) {
   const activities = [
     { name: "Warmup: finishing technique", minutes: 10, description: "Inside foot, laces, both feet." },
     { name: "1v1 to goal", minutes: 15, description: "Decision: early shot vs take a touch." },
@@ -86,14 +99,15 @@ function templateFinishing({ sport, ageBand, durationMin }) {
     ageBand,
     durationMin,
     objectiveTags: ["finishing", "decision-making"],
+    equipment,
     activities,
   });
 }
 
-function templatePressingTransition({ sport, ageBand, durationMin }) {
+function templatePressingTransition({ sport, ageBand, durationMin, equipment }) {
   const activities = [
     { name: "Warmup: reaction & acceleration", minutes: 10, description: "Short bursts + quick stops/starts." },
-    { name: "3v3+2 transition game", minutes: 20, description: "Win it → immediate counter / regain shape." },
+    { name: "3v3+2 transition game", minutes: 20, description: "Win it -> immediate counter / regain shape." },
     { name: "Pressing cues in small-sided game", minutes: 20, description: "Triggers: bad touch, back pass, sideline." },
   ];
 
@@ -102,11 +116,12 @@ function templatePressingTransition({ sport, ageBand, durationMin }) {
     ageBand,
     durationMin,
     objectiveTags: ["pressing", "transition"],
+    equipment,
     activities,
   });
 }
 
-function templateFallback({ sport, ageBand, durationMin, theme }) {
+function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
   const activities = [
     { name: "Warmup", minutes: 10, description: "Dynamic movement + ball touches." },
     { name: `Theme focus: ${theme}`, minutes: 20, description: "Coaching points based on the theme." },
@@ -118,6 +133,7 @@ function templateFallback({ sport, ageBand, durationMin, theme }) {
     ageBand,
     durationMin,
     objectiveTags: ["theme"],
+    equipment,
     activities,
   });
 }
@@ -132,25 +148,25 @@ function pickTemplate(themeKey) {
   return "fallback";
 }
 
-function generateSessionFromTheme({ sport, ageBand, durationMin, theme }) {
+function generateSessionFromTheme({ sport, ageBand, durationMin, theme, equipment }) {
   const themeKey = normalizeTheme(theme);
   const t = pickTemplate(themeKey);
 
-  if (t === "passing") return templatePassingShape({ sport, ageBand, durationMin });
-  if (t === "finishing") return templateFinishing({ sport, ageBand, durationMin });
-  if (t === "pressing") return templatePressingTransition({ sport, ageBand, durationMin });
+  if (t === "passing") return templatePassingShape({ sport, ageBand, durationMin, equipment });
+  if (t === "finishing") return templateFinishing({ sport, ageBand, durationMin, equipment });
+  if (t === "pressing") return templatePressingTransition({ sport, ageBand, durationMin, equipment });
 
-  return templateFallback({ sport, ageBand, durationMin, theme: themeKey || "general" });
+  return templateFallback({ sport, ageBand, durationMin, theme: themeKey || "general", equipment });
 }
 
-function generatePack({ sport, ageBand, durationMin, theme, sessionsCount }) {
+function generatePack({ sport, ageBand, durationMin, theme, sessionsCount, equipment }) {
   const packId = require("crypto").randomUUID();
   const createdAt = new Date().toISOString();
 
   const sessions = [];
   for (let i = 0; i < sessionsCount; i++) {
     // Slight variation hook for later (today deterministic)
-    sessions.push(generateSessionFromTheme({ sport, ageBand, durationMin, theme }));
+    sessions.push(generateSessionFromTheme({ sport, ageBand, durationMin, theme, equipment }));
   }
 
   return {
@@ -161,6 +177,7 @@ function generatePack({ sport, ageBand, durationMin, theme, sessionsCount }) {
     durationMin,
     theme,
     sessionsCount,
+    ...(Array.isArray(equipment) && equipment.length ? { equipment } : {}),
     sessions,
   };
 }

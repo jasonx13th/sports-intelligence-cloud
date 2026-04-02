@@ -107,6 +107,63 @@ test("GET /sessions/{sessionId}/pdf returns 400 when sessionId is missing", asyn
   );
 });
 
+test("POST /sessions keeps the public { session } response shape while using the persist stage", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const loggerEvents = [];
+  const expectedSession = {
+    sessionId: "session-123",
+    createdAt: "2026-04-01T00:00:00.000Z",
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    objectiveTags: ["pressing"],
+    activities: [{ name: "Warm-up", minutes: 60, description: "Prep" }],
+    equipment: ["cones", "balls"],
+  };
+
+  const inner = createSessionsInner({
+    getSessionRepoFn: () => ({
+      createSession: async () => {
+        throw new Error("repo should not be called directly");
+      },
+    }),
+    persistSessionFn: async ({ tenantCtx, normalizedInput, sessionRepository }) => {
+      assert.equal(tenantCtx.tenantId, "tenant_authoritative");
+      assert.equal(typeof sessionRepository.createSession, "function");
+      assert.deepEqual(normalizedInput.equipment, ["cones", "balls"]);
+      return {
+        normalizedInput,
+        persistedSession: expectedSession,
+      };
+    },
+  });
+
+  const response = await inner({
+    event: {
+      rawPath: "/sessions",
+      path: "/sessions",
+      routeKey: "POST /sessions",
+      requestContext: { http: { method: "POST", path: "/sessions" } },
+      body: JSON.stringify({
+        sport: "soccer",
+        ageBand: "u14",
+        durationMin: 60,
+        objectiveTags: ["pressing"],
+        activities: [{ name: "Warm-up", minutes: 60, description: "Prep" }],
+        equipment: ["cones", "balls"],
+      }),
+    },
+    tenantCtx: makeTenantCtx(),
+    logger: makeLogger(loggerEvents),
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(JSON.parse(response.body), { session: expectedSession });
+  assert.equal(loggerEvents[0].eventType, "session_created");
+});
+
 test("GET /sessions/{sessionId}/pdf returns 404 when session is not found", async () => {
   process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
   process.env.SIC_DOMAIN_TABLE = "domain-table";
@@ -219,6 +276,56 @@ test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from ten
     },
   ]);
 
+  assert.equal(loggerEvents[0].eventType, "session_pdf_exported");
+});
+
+test("GET /sessions/{sessionId}/pdf keeps the public response shape while using the export stage", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+  process.env.PDF_BUCKET_NAME = "pdf-bucket";
+
+  const loggerEvents = [];
+  const session = {
+    sessionId: "session-123",
+    createdAt: "2026-03-25T00:00:00.000Z",
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 75,
+    objectiveTags: ["pressing"],
+    activities: [{ title: "Warm-up" }],
+  };
+
+  const inner = createSessionsInner({
+    getSessionRepoFn: () => ({
+      getSessionById: async () => session,
+    }),
+    exportPersistedSessionFn: async ({ tenantCtx, persistedSession, sessionId, createSessionPdfBufferFn, sessionPdfStorage }) => {
+      assert.equal(tenantCtx.tenantId, "tenant_authoritative");
+      assert.equal(persistedSession, session);
+      assert.equal(sessionId, "session-123");
+      assert.equal(typeof createSessionPdfBufferFn, "function");
+      assert.equal(typeof sessionPdfStorage.putSessionPdf, "function");
+      return {
+        persistedSession,
+        exportResult: {
+          url: "https://example.com/pipeline.pdf",
+          expiresInSeconds: 300,
+        },
+      };
+    },
+  });
+
+  const response = await inner({
+    event: makeEvent({ routeKey: "GET /sessions/{sessionId}/pdf" }),
+    tenantCtx: makeTenantCtx(),
+    logger: makeLogger(loggerEvents),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), {
+    url: "https://example.com/pipeline.pdf",
+    expiresInSeconds: 300,
+  });
   assert.equal(loggerEvents[0].eventType, "session_pdf_exported");
 });
 

@@ -81,6 +81,7 @@ function normalizeSession(obj, { includeActivities }) {
     ageBand: obj.ageBand,
     durationMin: obj.durationMin,
     objectiveTags: obj.objectiveTags || [],
+    equipment: obj.equipment || [],
     clubId: obj.clubId,
     teamId: obj.teamId,
     seasonId: obj.seasonId,
@@ -150,6 +151,7 @@ class SessionRepository {
       ageBand: sessionInput.ageBand,
       durationMin: sessionInput.durationMin,
       objectiveTags: sessionInput.objectiveTags || [],
+      equipment: sessionInput.equipment || [],
       activities: sessionInput.activities || [],
 
       ...(sessionInput.clubId ? { clubId: sessionInput.clubId } : {}),

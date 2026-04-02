@@ -2,11 +2,16 @@
 
 const { requireFields, validationError } = require("./validate");
 
+const SUPPORTED_AGE_BANDS = ["u6", "u8", "u10", "u12", "u14", "u16", "u18", "adult"];
+const GOALS_REQUIRED_KEYWORDS = ["goal", "goals", "finish", "finishing"];
+
 const LIMITS = {
   sportMax: 40,
   ageBandMax: 40,
   objectiveTagsMax: 12,
   tagMax: 40,
+  equipmentMax: 12,
+  equipmentItemMax: 40,
   activitiesMax: 30,
   activityNameMax: 80,
   activityDescMax: 280,
@@ -42,6 +47,29 @@ function requireString(body, field, { max, optional = false } = {}) {
     });
   }
   return v;
+}
+
+function normalizeAgeBand(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeEquipmentName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function requireSupportedAgeBand(body, field) {
+  const raw = requireString(body, field, { max: LIMITS.ageBandMax });
+  const ageBand = normalizeAgeBand(raw);
+
+  if (!SUPPORTED_AGE_BANDS.includes(ageBand)) {
+    throw validationError("invalid_field", `${field} is not supported`, {
+      reason: "unsupported_age_band",
+      field,
+      value: raw,
+    });
+  }
+
+  return ageBand;
 }
 
 function requireInt(body, field, { min, max } = {}) {
@@ -94,12 +122,40 @@ function requireStringArray(body, field, { maxItems, itemMax, optional = false }
   return arr;
 }
 
+function requireEquipmentArray(body, field = "equipment") {
+  const arr = requireStringArray(body, field, {
+    optional: true,
+    maxItems: LIMITS.equipmentMax,
+    itemMax: LIMITS.equipmentItemMax,
+  });
+
+  return [...new Set(arr.map(normalizeEquipmentName))];
+}
+
+function getMissingEquipmentForActivities(activities, equipment) {
+  if (!Array.isArray(equipment) || equipment.length === 0) return [];
+
+  const provided = new Set(equipment.map(normalizeEquipmentName));
+  const missing = new Set();
+
+  for (const activity of activities || []) {
+    const activityName = normalizeEquipmentName(activity?.name);
+
+    if (GOALS_REQUIRED_KEYWORDS.some((keyword) => activityName.includes(keyword)) && !provided.has("goals")) {
+      missing.add("goals");
+    }
+  }
+
+  return [...missing];
+}
+
 function validateCreateSession(body) {
   const allowed = [
     "sport",
     "ageBand",
     "durationMin",
     "objectiveTags",
+    "equipment",
     "activities",
     "clubId",
     "teamId",
@@ -110,7 +166,7 @@ function validateCreateSession(body) {
   requireFields(body, ["sport", "ageBand", "durationMin", "activities"]);
 
   const sport = requireString(body, "sport", { max: LIMITS.sportMax });
-  const ageBand = requireString(body, "ageBand", { max: LIMITS.ageBandMax });
+  const ageBand = requireSupportedAgeBand(body, "ageBand");
   const durationMin = requireInt(body, "durationMin", {
     min: LIMITS.durationMinMin,
     max: LIMITS.durationMinMax,
@@ -121,6 +177,8 @@ function validateCreateSession(body) {
     maxItems: LIMITS.objectiveTagsMax,
     itemMax: LIMITS.tagMax,
   });
+
+  const equipment = requireEquipmentArray(body, "equipment");
 
   const clubId = requireString(body, "clubId", { max: LIMITS.idMax, optional: true });
   const teamId = requireString(body, "teamId", { max: LIMITS.idMax, optional: true });
@@ -167,7 +225,11 @@ function validateCreateSession(body) {
       });
     }
 
-    if (!Number.isInteger(a.minutes) || a.minutes < LIMITS.activityMinutesMin || a.minutes > LIMITS.activityMinutesMax) {
+    if (
+      !Number.isInteger(a.minutes) ||
+      a.minutes < LIMITS.activityMinutesMin ||
+      a.minutes > LIMITS.activityMinutesMax
+    ) {
       throw validationError("invalid_field", `activities[${i}].minutes is invalid`, {
         field: "minutes",
         index: i,
@@ -188,19 +250,28 @@ function validateCreateSession(body) {
   }
 
   if (totalMinutes > durationMin) {
-    throw validationError(
-      "invalid_field",
-      "Sum of activities[].minutes must be <= durationMin",
-      { totalMinutes, durationMin }
-    );
+    throw validationError("invalid_field", "Sum of activities[].minutes must be <= durationMin", {
+      reason: "invalid_duration_total",
+      totalMinutes,
+      durationMin,
+    });
   }
 
-  // Return a sanitized version so handlers can trust it
+  const missingEquipment = getMissingEquipmentForActivities(activities, equipment);
+  if (missingEquipment.length) {
+    throw validationError("invalid_field", "equipment is incompatible with one or more activities", {
+      reason: "incompatible_equipment",
+      field: "equipment",
+      missingEquipment,
+    });
+  }
+
   return {
     sport,
     ageBand,
     durationMin,
     objectiveTags,
+    ...(equipment.length ? { equipment } : {}),
     activities,
     ...(clubId ? { clubId } : {}),
     ...(teamId ? { teamId } : {}),
@@ -208,4 +279,12 @@ function validateCreateSession(body) {
   };
 }
 
-module.exports = { validateCreateSession, LIMITS };
+module.exports = {
+  validateCreateSession,
+  LIMITS,
+  SUPPORTED_AGE_BANDS,
+  normalizeAgeBand,
+  normalizeEquipmentName,
+  requireEquipmentArray,
+  getMissingEquipmentForActivities,
+};

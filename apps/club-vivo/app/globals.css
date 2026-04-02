@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f4efe4;
+  --foreground: #1f2937;
+  --surface: rgba(255, 251, 243, 0.92);
+  --border: rgba(31, 41, 55, 0.12);
+  --accent: #0f766e;
+  --accent-soft: rgba(15, 118, 110, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(194, 120, 3, 0.18), transparent 30%),
+    var(--background);
+  color: var(--foreground);
+  font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+.club-vivo-shell {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+}
+
+.club-vivo-badge {
+  background: var(--accent-soft);
+  color: var(--accent);
+}

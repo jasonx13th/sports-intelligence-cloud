@@ -1,6 +1,6 @@
 # Architect Process Log
 
-Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_0/` through `docs/progress/week_10/` notes.
+Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_0/` through `docs/progress/week_12/` notes.
 
 ## Running index
 
@@ -16,6 +16,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 9](#week-9)
 - [Week 10](#week-10)
 - [Week 11](#week-11)
+- [Week 12](#week-12)
 
 ## Week 0
 
@@ -383,10 +384,11 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
   - duration totals
   - supported `ageBand` values
   - narrow deterministic equipment compatibility
-- Made the internal coach-facing runtime pipeline explicit across existing endpoints:
+- Made the explicit coach-facing runtime boundaries clear across existing endpoints:
   - `POST /session-packs` = normalize → generate → validate
   - `POST /sessions` = persist
   - `GET /sessions/{sessionId}/pdf` = export
+- Kept the frozen v1 contract and the Week 11 runtime note separate so the public API surface and the current runtime interpretation are documented distinctly.
 - Added architecture and demo evidence documenting the Week 11 runtime and request flow.
 
 ### Tenancy/security checks
@@ -406,7 +408,48 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - `docs/architecture/Architecture-Diagrams.md`
 - `docs/runbooks/club-vivo-week-11-demo.md`
 - `docs/progress/week_11/closeoutsummary.md`
+- `docs/adr/ADR-0009-session-builder-runtime-boundaries-and-explicit-coach-flow.md`
 
 ### Next steps
 - Begin Week 12 web application foundation work against the frozen Week 11 Session Builder API.
 - Build the first protected coach-facing UI for session generation, session create/list/detail, and basic PDF export entry points.
+
+
+## Week 12 - Web Application Foundation
+
+### Goals
+- Create the first protected coach-facing web surface on top of the hardened Week 11 Session Builder API.
+- Add localhost web authentication and the first dashboard and session flows.
+
+### Work completed
+- Created the frontend app scaffold in `apps/club-vivo` using Next.js app router, React, TypeScript, and Tailwind.
+- Added localhost Cognito Hosted UI authentication using authorization code flow, PKCE, and HttpOnly cookies.
+- Added protected route handling for:
+  - `/dashboard`
+  - `/sessions`
+  - `/sessions/new`
+  - `/sessions/[sessionId]`
+- Added server-rendered dashboard hydration from `GET /me`.
+- Added the first session list, session detail, and generate-then-save flow against the existing Session Builder endpoints.
+- Added Week 12 architecture notes documenting the scope lock and the implemented web foundation.
+
+### Tenancy/security checks
+- No `tenant_id`, `tenantId`, or `x-tenant-id` accepted from the web app.
+- Tenant scope remains server-derived from verified auth plus authoritative entitlements.
+- Auth failures remain fail closed.
+- The web app uses server-side API calls and does not derive tenant, role, or tier from client input or client-side cookie parsing.
+
+### Observability notes
+- Week 12 did not introduce a new observability subsystem.
+- Evidence is local app validation plus the existing backend logging surface.
+- No new alarms or dashboards were added as part of this slice.
+
+### Evidence
+- `docs/architecture/week12-scope-lock.md`
+- `docs/architecture/week12-web-foundation.md`
+- `docs/progress/week_12/closeout.md`
+- `docs/adr/ADR-0010-club-vivo-web-auth-and-server-side-api-access.md`
+
+### Next steps
+- Begin Week 13 session-library and template work only where backed by explicit backend endpoints.
+- Tighten app-layer validation and user feedback while preserving the existing tenant and auth boundary.

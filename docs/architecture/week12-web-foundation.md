@@ -25,7 +25,7 @@ Document the current Week 12 coach-facing web foundation that now exists in the 
 - `/login` is the public login entry route.
 - `/login/start` generates server-side auth state and PKCE values, stores `sic_auth_state` and `sic_pkce_verifier` in HttpOnly cookies, and redirects to the Hosted UI authorize endpoint.
 - `/callback` validates returned `code` and `state`, exchanges the code at the Cognito token endpoint, stores `sic_access_token` in an HttpOnly cookie, clears temporary auth cookies, and redirects to `/dashboard`.
-- `/logout` clears local auth cookies and redirects back to `/login`.
+- `/logout` clears local auth cookies and redirects to `/login?loggedOut=1`.
 - Protected routes use a coarse cookie-presence check in `middleware.ts`.
 
 ## Backend endpoints used

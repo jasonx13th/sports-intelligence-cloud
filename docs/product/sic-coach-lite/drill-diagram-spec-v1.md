@@ -88,6 +88,8 @@ The spec should fail clearly if required geometry or unsupported symbols are mis
 ## Placement inside SessionPack
 Each activity in SessionPack should be allowed to include one or more diagrams.
 
+For Coach Lite v1, this diagram contract is consumed inside the in-place evolution of the existing Session Builder `POST /session-packs` flow, not through a separate backend pipeline.
+
 Suggested shape:
 
 ```json
@@ -98,18 +100,18 @@ Suggested shape:
       "name": "4v2 defensive rondo",
       "minutes": 12,
       "setup": "20x20 grid with four outside players and two defenders inside.",
-      "instructions": ["Keep possession in the grid.", "Defenders press together."],
+      "instructions": "Keep possession in the grid. Defenders press together.",
       "coachingPoints": ["Angle of approach", "Cover shadow"],
       "diagrams": [
         {
           "diagramId": "diag_001",
-          "specVersion": "drill-diagram-spec/v1",
+          "specVersion": "drill-diagram-spec.v1",
           "title": "Starting setup",
           "diagramType": "setup"
         },
         {
           "diagramId": "diag_002",
-          "specVersion": "drill-diagram-spec/v1",
+          "specVersion": "drill-diagram-spec.v1",
           "title": "Pressing movement",
           "diagramType": "sequence"
         }
@@ -126,7 +128,7 @@ Suggested shape:
 ```json
 {
   "diagramId": "diag_001",
-  "specVersion": "drill-diagram-spec/v1",
+  "specVersion": "drill-diagram-spec.v1",
   "activityId": "act_001",
   "title": "4v2 defensive rondo",
   "diagramType": "setup",
@@ -162,7 +164,7 @@ Type:
 - string
 
 Allowed value for v1:
-- `drill-diagram-spec/v1`
+- `drill-diagram-spec.v1`
 
 ### `activityId`
 Reference back to the activity in SessionPack.
@@ -193,6 +195,8 @@ Allowed values for v1:
 - `progression`
 - `regression`
 - `condition`
+
+The same allowed set should be used by the SessionPack diagram wrapper so frontend and backend validation stay aligned.
 
 ### `sport`
 Current sport context.
@@ -603,7 +607,7 @@ These are product rules, not hard technical limits.
 ```json
 {
   "diagramId": "diag_def_001",
-  "specVersion": "drill-diagram-spec/v1",
+  "specVersion": "drill-diagram-spec.v1",
   "activityId": "act_def_001",
   "title": "4v2 Defensive Rondo",
   "diagramType": "sequence",

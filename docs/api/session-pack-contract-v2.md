@@ -20,6 +20,17 @@ Coach Lite v1 is soccer-first, so this contract is written with soccer session p
 
 ---
 
+## Contract Alignment Decisions
+
+For Coach Lite v1, the contract choices below are canonical across the docs and should be treated as the source of truth before backend work begins:
+
+- `POST /session-packs` remains the existing Session Builder endpoint family and should evolve in place to this contract rather than introducing a parallel Coach Lite pipeline.
+- `activities[].instructions` is a single string in v1.
+- `activities[].diagrams[].specVersion` uses `drill-diagram-spec.v1`.
+- `activities[].diagrams[].diagramType` uses the same allowed set as `DrillDiagramSpec v1`.
+
+---
+
 ## Goals
 
 SessionPack v2 should:
@@ -175,7 +186,9 @@ Short description of the activity purpose.
 Required text block describing how to arrange the area, players, and equipment.
 
 ### `instructions`
-Required text block describing how the activity runs.
+Required string describing how the activity runs.
+
+For Coach Lite v1, this remains a single string to keep generation, validation, rendering, and export deterministic.
 
 ### `organization`
 Optional text or structured object describing groups, rotations, and coach roles.
@@ -243,11 +256,12 @@ For this release:
 - `drill-diagram-spec.v1`
 
 ### `diagramType`
-Suggested values:
+Allowed values for v1:
 - `setup`
 - `sequence`
 - `progression`
-- `variation`
+- `regression`
+- `condition`
 
 ### `title`
 Human-readable diagram title.
@@ -423,6 +437,14 @@ A SessionPack v2 should be considered valid only if:
 - all diagrams must include valid `diagramId`, `specVersion`, and `diagramType`
 - `spec` must conform to `DrillDiagramSpec v1`
 - diagram content must not contradict activity text
+
+---
+
+## Endpoint Evolution Note
+
+SessionPack v2 is the intended in-place evolution of the existing `POST /session-packs` response inside the current Session Builder module family.
+
+Coach Lite v1 should not introduce a separate long-lived backend pipeline or product-silo contract for session generation.
 
 ### Soccer Validation
 - output must be age-appropriate

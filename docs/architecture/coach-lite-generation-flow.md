@@ -16,6 +16,8 @@ This flow is designed to stay:
 - deterministic where possible
 - compatible with future club methodology support
 
+For Coach Lite v1, this flow extends the existing Session Builder path in place. It should not introduce a parallel session-generation pipeline or a separate product-silo backend route family.
+
 ---
 
 ## Design Goals
@@ -169,6 +171,8 @@ The generator creates a structured draft session.
 - safetyNotes
 - assumptions
 
+Within each activity, `instructions` should remain a single string in v1 so generation, validation, rendering, and export stay aligned.
+
 ### Generation guidance
 The first version should favor structured, predictable output over highly creative but inconsistent output.
 
@@ -208,6 +212,10 @@ The system should generate a `DrillDiagramSpec v1` payload from:
 - movement pattern
 - equipment placement
 - soccer-first diagram defaults
+
+For v1, diagram wrapper metadata should use:
+- `specVersion: drill-diagram-spec.v1`
+- `diagramType`: `setup`, `sequence`, `progression`, `regression`, or `condition`
 
 ### Why this happens after validation
 The diagram builder should work from valid activity structure, not from raw draft output.
@@ -272,6 +280,8 @@ Exports should include:
 
 ### 1. Coach Assistant Handler
 Receives the request and orchestrates the flow.
+
+In implementation, this should remain part of the existing Session Builder module family and `POST /session-packs` evolution path rather than a separate backend pipeline.
 
 ### 2. Tenant Context Builder
 Builds authoritative tenant context from verified auth and entitlements.

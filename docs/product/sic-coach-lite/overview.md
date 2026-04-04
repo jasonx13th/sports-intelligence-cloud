@@ -111,6 +111,8 @@ It sits on top of:
 - observability
 - Club Vivo product direction
 
+For Coach Lite v1, the backend path should stay aligned to the existing Session Builder modules and the existing `POST /session-packs` endpoint family. The contract should evolve in place rather than creating a parallel Coach Lite generation pipeline.
+
 ---
 
 ## Key Product Principles
@@ -140,6 +142,7 @@ Coach Lite v1 should support:
 - structured coach input
 - generation of a validated session pack
 - one or more drill diagrams per session
+- a single-string `instructions` field per activity
 - save session
 - export session
 - basic session edits such as:

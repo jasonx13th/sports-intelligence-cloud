@@ -52,7 +52,7 @@ Create a session from real training constraints.
 3. System checks for missing essentials.
 4. System asks only necessary follow-up questions.
 5. Coach submits.
-6. System generates a structured SessionPack.
+6. System generates a structured SessionPack from the existing Session Builder `POST /session-packs` endpoint family as that contract evolves in place for Coach Lite v1.
 7. System validates:
    - minutes
    - equipment fit
@@ -67,6 +67,8 @@ Create a session from real training constraints.
 - drill diagrams
 - coaching points
 - progressions and regressions
+
+For v1, each activity should keep `instructions` as a single string, and any rendered diagram wrapper should use the canonical `drill-diagram-spec.v1` version string plus the shared diagram types: `setup`, `sequence`, `progression`, `regression`, and `condition`.
 
 ---
 
@@ -97,7 +99,7 @@ Quickly adapt the generated session.
 6. Coach reviews the new version.
 
 ### Output
-An updated session that keeps the same session contract and visual clarity.
+An updated session that keeps the same in-place SessionPack contract and visual clarity.
 
 ---
 

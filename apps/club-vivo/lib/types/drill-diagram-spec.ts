@@ -1,4 +1,4 @@
-export type DrillDiagramSpecVersion = "drill-diagram-spec/v1";
+export type DrillDiagramSpecVersion = "drill-diagram-spec.v1";
 
 // Coach Lite v1 stays soccer-first even though the draft spec notes future reuse.
 export type DrillDiagramSport = "soccer";

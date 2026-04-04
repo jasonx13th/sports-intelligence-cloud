@@ -36,12 +36,14 @@ export interface SessionPackStructuredOrganization {
 
 export type SessionPackOrganization = string | SessionPackStructuredOrganization;
 
-export type SessionPackDiagramType = "setup" | "sequence" | "progression" | "variation";
+export type SessionPackDiagramType =
+  | "setup"
+  | "sequence"
+  | "progression"
+  | "regression"
+  | "condition";
 
-// The draft docs disagree on "." vs "/" version formatting, so the frontend type allows both.
-export type SessionPackDiagramSpecVersion =
-  | "drill-diagram-spec.v1"
-  | "drill-diagram-spec/v1";
+export type SessionPackDiagramSpecVersion = "drill-diagram-spec.v1";
 
 export interface SessionPackActivityDiagram {
   diagramId: string;

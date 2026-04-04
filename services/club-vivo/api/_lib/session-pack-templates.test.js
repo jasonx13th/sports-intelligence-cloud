@@ -3,7 +3,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { generatePack, minutesSum, normalizeTheme } = require("./session-pack-templates");
+const {
+  buildCoachLiteDraftFromPack,
+  generatePack,
+  minutesSum,
+  normalizeTheme,
+} = require("./session-pack-templates");
 
 function stripPackMeta(pack) {
   return {
@@ -115,4 +120,30 @@ test("generatePack carries equipment to the pack and generated sessions when pro
   for (const session of pack.sessions) {
     assert.deepEqual(session.equipment, ["cones", "balls"]);
   }
+});
+
+test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 2,
+    equipment: ["cones", "balls"],
+  });
+
+  const draft = buildCoachLiteDraftFromPack(pack);
+
+  assert.equal(draft.sessionPackId, pack.packId);
+  assert.equal(draft.specVersion, "session-pack.v2");
+  assert.equal(draft.sport, "soccer");
+  assert.equal(draft.ageGroup, "U14");
+  assert.equal(draft.durationMinutes, 60);
+  assert.equal(draft.activities.length, pack.sessions[0].activities.length);
+  assert.equal(
+    draft.activities.reduce((sum, activity) => sum + activity.minutes, 0),
+    draft.durationMinutes
+  );
+  assert.equal(Object.hasOwn(draft, "tenantId"), false);
+  assert.equal(Object.hasOwn(draft, "tenant_id"), false);
 });

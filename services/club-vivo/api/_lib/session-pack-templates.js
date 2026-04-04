@@ -2,6 +2,7 @@
 
 const { validateCreateSession } = require("./session-validate");
 const { validationError } = require("./validate");
+const { validateSessionPackV2Draft } = require("./session-pack-validate");
 
 // Deterministic templates first. No Bedrock here.
 function normalizeTheme(theme) {
@@ -9,6 +10,23 @@ function normalizeTheme(theme) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ");
+}
+
+function titleCase(value) {
+  return String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function displayAgeGroup(ageBand) {
+  const normalized = String(ageBand || "").trim().toLowerCase();
+  if (normalized.startsWith("u")) {
+    return normalized.toUpperCase();
+  }
+
+  return titleCase(normalized);
 }
 
 function minutesSum(activities) {
@@ -159,6 +177,79 @@ function generateSessionFromTheme({ sport, ageBand, durationMin, theme, equipmen
   return templateFallback({ sport, ageBand, durationMin, theme: themeKey || "general", equipment });
 }
 
+function inferActivityPhase(activityName, index, activitiesLength) {
+  const normalizedName = normalizeTheme(activityName);
+
+  if (normalizedName.includes("cooldown")) return "cooldown";
+  if (index === 0 || normalizedName.includes("warmup") || normalizedName.includes("warm-up")) return "warm-up";
+  if (activitiesLength <= 2) return "main";
+  if (index === activitiesLength - 1) return "game";
+  if (index === 1) return "technical";
+  return "main";
+}
+
+function descriptionToCoachingPoints(description) {
+  if (!description) {
+    return ["keep the activity organized and age-appropriate"];
+  }
+
+  return String(description)
+    .split(/[\.;]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function buildCoachLiteActivity(session, activity, index) {
+  const coachingPoints = descriptionToCoachingPoints(activity.description);
+
+  return {
+    activityId: `act_${String(index + 1).padStart(3, "0")}`,
+    name: activity.name,
+    phase: inferActivityPhase(activity.name, index, session.activities.length),
+    minutes: activity.minutes,
+    objective: activity.description || `Support the ${session.objectiveTags?.join(" and ") || "session"} focus.`,
+    setup: `Set up the area for ${activity.name}. Use the listed equipment and space for a soccer-first v1 session.`,
+    instructions: activity.description || `Run ${activity.name} with clear coaching detail and safe organization.`,
+    coachingPoints,
+    equipment: Array.isArray(session.equipment) && session.equipment.length ? session.equipment : [],
+  };
+}
+
+function buildCoachLiteDraftFromPack(pack) {
+  const session = Array.isArray(pack?.sessions) ? pack.sessions[0] : null;
+
+  if (!session) {
+    throw validationError("invalid_field", "Generated pack is invalid", {
+      reason: "missing_generated_session_for_draft",
+    });
+  }
+
+  const draft = {
+    sessionPackId: pack.packId,
+    specVersion: "session-pack.v2",
+    title: `${displayAgeGroup(pack.ageBand)} ${titleCase(pack.theme)} Session`,
+    sport: pack.sport,
+    ageGroup: displayAgeGroup(pack.ageBand),
+    durationMinutes: pack.durationMin,
+    equipment: Array.isArray(pack.equipment) ? pack.equipment : [],
+    space: {
+      areaType: "standard-area",
+    },
+    objective:
+      session.objectiveTags?.length > 0
+        ? `Focus on ${session.objectiveTags.join(", ")}.`
+        : `Focus on ${pack.theme}.`,
+    activities: session.activities.map((activity, index) => buildCoachLiteActivity(session, activity, index)),
+    assumptions: [
+      "derived from the existing deterministic Session Builder pack",
+      "space defaults kept minimal for internal Coach Lite validation",
+    ],
+  };
+
+  return validateSessionPackV2Draft(draft);
+}
+
 function generatePack({ sport, ageBand, durationMin, theme, sessionsCount, equipment }) {
   const packId = require("crypto").randomUUID();
   const createdAt = new Date().toISOString();
@@ -182,4 +273,9 @@ function generatePack({ sport, ageBand, durationMin, theme, sessionsCount, equip
   };
 }
 
-module.exports = { generatePack, normalizeTheme, minutesSum };
+module.exports = {
+  generatePack,
+  buildCoachLiteDraftFromPack,
+  normalizeTheme,
+  minutesSum,
+};

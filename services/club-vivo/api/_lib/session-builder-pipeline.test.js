@@ -7,6 +7,8 @@ const {
   processSessionPackRequest,
   normalizeSessionPackInput,
   generateSessionPack,
+  generateCoachLiteDraft,
+  validateCoachLiteDraft,
   validateGeneratedPack,
   persistSession,
   exportPersistedSession,
@@ -92,7 +94,44 @@ test("processSessionPackRequest returns explicit pipeline stages", () => {
   assert.deepEqual(result.normalizedInput.equipment, ["cones", "balls"]);
   assert.ok(result.generatedPack.packId);
   assert.ok(result.validatedPack.packId);
+  assert.equal(result.coachLiteDraft.specVersion, "session-pack.v2");
+  assert.equal(result.validatedCoachLiteDraft.specVersion, "session-pack.v2");
   assert.deepEqual(result.validatedPack.sessions[0].equipment, ["cones", "balls"]);
+});
+
+test("generateCoachLiteDraft derives an internal Coach Lite draft without changing pack shape", () => {
+  const generatedPack = generateSessionPack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  const draft = generateCoachLiteDraft(generatedPack);
+
+  assert.equal(draft.specVersion, "session-pack.v2");
+  assert.equal(draft.sport, "soccer");
+  assert.equal(draft.sessionPackId, generatedPack.packId);
+  assert.equal(generatedPack.packId !== undefined, true);
+  assert.equal(Object.hasOwn(generatedPack, "sessionPackId"), false);
+});
+
+test("validateCoachLiteDraft accepts the derived internal draft", () => {
+  const generatedPack = generateSessionPack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 50,
+    theme: "passing shape",
+    sessionsCount: 1,
+  });
+
+  const draft = generateCoachLiteDraft(generatedPack);
+  const validatedDraft = validateCoachLiteDraft(draft);
+
+  assert.equal(validatedDraft.specVersion, "session-pack.v2");
+  assert.equal(validatedDraft.durationMinutes, 50);
 });
 
 test("persistSession returns explicit persist stage output", async () => {

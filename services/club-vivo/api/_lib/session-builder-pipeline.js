@@ -1,7 +1,10 @@
 "use strict";
 
-const { validateCreateSessionPack } = require("./session-pack-validate");
-const { generatePack, minutesSum } = require("./session-pack-templates");
+const {
+  validateCreateSessionPack,
+  validateSessionPackV2Draft,
+} = require("./session-pack-validate");
+const { generatePack, buildCoachLiteDraftFromPack, minutesSum } = require("./session-pack-templates");
 const { validateCreateSession } = require("./session-validate");
 const { validationError } = require("./validate");
 
@@ -11,6 +14,14 @@ function normalizeSessionPackInput(rawInput) {
 
 function generateSessionPack(normalizedInput) {
   return generatePack(normalizedInput);
+}
+
+function generateCoachLiteDraft(generatedPack) {
+  return buildCoachLiteDraftFromPack(generatedPack);
+}
+
+function validateCoachLiteDraft(coachLiteDraft) {
+  return validateSessionPackV2Draft(coachLiteDraft);
 }
 
 function validateGeneratedPack(generatedPack) {
@@ -48,11 +59,15 @@ function processSessionPackRequest(rawInput) {
   const normalizedInput = normalizeSessionPackInput(rawInput);
   const generatedPack = generateSessionPack(normalizedInput);
   const validatedPack = validateGeneratedPack(generatedPack);
+  const coachLiteDraft = generateCoachLiteDraft(validatedPack);
+  const validatedCoachLiteDraft = validateCoachLiteDraft(coachLiteDraft);
 
   return {
     normalizedInput,
     generatedPack,
     validatedPack,
+    coachLiteDraft,
+    validatedCoachLiteDraft,
   };
 }
 
@@ -105,6 +120,8 @@ async function exportPersistedSession({
 module.exports = {
   normalizeSessionPackInput,
   generateSessionPack,
+  generateCoachLiteDraft,
+  validateCoachLiteDraft,
   validateGeneratedPack,
   processSessionPackRequest,
   persistSession,

@@ -420,6 +420,7 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 ### Goals
 - Create the first protected coach-facing web surface on top of the hardened Week 11 Session Builder API.
 - Add localhost web authentication and the first dashboard and session flows.
+- Extend the Week 12 web surface with a safe Coach Lite preview bridge without changing the public Session Builder contract.
 
 ### Work completed
 - Created the frontend app scaffold in `apps/club-vivo` using Next.js app router, React, TypeScript, and Tailwind.
@@ -431,17 +432,24 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
   - `/sessions/[sessionId]`
 - Added server-rendered dashboard hydration from `GET /me`.
 - Added the first session list, session detail, and generate-then-save flow against the existing Session Builder endpoints.
-- Added Week 12 architecture notes documenting the scope lock and the implemented web foundation.
+- Added canonical Coach Lite frontend contract types and presentational components inside `apps/club-vivo`.
+- Added internal Coach Lite draft validators and extended the existing Session Builder pipeline to derive and validate an internal Coach Lite draft while preserving the public `POST /session-packs` response shape.
+- Added a standalone authenticated local preview route at `/sessions/coach-lite-preview`.
+- Upgraded the preview route from mock-only to real generated content through a preview-only server-side adapter that reuses the existing authenticated Session Builder path and keeps mock fallback behavior.
+- Added Week 12 architecture notes and closeout documentation documenting the scope lock, implemented web foundation, and Coach Lite preview bridge outcomes.
 
 ### Tenancy/security checks
 - No `tenant_id`, `tenantId`, or `x-tenant-id` accepted from the web app.
 - Tenant scope remains server-derived from verified auth plus authoritative entitlements.
 - Auth failures remain fail closed.
 - The web app uses server-side API calls and does not derive tenant, role, or tier from client input or client-side cookie parsing.
+- No AWS/CDK, IAM, auth-boundary, tenancy-boundary, or entitlements-model changes were introduced as part of the Coach Lite bridge.
+- The preview bridge stays isolated to `/sessions/coach-lite-preview` and does not change the live `/sessions` or `/sessions/new` flows.
 
 ### Observability notes
 - Week 12 did not introduce a new observability subsystem.
 - Evidence is local app validation plus the existing backend logging surface.
+- The preview route gained local-only debug output to surface nested API validation details quickly while preserving backend contracts.
 - No new alarms or dashboards were added as part of this slice.
 
 ### Evidence
@@ -449,7 +457,13 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - `docs/architecture/week12-web-foundation.md`
 - `docs/progress/week_12/closeout.md`
 - `docs/adr/ADR-0010-club-vivo-web-auth-and-server-side-api-access.md`
+- Local validation confirmed:
+  - `/sessions/coach-lite-preview`
+  - `/sessions`
+  - `/sessions/new`
+- Public `POST /session-packs` remained unchanged while the local Coach Lite preview rendered real generated content.
 
 ### Next steps
 - Begin Week 13 session-library and template work only where backed by explicit backend endpoints.
+- Keep Coach Lite product-first and preview-only while deciding the smallest stable bridge boundary for richer preview data.
 - Tighten app-layer validation and user feedback while preserving the existing tenant and auth boundary.

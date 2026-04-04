@@ -3,7 +3,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { validateCreateSessionPack } = require("./session-pack-validate");
+const {
+  validateCreateSessionPack,
+  validateSessionPackV2Draft,
+} = require("./session-pack-validate");
+const { DRILL_DIAGRAM_SPEC_VERSION } = require("./diagram-spec-validate");
 
 function makeValidPackRequest(overrides = {}) {
   return {
@@ -12,6 +16,53 @@ function makeValidPackRequest(overrides = {}) {
     durationMin: 60,
     theme: "pressing",
     sessionsCount: 3,
+    ...overrides,
+  };
+}
+
+function makeValidDiagramSpec(activityId = "act_001") {
+  return {
+    diagramId: "diag_001",
+    specVersion: DRILL_DIAGRAM_SPEC_VERSION,
+    activityId,
+    title: "Rondo setup",
+    diagramType: "setup",
+    sport: "soccer",
+    objects: [
+      {
+        objectId: "player_1",
+        type: "player",
+        x: 100,
+        y: 100,
+      },
+    ],
+  };
+}
+
+function makeValidSessionPackV2Draft(overrides = {}) {
+  return {
+    sessionPackId: "sp_001",
+    specVersion: "session-pack.v2",
+    title: "U12 Defending Session",
+    sport: "soccer",
+    ageGroup: "U12",
+    durationMinutes: 20,
+    equipment: ["cones", "balls"],
+    space: {
+      areaType: "half-field",
+    },
+    objective: "Improve defending shape and cover.",
+    activities: [
+      {
+        activityId: "act_001",
+        name: "4v2 Defensive Rondo",
+        minutes: 20,
+        setup: "Mark a 20x20 grid with four cones.",
+        instructions: "Defenders press together and recover shape quickly.",
+        coachingPoints: ["close space quickly"],
+        equipment: ["cones", "balls"],
+      },
+    ],
     ...overrides,
   };
 }
@@ -69,4 +120,110 @@ test("validateCreateSessionPack does not fail equipment compatibility when equip
 
   assert.equal(result.theme, "Finishing");
   assert.equal(Object.hasOwn(result, "equipment"), false);
+});
+
+test("validateSessionPackV2Draft accepts a minimal valid soccer Session Pack v2 draft", () => {
+  const result = validateSessionPackV2Draft(makeValidSessionPackV2Draft());
+
+  assert.equal(result.specVersion, "session-pack.v2");
+  assert.equal(result.sport, "soccer");
+  assert.equal(result.activities[0].instructions, "Defenders press together and recover shape quickly.");
+});
+
+test("validateSessionPackV2Draft rejects activities[].instructions as string[]", () => {
+  assert.throws(
+    () =>
+      validateSessionPackV2Draft(
+        makeValidSessionPackV2Draft({
+          activities: [
+            {
+              activityId: "act_001",
+              name: "4v2 Defensive Rondo",
+              minutes: 20,
+              setup: "Mark a 20x20 grid with four cones.",
+              instructions: ["Press together."],
+              coachingPoints: ["close space quickly"],
+              equipment: ["cones", "balls"],
+            },
+          ],
+        })
+      ),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.field, "instructions");
+      return true;
+    }
+  );
+});
+
+test("validateSessionPackV2Draft rejects non-canonical diagram wrapper specVersion", () => {
+  assert.throws(
+    () =>
+      validateSessionPackV2Draft(
+        makeValidSessionPackV2Draft({
+          activities: [
+            {
+              activityId: "act_001",
+              name: "4v2 Defensive Rondo",
+              minutes: 20,
+              setup: "Mark a 20x20 grid with four cones.",
+              instructions: "Defenders press together and recover shape quickly.",
+              coachingPoints: ["close space quickly"],
+              equipment: ["cones", "balls"],
+              diagrams: [
+                {
+                  diagramId: "diag_001",
+                  specVersion: "drill-diagram-spec/v1",
+                  diagramType: "setup",
+                  title: "Rondo setup",
+                  spec: makeValidDiagramSpec("act_001"),
+                },
+              ],
+            },
+          ],
+        })
+      ),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.reason, "invalid_spec_version");
+      assert.equal(err.details.field, "specVersion");
+      return true;
+    }
+  );
+});
+
+test("validateSessionPackV2Draft rejects invalid diagramType", () => {
+  assert.throws(
+    () =>
+      validateSessionPackV2Draft(
+        makeValidSessionPackV2Draft({
+          activities: [
+            {
+              activityId: "act_001",
+              name: "4v2 Defensive Rondo",
+              minutes: 20,
+              setup: "Mark a 20x20 grid with four cones.",
+              instructions: "Defenders press together and recover shape quickly.",
+              coachingPoints: ["close space quickly"],
+              equipment: ["cones", "balls"],
+              diagrams: [
+                {
+                  diagramId: "diag_001",
+                  specVersion: DRILL_DIAGRAM_SPEC_VERSION,
+                  diagramType: "variation",
+                  title: "Rondo setup",
+                  spec: makeValidDiagramSpec("act_001"),
+                },
+              ],
+            },
+          ],
+        })
+      ),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.reason, "unsupported_diagram_type");
+      assert.equal(err.details.field, "diagramType");
+      return true;
+    }
+  );
 });

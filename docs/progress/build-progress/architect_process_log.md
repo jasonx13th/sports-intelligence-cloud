@@ -1,6 +1,6 @@
 # Architect Process Log
 
-Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_0/` through `docs/progress/week_12/` notes.
+Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_12/` notes.
 
 ## Running index
 
@@ -41,7 +41,7 @@ Week 0 notes are sparse and mostly foundational. This section stays minimal on p
 
 ### Evidence
 
-- Week 0 notes in `docs/progress/week_0/`.
+- Week 0 notes in `docs/progress/week_00/`.
 
 ### Next steps
 
@@ -73,7 +73,7 @@ Week 1 introduces the initial “tenant-aware” backbone. Focus is on basic aut
 
 ### Evidence
 
-- Week 1 notes in `docs/progress/week_1/`.
+- Week 1 notes in `docs/progress/week_01/`.
 
 ### Next steps
 
@@ -105,7 +105,7 @@ Week 2 builds on the foundation: tenant context propagation and safer data acces
 
 ### Evidence
 
-- Week 2 notes in `docs/progress/week_2/`.
+- Week 2 notes in `docs/progress/week_02/`.
 
 ### Next steps
 
@@ -137,7 +137,7 @@ Week 3 adds more domain capability while preserving strict tenant boundaries.
 
 ### Evidence
 
-- Week 3 notes in `docs/progress/week_3/`.
+- Week 3 notes in `docs/progress/week_03/`.
 
 ### Next steps
 
@@ -169,7 +169,7 @@ Week 4 continues domain iteration and prepares for later export/lake work.
 
 ### Evidence
 
-- Week 4 notes in `docs/progress/week_4/`.
+- Week 4 notes in `docs/progress/week_04/`.
 
 ### Next steps
 
@@ -201,7 +201,7 @@ Week 5 focuses on tightening reliability and readiness for exports.
 
 ### Evidence
 
-- Week 5 notes in `docs/progress/week_5/`.
+- Week 5 notes in `docs/progress/week_05/`.
 
 ### Next steps
 
@@ -233,7 +233,7 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 
 ### Evidence
 
-- Week 6 notes in `docs/progress/week_6/`.
+- Week 6 notes in `docs/progress/week_06/`.
 
 ### Next steps
 
@@ -404,10 +404,10 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 
 ### Evidence
 - `docs/api/session-builder-v1-contract.md`
-- `docs/architecture/session-builder-week11.md`
-- `docs/architecture/Architecture-Diagrams.md`
-- `docs/runbooks/club-vivo-week-11-demo.md`
-- `docs/progress/week_11/closeoutsummary.md`
+- `docs/progress/week_11/session-builder-week11.md`
+- `docs/architecture/architecture-diagrams.md`
+- `docs/progress/week_11/demo-script.md`
+- `docs/progress/week_11/closeout-summary.md`
 - `docs/adr/ADR-0009-session-builder-runtime-boundaries-and-explicit-coach-flow.md`
 
 ### Next steps
@@ -453,9 +453,9 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - No new alarms or dashboards were added as part of this slice.
 
 ### Evidence
-- `docs/architecture/week12-scope-lock.md`
-- `docs/architecture/week12-web-foundation.md`
-- `docs/progress/week_12/closeout.md`
+- `docs/progress/week_12/week12-scope-lock.md`
+- `docs/progress/week_12/week12-web-foundation.md`
+- `docs/progress/week_12/closeout-summary.md`
 - `docs/adr/ADR-0010-club-vivo-web-auth-and-server-side-api-access.md`
 - Local validation confirmed:
   - `/sessions/coach-lite-preview`

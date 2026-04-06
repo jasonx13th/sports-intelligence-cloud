@@ -152,7 +152,7 @@ Unsupported `ageBand` values are rejected as bad requests.
 This note does not change the broader platform tenancy model defined in:
 
 - `docs/architecture/tenant-claim-contract.md`
-- `docs/architecture/Architecture-Principles.md`
+- `docs/architecture/architecture-principles.md`
 
 ## Known intentional limitations
 
@@ -164,4 +164,4 @@ This note does not change the broader platform tenancy model defined in:
 ## References
 
 - [session-builder-v1-contract.md](/c:/Users/jleom/dev/sports-intelligence-cloud/docs/api/session-builder-v1-contract.md)
-- [SIC-session-builder.md](/c:/Users/jleom/dev/sports-intelligence-cloud/docs/product/SIC-session-builder.md)
+- [sic-session-builder.md](/c:/Users/jleom/dev/sports-intelligence-cloud/docs/product/sic-coach-lite/sic-session-builder.md)

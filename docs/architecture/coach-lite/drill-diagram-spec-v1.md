@@ -711,12 +711,12 @@ If spec is incomplete:
 
 ---
 
-## Suggested file locations in repo
-- `docs/contracts/drill-diagram-spec-v1.md`
-- `docs/contracts/session-pack-v1.md`
-- `services/club-vivo/api/_lib/diagram-builder.js`
-- `services/club-vivo/api/_lib/diagram-validator.js`
-- `apps/club-vivo/lib/renderDiagram.ts`
+## Current relevant file locations in repo
+- `docs/architecture/coach-lite/drill-diagram-spec-v1.md`
+- `docs/api/diagram-rendering-contract-v1.md`
+- `docs/api/session-pack-contract-v2.md`
+- `services/club-vivo/api/src/domains/session-builder/diagram-spec-validate.js`
+- `services/club-vivo/api/src/domains/sessions/pdf/session-pdf.js`
 
 ---
 

@@ -6,7 +6,7 @@ This document describes the current SIC enforcement path for:
 
 `auth -> tenant-context -> entitlements -> API -> data enforcement`
 
-It reflects the implemented Club Vivo platform path and the repo's architecture/ADR guidance, with explicit notes where those sources disagree. Primary implementation lives in the API wrapper, tenant-context builder, auth triggers, and DynamoDB-backed repositories. Sources: `infra/cdk/lib/sic-auth-stack.ts`, `infra/cdk/lib/sic-api-stack.ts`, `services/auth/post-confirmation/handler.js`, `services/auth/pre-token-generation/handler.js`, `services/club-vivo/api/_lib/with-platform.js`, `services/club-vivo/api/_lib/tenant-context.js`.
+It reflects the implemented Club Vivo platform path and the repo's architecture/ADR guidance, with explicit notes where those sources disagree. Primary implementation lives in the API wrapper, tenant-context builder, auth triggers, and DynamoDB-backed repositories. Sources: `infra/cdk/lib/sic-auth-stack.ts`, `infra/cdk/lib/sic-api-stack.ts`, `services/auth/post-confirmation/handler.js`, `services/auth/pre-token-generation/handler.js`, `services/club-vivo/api/src/platform/http/with-platform.js`, `services/club-vivo/api/src/platform/tenancy/tenant-context.js`.
 
 ## End-to-End Flow
 
@@ -16,7 +16,7 @@ It reflects the implemented Club Vivo platform path and the repo's architecture/
 4. `buildTenantContext(event)` reads verified JWT claims, requires `claims.sub`, and loads the authoritative entitlements row from DynamoDB using `user_sub = claims.sub`.
 5. Tenant context is constructed as `{ userId, tenantId, role, tier, groups, requestId }`.
 6. Handlers pass that tenant context into repositories.
-7. Repositories enforce tenant isolation by constructing DynamoDB keys with `PK = TENANT#<tenantId>` and using `GetItem`, `Query`, or `TransactWriteItems`, not scans. Sources: `infra/cdk/lib/sic-api-stack.ts`, `services/club-vivo/api/_lib/with-platform.js`, `services/club-vivo/api/_lib/tenant-context.js`, `services/club-vivo/api/_lib/athlete-repository.js`, `services/club-vivo/api/_lib/session-repository.js`, `docs/architecture/tenant-claim-contract.md`, `docs/architecture/tenancy-model.md`.
+7. Repositories enforce tenant isolation by constructing DynamoDB keys with `PK = TENANT#<tenantId>` and using `GetItem`, `Query`, or `TransactWriteItems`, not scans. Sources: `infra/cdk/lib/sic-api-stack.ts`, `services/club-vivo/api/src/platform/http/with-platform.js`, `services/club-vivo/api/src/platform/tenancy/tenant-context.js`, `services/club-vivo/api/src/domains/athletes/athlete-repository.js`, `services/club-vivo/api/src/domains/sessions/session-repository.js`, `docs/architecture/tenant-claim-contract.md`, `docs/architecture/tenancy-model.md`.
 
 ## 1. Auth
 
@@ -31,7 +31,7 @@ Current enforcement does not authorize from those custom claims; they are supple
 
 ## 2. Tenant Context
 
-`withPlatform(...)` is the mandatory Lambda wrapper for protected handlers. It emits `request_start`, validates or synthesizes `x-correlation-id`, and then calls `buildTenantContext(event)` before invoking any route logic. If tenant context resolution fails, the wrapper converts the failure into the platform error contract and returns a deterministic 4xx/5xx response. Sources: `services/club-vivo/api/_lib/with-platform.js`, `services/club-vivo/api/_lib/logger.js`, `services/club-vivo/api/_lib/errors.js`, `docs/architecture/platform-error-contract.md`.
+`withPlatform(...)` is the mandatory Lambda wrapper for protected handlers. It emits `request_start`, validates or synthesizes `x-correlation-id`, and then calls `buildTenantContext(event)` before invoking any route logic. If tenant context resolution fails, the wrapper converts the failure into the platform error contract and returns a deterministic 4xx/5xx response. Sources: `services/club-vivo/api/src/platform/http/with-platform.js`, `services/club-vivo/api/src/platform/logging/logger.js`, `services/club-vivo/api/src/platform/errors/errors.js`, `docs/architecture/platform-error-contract.md`.
 
 `buildTenantContext(event)` enforces these rules:
 
@@ -42,7 +42,7 @@ Current enforcement does not authorize from those custom claims; they are supple
 - `tenant_id`, `role`, and `tier` must be present in the entitlements row.
 - `tenant_id` must match `^tenant_[a-z0-9-]{3,}$`, or the request fails closed with `403`.
 
-The returned tenant context is the single trusted source handed to handlers and repositories. Sources: `services/club-vivo/api/_lib/tenant-context.js`, `docs/architecture/tenant-claim-contract.md`, `docs/architecture/tenancy-model.md`, `docs/adr/ADR-0003-fail-closed-authorization-model.md`.
+The returned tenant context is the single trusted source handed to handlers and repositories. Sources: `services/club-vivo/api/src/platform/tenancy/tenant-context.js`, `docs/architecture/tenant-claim-contract.md`, `docs/architecture/tenancy-model.md`, `docs/adr/ADR-0003-fail-closed-authorization-model.md`.
 
 ## 3. Entitlements
 
@@ -51,7 +51,7 @@ The entitlements store is a DynamoDB table keyed by `user_sub`. The API stack cr
 - identity from verified JWT `sub`
 - tenant scope and capability from DynamoDB entitlements `{ tenant_id, role, tier }`
 
-This lets tenant membership, role, and tier change without waiting for token refresh. Sources: `infra/cdk/lib/sic-api-stack.ts`, `infra/cdk/lib/sic-auth-stack.ts`, `services/auth/post-confirmation/handler.js`, `services/club-vivo/api/_lib/tenant-context.js`, `docs/architecture/tenant-claim-contract.md`, `docs/adr/ADR-0005-entitlements-provisioning-postconfirmation-lambda.md`.
+This lets tenant membership, role, and tier change without waiting for token refresh. Sources: `infra/cdk/lib/sic-api-stack.ts`, `infra/cdk/lib/sic-auth-stack.ts`, `services/auth/post-confirmation/handler.js`, `services/club-vivo/api/src/platform/tenancy/tenant-context.js`, `docs/architecture/tenant-claim-contract.md`, `docs/adr/ADR-0005-entitlements-provisioning-postconfirmation-lambda.md`.
 
 PostConfirmation currently provisions:
 
@@ -71,7 +71,7 @@ Protected handlers do not accept tenant identity from body, query, or headers. I
 - `/sessions`: same pattern for create/list/get
 - `/session-packs`: requires tenant context even though it is currently stateless
 
-Handlers also fail closed on missing env configuration and normalize errors through shared error types. Sources: `services/club-vivo/api/me/handler.js`, `services/club-vivo/api/athletes/handler.js`, `services/club-vivo/api/sessions/handler.js`, `services/club-vivo/api/session-packs/handler.js`, `services/club-vivo/api/_lib/errors.js`.
+Handlers also fail closed on missing env configuration and normalize errors through shared error types. Sources: `services/club-vivo/api/me/handler.js`, `services/club-vivo/api/athletes/handler.js`, `services/club-vivo/api/sessions/handler.js`, `services/club-vivo/api/session-packs/handler.js`, `services/club-vivo/api/src/platform/errors/errors.js`.
 
 ## 5. Data Enforcement
 
@@ -90,11 +90,11 @@ The key properties of the current data boundary are:
 - create paths use `TransactWriteItems` under the tenant partition
 - pagination tokens are opaque DynamoDB `LastEvaluatedKey` encodings, not tenant selectors
 
-This matches the tenancy-model and repository ADR guidance that tenant isolation must come from key construction, not post-read filtering. Sources: `services/club-vivo/api/_lib/athlete-repository.js`, `services/club-vivo/api/_lib/session-repository.js`, `docs/architecture/tenancy-model.md`, `docs/adr/ADR-0006-repository-boundary-tenant-safe-data-access.md`, `docs/adr/ADR-0001-multi-tenant-dynamodb-single-table-model.md`.
+This matches the tenancy-model and repository ADR guidance that tenant isolation must come from key construction, not post-read filtering. Sources: `services/club-vivo/api/src/domains/athletes/athlete-repository.js`, `services/club-vivo/api/src/domains/sessions/session-repository.js`, `docs/architecture/tenancy-model.md`, `docs/adr/ADR-0006-repository-boundary-tenant-safe-data-access.md`, `docs/adr/ADR-0001-multi-tenant-dynamodb-single-table-model.md`.
 
 ## Logging and Redaction Rules
 
-The intended platform logging contract is structured JSON with stable fields such as `requestId`, `correlationId`, `eventType`, and `http.*`. `tenantId` may only be logged after tenant context resolves successfully. 4xx auth/validation failures log at `WARN`; 5xx failures log at `ERROR`. Sources: `services/club-vivo/api/_lib/logger.js`, `services/club-vivo/api/_lib/with-platform.js`, `docs/architecture/platform-observability.md`, `docs/architecture/observability-signals.md`.
+The intended platform logging contract is structured JSON with stable fields such as `requestId`, `correlationId`, `eventType`, and `http.*`. `tenantId` may only be logged after tenant context resolves successfully. 4xx auth/validation failures log at `WARN`; 5xx failures log at `ERROR`. Sources: `services/club-vivo/api/src/platform/logging/logger.js`, `services/club-vivo/api/src/platform/http/with-platform.js`, `docs/architecture/platform-observability.md`, `docs/architecture/observability-signals.md`.
 
 Redaction and omission rules in the repo are explicit:
 
@@ -104,7 +104,7 @@ Redaction and omission rules in the repo are explicit:
 - prefer safe metadata such as field names, status codes, entity ids, and reason codes
 - if a supplied correlation ID is invalid, log only safe metadata such as length, not the raw value
 
-Sources: `docs/architecture/platform-observability.md`, `docs/architecture/platform-error-contract.md`, `services/club-vivo/api/_lib/logger.js`, `services/club-vivo/api/_lib/with-platform.js`, `docs/runbooks/repo-public-safety.md`.
+Sources: `docs/architecture/platform-observability.md`, `docs/architecture/platform-error-contract.md`, `services/club-vivo/api/src/platform/logging/logger.js`, `services/club-vivo/api/src/platform/http/with-platform.js`, `docs/runbooks/repo-public-safety.md`.
 
 Current implementation notes:
 
@@ -112,7 +112,7 @@ Current implementation notes:
 - `tenant-context.js` logs startup and entitlements-load diagnostics including `userSub`, table name, and lookup latency.
 - Auth triggers log provisioning details such as `username`, `tenantId`, `groupName`, and written claim names. These are not secrets, but they are broader than the API logging contract and should be treated as operational data, not public examples.
 
-Sources: `infra/cdk/lib/sic-api-stack.ts`, `services/club-vivo/api/_lib/tenant-context.js`, `services/auth/post-confirmation/handler.js`, `services/auth/pre-token-generation/handler.js`.
+Sources: `infra/cdk/lib/sic-api-stack.ts`, `services/club-vivo/api/src/platform/tenancy/tenant-context.js`, `services/auth/post-confirmation/handler.js`, `services/auth/pre-token-generation/handler.js`.
 
 ## Secret Handling
 
@@ -141,7 +141,7 @@ The implemented path is therefore:
 - authorize tenant scope from entitlements
 - treat token custom claims as convenience only
 
-That newer model is supported by `services/club-vivo/api/_lib/tenant-context.js`, `docs/architecture/tenant-claim-contract.md`, and `docs/architecture/SIC architecture principles.md`, and appears to be the actual source of truth.
+That newer model is supported by `services/club-vivo/api/src/platform/tenancy/tenant-context.js`, `docs/architecture/tenant-claim-contract.md`, and `docs/architecture/SIC architecture principles.md`, and appears to be the actual source of truth.
 
 ## Source Files Used
 
@@ -149,12 +149,12 @@ That newer model is supported by `services/club-vivo/api/_lib/tenant-context.js`
 - `infra/cdk/lib/sic-api-stack.ts`
 - `services/auth/post-confirmation/handler.js`
 - `services/auth/pre-token-generation/handler.js`
-- `services/club-vivo/api/_lib/with-platform.js`
-- `services/club-vivo/api/_lib/logger.js`
-- `services/club-vivo/api/_lib/tenant-context.js`
-- `services/club-vivo/api/_lib/errors.js`
-- `services/club-vivo/api/_lib/athlete-repository.js`
-- `services/club-vivo/api/_lib/session-repository.js`
+- `services/club-vivo/api/src/platform/http/with-platform.js`
+- `services/club-vivo/api/src/platform/logging/logger.js`
+- `services/club-vivo/api/src/platform/tenancy/tenant-context.js`
+- `services/club-vivo/api/src/platform/errors/errors.js`
+- `services/club-vivo/api/src/domains/athletes/athlete-repository.js`
+- `services/club-vivo/api/src/domains/sessions/session-repository.js`
 - `services/club-vivo/api/me/handler.js`
 - `services/club-vivo/api/athletes/handler.js`
 - `services/club-vivo/api/sessions/handler.js`

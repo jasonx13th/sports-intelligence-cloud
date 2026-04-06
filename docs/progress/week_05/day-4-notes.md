@@ -22,7 +22,7 @@
 - `infra/cdk/bin/sic-api.ts` (API-only synth/diff entrypoint)
 
 ### Docs
-- `docs/runbooks/club-vivo-week-5-demo.md`
+- `docs/progress/week_05/demo-script.md`
 
 ## Commits (evidence)
 - `88add42` — API-only PDF export (helpers + handler route + tests)

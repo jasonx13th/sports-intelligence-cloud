@@ -134,7 +134,7 @@ This keeps API contracts clean.
 
 ### Learning Log
 
-    docs/progress/Q&A's/Questions_answers.md
+    docs/progress/qa/questions-answers.md
 
 ------------------------------------------------------------------------
 

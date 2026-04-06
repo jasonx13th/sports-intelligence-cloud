@@ -38,9 +38,9 @@ Stabilize the Session Builder into a production-ready MVP core by:
 - added the focused Week 11 runtime note:
   - `docs/architecture/session-builder-week11.md`
 - updated the Session Builder request-flow diagram in:
-  - `docs/architecture/Architecture-Diagrams.md`
+  - `docs/architecture/architecture-diagrams.md`
 - added the Week 11 demo runbook:
-  - `docs/runbooks/club-vivo-week-11-demo.md`
+  - `docs/progress/week_11/demo-script.md`
 
 ## Validation and test evidence
 
@@ -70,8 +70,8 @@ Key outcomes verified:
 
 - `docs/api/session-builder-v1-contract.md`
 - `docs/architecture/session-builder-week11.md`
-- `docs/architecture/Architecture-Diagrams.md`
-- `docs/runbooks/club-vivo-week-11-demo.md`
+- `docs/architecture/architecture-diagrams.md`
+- `docs/progress/week_11/demo-script.md`
 
 These documents now cover:
 

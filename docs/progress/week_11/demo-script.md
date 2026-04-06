@@ -169,4 +169,4 @@ This Week 11 demo does not cover:
 
 - `docs/api/session-builder-v1-contract.md`
 - `docs/architecture/session-builder-week11.md`
-- `docs/api/postman-workflow.md`
+- `postman/README.md`

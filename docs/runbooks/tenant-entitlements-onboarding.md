@@ -110,5 +110,5 @@ After changes:
 - Auth:
   - `services/auth/post-confirmation/handler.js` (writes entitlements)
 - API:
-  - `services/club-vivo/api/_lib/tenant-context.js` (reads entitlements)
+  - `services/club-vivo/api/src/platform/tenancy/tenant-context.js` (reads entitlements)
   - `services/club-vivo/api/me/handler.js` (calls tenant context)

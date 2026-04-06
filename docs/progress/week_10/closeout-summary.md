@@ -23,7 +23,7 @@ All changes were shipped as **3 small PRs**, merged to `main`, and branches dele
   - Glue catalog permissions scoped to the database and its tables
 - Docs:
   - `docs/architecture/glue-catalog-v1.md`
-  - `docs/progress/week_10/closeoutsummary.md` (Day 1 entry)
+  - `docs/progress/week_10/closeout-summary.md` (Day 1 entry)
 
 **Why**
 Make bronze data discoverable in Glue without weakening tenant isolation.
@@ -38,7 +38,7 @@ Make bronze data discoverable in Glue without weakening tenant isolation.
   - `services/club-vivo/api/lake-etl/etl_test.py` (local unit test)
 - Docs:
   - `docs/architecture/etl-v1.md`
-  - `docs/progress/week_10/closeoutsummary.md` (Day 2 entry)
+  - `docs/progress/week_10/closeout-summary.md` (Day 2 entry)
 
 **Contract**
 - Input (bronze): `bronze/sessions/v=1/tenant_id=.../dt=.../*.ndjson`
@@ -63,7 +63,7 @@ Make bronze data discoverable in Glue without weakening tenant isolation.
 - CloudWatch alarms (CDK):
   - `BronzeSessionsCrawlerFailureAlarm`
   - `BronzeToSilverSessionsJobFailureAlarm`
-- Updated `docs/progress/week_10/closeoutsummary.md` (Day 3 entry)
+- Updated `docs/progress/week_10/closeout-summary.md` (Day 3 entry)
 
 **Why**
 Make Week 10 pipeline operable: failures are visible + have response playbooks, without adding new data access paths.

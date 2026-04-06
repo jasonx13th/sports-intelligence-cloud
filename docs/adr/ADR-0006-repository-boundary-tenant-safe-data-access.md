@@ -19,7 +19,7 @@ Introduce a repository layer responsible for all domain data access.
 
 Example repository:
 
-services/club-vivo/api/_lib/athlete-repository.js
+services/club-vivo/api/src/domains/athletes/athlete-repository.js
 
 Repository methods enforce tenant-scoped queries:
 

@@ -21,11 +21,6 @@ id_rsa*
 # CDK / build
 cdk.out/
 
-# Local debug artifacts (do not commit)
-infra/cdk/ddb-key.json
-infra/cdk/entitlements-backup.json
-infra/cdk/idem-logs.json
-
 # Local temporary files
 replace.txt
 tmp_alarms.json
@@ -33,9 +28,6 @@ sic-test.txt
 
 # Accidental local artifact
 infra/cdk/git
-
-# Private local Codex contract (do not commit)
-CHAT/CODEX.private.md
 
 # local virtual env
 .venv/

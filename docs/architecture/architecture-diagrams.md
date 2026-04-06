@@ -202,7 +202,7 @@ Intelligence features based on real workflows and real data
 
 - Vision: `docs/vision.md`
 - Platform constitution: `docs/architecture/platform-constitution.md`
-- Architecture principles: `docs/architecture/Architecture-Principles.md`
+- Architecture principles: `docs/architecture/architecture-principles.md`
 - Tenant identity and claims: `docs/architecture/tenant-claim-contract.md`
-- Product spec: `docs/product/SIC-session-builder.md`
-- Active roadmap: `docs/progress/Build-Progress/roadmap-vnext.md`
+- Product spec: `docs/product/sic-coach-lite/sic-session-builder.md`
+- Active roadmap: `docs/progress/build-progress/roadmap-vnext.md`

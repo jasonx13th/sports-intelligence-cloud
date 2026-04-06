@@ -6,7 +6,7 @@ SIC treats failure as part of the API contract. The goal is predictable behavior
 
 ## Source of truth
 
-- Platform Error Contract: ../architecture/platform-error-contract.md
+- Platform Error Contract: platform-error-contract.md
 
 This contract applies to Lambda and API handlers wrapped by `withPlatform()` and defines the error envelope, status mapping, retry rules, correlation fields, and safety requirements.
 

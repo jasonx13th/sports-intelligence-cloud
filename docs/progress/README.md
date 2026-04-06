@@ -6,8 +6,8 @@ This folder is the tracked home for weekly build logs, day notes, closeouts, tem
 
 - Weekly and daily progress notes under `week_*`.
 - Reusable note templates under `templates/`.
-- Build summaries under `Build-Progress/`.
-- Reference Q&A notes under `Q&A's/`.
+- Build summaries under `build-progress/`.
+- Reference Q&A notes under `qa/`.
 
 ## Safety rules
 

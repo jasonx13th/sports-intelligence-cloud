@@ -189,14 +189,16 @@ SIC is a product platform with multiple customer types.
 
 ## 13. Tooling Discipline and Repo Guardrails
 
-- Repo-level guardrails must be committed and kept current:
-  - `.github/copilot-instructions.md`
-  - `.github/hooks/*.json`
-  - `docs/runbooks/*`
+- Repo-level guardrails that define or protect the platform must be committed and kept current.
+- This includes:
+  - CI/CD workflows under `.github/workflows/`
+  - runbooks under `docs/runbooks/`
+  - canonical architecture and repo structure docs under `docs/architecture/`
 - AI coding tools may accelerate implementation, but:
   - tenancy boundary changes require explicit human review
   - infra, IAM, and CDK changes require explicit approval
   - evidence is required for completion
+- Tool-specific local helper files for editors or assistants may live outside the tracked repo in local workspace paths such as `.workspace/ai/`.
 
 ---
 

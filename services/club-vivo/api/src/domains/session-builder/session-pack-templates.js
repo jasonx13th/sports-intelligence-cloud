@@ -1,7 +1,7 @@
 "use strict";
 
 const { validateCreateSession } = require("./session-validate");
-const { validationError } = require("./validate");
+const { validationError } = require("../../platform/validation/validate");
 const { validateSessionPackV2Draft } = require("./session-pack-validate");
 
 // Deterministic templates first. No Bedrock here.

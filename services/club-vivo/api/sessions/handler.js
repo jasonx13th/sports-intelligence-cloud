@@ -9,8 +9,8 @@ const { createSessionPdfStorage } = require("../_lib/session-pdf-storage");
 const {
   persistSession,
   exportPersistedSession,
-} = require("../_lib/session-builder-pipeline");
-const { validateCreateSession } = require("../_lib/session-validate");
+} = require("../src/domains/session-builder/session-builder-pipeline");
+const { validateCreateSession } = require("../src/domains/session-builder/session-validate");
 const { BadRequestError, NotFoundError, InternalError } = require("../src/platform/errors/errors");
 
 function assertEnv({ requirePdfBucket = false } = {}) {

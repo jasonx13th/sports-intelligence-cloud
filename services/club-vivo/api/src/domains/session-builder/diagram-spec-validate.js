@@ -1,6 +1,6 @@
 "use strict";
 
-const { validationError } = require("./validate");
+const { validationError } = require("../../platform/validation/validate");
 
 const DRILL_DIAGRAM_SPEC_VERSION = "drill-diagram-spec.v1";
 const DRILL_DIAGRAM_TYPES = ["setup", "sequence", "progression", "regression", "condition"];

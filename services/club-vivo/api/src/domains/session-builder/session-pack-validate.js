@@ -1,6 +1,6 @@
 "use strict";
 
-const { requireFields, validationError } = require("./validate");
+const { requireFields, validationError } = require("../../platform/validation/validate");
 const {
   SUPPORTED_AGE_BANDS,
   normalizeAgeBand,

@@ -6,7 +6,7 @@ const {
 } = require("./session-pack-validate");
 const { generatePack, buildCoachLiteDraftFromPack, minutesSum } = require("./session-pack-templates");
 const { validateCreateSession } = require("./session-validate");
-const { validationError } = require("./validate");
+const { validationError } = require("../../platform/validation/validate");
 
 function normalizeSessionPackInput(rawInput) {
   return validateCreateSessionPack(rawInput);

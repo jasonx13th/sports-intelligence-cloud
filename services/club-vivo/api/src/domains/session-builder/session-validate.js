@@ -1,6 +1,6 @@
 "use strict";
 
-const { requireFields, validationError } = require("./validate");
+const { requireFields, validationError } = require("../../platform/validation/validate");
 
 const SUPPORTED_AGE_BANDS = ["u6", "u8", "u10", "u12", "u14", "u16", "u18", "adult"];
 const GOALS_REQUIRED_KEYWORDS = ["goal", "goals", "finish", "finishing"];

@@ -3,7 +3,7 @@
 
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
-const { processSessionPackRequest } = require("../_lib/session-builder-pipeline");
+const { processSessionPackRequest } = require("../src/domains/session-builder/session-builder-pipeline");
 const { BadRequestError, NotFoundError, InternalError } = require("../src/platform/errors/errors");
 
 function assertEnv() {

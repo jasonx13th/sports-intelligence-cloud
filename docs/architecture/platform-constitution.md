@@ -5,7 +5,7 @@ This document is the highest-level architecture and product alignment summary fo
 It defines what SIC is today, what it is becoming, and which platform rules govern its growth.
 
 For detailed engineering rules, see:
-- `docs/architecture/SIC architecture principles.md`
+- `docs/architecture/architecture-principles.md`
 - `docs/architecture/tenant-claim-contract.md`
 
 ---
@@ -106,7 +106,7 @@ SIC is governed by these core principles:
 - AI and ML lifecycle discipline
 
 The full detail lives in:
-- `docs/architecture/SIC architecture principles.md`
+- `docs/architecture/architecture-principles.md`
 
 ---
 
@@ -184,7 +184,7 @@ Long-term ideas should be preserved, but separated from the active execution pat
 
 When there is ambiguity, use this order:
 
-1. `docs/architecture/SIC architecture principles.md`
+1. `docs/architecture/architecture-principles.md`
 2. `docs/architecture/platform-constitution.md`
 3. `docs/vision.md`
 4. `docs/architecture/tenant-claim-contract.md`

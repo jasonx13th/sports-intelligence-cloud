@@ -87,14 +87,31 @@ This repository demonstrates:
 
 ---
 
+## Repo Map
+
+Key repo areas:
+
+- `apps/club-vivo/` -> active coach-facing web app
+- `services/club-vivo/api/` -> primary backend API
+- `services/auth/` -> auth-related lambdas
+- `infra/cdk/` -> infrastructure as code
+- `docs/` -> tracked architecture, product, API, runbook, and progress docs
+- `datasets/schemas/exports/v1/` -> machine-readable export schemas
+- `postman/README.md` -> Postman workflow and usage guidance
+- `.workspace/` -> local-only helper material, not tracked repo truth
+
+---
+
 ## Current Documentation
 
 Start here:
 
 - Vision: [`docs/vision.md`](docs/vision.md)
-- Architecture principles: [`docs/architecture/SIC architecture principles.md`](docs/architecture/SIC%20architecture%20principles.md)
+- Architecture principles: [`docs/architecture/architecture-principles.md`](docs/architecture/architecture-principles.md)
+- Platform constitution: [`docs/architecture/platform-constitution.md`](docs/architecture/platform-constitution.md)
 - Tenant claim contract: [`docs/architecture/tenant-claim-contract.md`](docs/architecture/tenant-claim-contract.md)
-- Architecture diagrams: [`docs/architecture/SIC Architecture Diagrams.md`](docs/architecture/SIC%20Architecture%20Diagrams.md)
+- Repo structure: [`docs/architecture/repo-structure.md`](docs/architecture/repo-structure.md)
+- Architecture diagrams: [`docs/architecture/architecture-diagrams.md`](docs/architecture/architecture-diagrams.md)
 - Product spec: [`docs/product/sic-coach-lite/sic-session-builder.md`](docs/product/sic-coach-lite/sic-session-builder.md)
 - Active roadmap: [`docs/progress/build-progress/roadmap-vnext.md`](docs/progress/build-progress/roadmap-vnext.md)
 
@@ -152,5 +169,3 @@ It is being used to deepen practical skills across:
 - platform design
 - secure multi-tenant architecture
 - observability and cost discipline
-
----

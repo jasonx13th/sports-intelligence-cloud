@@ -1,4 +1,4 @@
-# Header
+# Day Note
 
 - Week: `Week_##`
 - Day: `Day_##`
@@ -9,49 +9,55 @@
 
 `<What this day is intended to accomplish.>`
 
-## Plan
+## Planned scope
 
 1. `<Planned task 1>`
 2. `<Planned task 2>`
 3. `<Planned task 3>`
 
-## Build Log
+## Files expected to change
+
+- `<path/to/file>`
+- `<path/to/file>`
+- `<path/to/file>`
+
+## Build log
 
 - `<What was explored, changed, debugged, or documented.>`
 - `<Key implementation note or decision.>`
 - `<Important blocker or follow-up.>`
 
-## Commands Run
+## Commands run
 
 - `<command>`
 - `<command>`
 - `<command>`
 
-## Validation Output Summary
+## Validation summary
 
 - `<What was validated.>`
 - `<High-level result.>`
 - `<Any failures, warnings, or gaps.>`
 
-## Tenancy/Security Checks
+## Tenancy and security checks
 
 - `<Tenant-boundary check or auth/entitlements check.>`
 - `<Secret-handling / redaction / least-privilege note.>`
 - `<Any security gap, or 'None noted'.>`
 
-## Observability/Cost
+## Observability and cost
 
 - `<Logging, metrics, alarms, traces, or runbook note.>`
 - `<Cost, scale, or efficiency note.>`
 - `<Any follow-up needed, or 'None'.>`
 
-## Open Issues
+## Open issues
 
 - `<Issue 1>`
 - `<Issue 2>`
 - `<Issue 3>`
 
-## Q&A
+## Q and A
 
 1. Q: `<Question 1>`
    A: `<Answer 1>`
@@ -59,7 +65,8 @@
    A: `<Answer 2>`
 3. Q: `<Question 3>`
    A: `<Answer 3>`
-4. Q: `<Question 4>`
-   A: `<Answer 4>`
-5. Q: `<Question 5>`
-   A: `<Answer 5>`
+
+## Notes for closeout
+
+- `<What should be captured in the weekly closeout-summary.md>`
+- `<What should be demoed, documented, or validated next>`

@@ -1,233 +1,480 @@
 # SIC Repo Structure
 
-This document is the current source of truth for how code should be organized in the Sports Intelligence Cloud repository.
+This document defines the current repository layout for Sports Intelligence Cloud and where new files should live.
 
-It exists to keep implementation clean, help AI coding tools place files correctly, and prevent the repo from drifting back into a generic utility dump.
+It is the canonical placement guide for tracked repo content.
 
-## Purpose
+When in doubt:
+1. choose the narrowest existing folder that fits
+2. prefer updating an existing file over creating a parallel file
+3. avoid creating new top-level folders unless there is a clear reason
 
-SIC is a multi-tenant, serverless sports platform on AWS.
+---
 
-The repo should reflect the current product and architecture priorities:
+## Goals of this structure
 
-- Session Builder implementation
-- coach and team workflows
-- multi-tenant platform safety
-- observability and reliability
-- low-cost, product-first delivery
-- clear documentation for ongoing development
+The SIC repo should stay:
 
-## Core Structure Rule
+- product-first
+- architecture-strong
+- easy to navigate
+- safe for multi-tenant work
+- friendly to small, reviewable diffs
 
-Use this separation consistently:
+The structure should make it obvious:
 
-- `src/platform` for shared cross-cutting platform code
-- `src/domains/<domain>` for domain-owned business logic
-- top-level route folders for Lambda handlers only
+- where app code lives
+- where backend code lives
+- where infra lives
+- where tracked docs live
+- where local-only material belongs
 
-Do not create new `_lib` folders for shared logic.
+---
 
-## Current API Structure
+## Top-level layout
 
-`services/club-vivo/api/`
+```text
+.
+├── .github/
+├── apps/
+├── datasets/
+├── docs/
+├── infra/
+├── postman/
+├── scripts/
+├── services/
+├── README.md
+├── Makefile
+├── .gitignore
+└── .gitattributes
+```
 
-### Handler folders
-These folders contain Lambda handlers and route-level entrypoints:
+### Top-level folder meanings
 
-- `athletes/`
-- `clubs/`
-- `exports-domain/`
-- `lake-etl/`
-- `lake-ingest/`
-- `me/`
-- `memberships/`
-- `session-packs/`
-- `sessions/`
-- `teams/`
+- `.github/` -> tracked repo automation and AI/repo guidance
+- `apps/` -> user-facing applications
+- `services/` -> backend services and auth lambdas
+- `infra/` -> infrastructure as code
+- `docs/` -> tracked human-readable documentation
+- `datasets/` -> machine-readable schemas and dataset artifacts
+- `postman/` -> Postman assets and workflow docs
+- `scripts/` -> repo utility scripts
 
-Handlers should stay thin. They should orchestrate request flow, call platform utilities, call domain logic, and return HTTP responses.
+---
 
-### Platform code
-Shared cross-cutting code lives in:
+## Applications
 
-- `src/platform/errors/`
-- `src/platform/http/`
-- `src/platform/logging/`
-- `src/platform/tenancy/`
-- `src/platform/validation/`
+### `apps/club-vivo/`
+Primary active coach-facing web application.
 
-Put code here only if it is truly shared across multiple domains or routes.
+Use this for:
+- Next.js routes
+- UI components
+- shared client utilities
+- frontend session builder flows
+
+Placement rules:
+- shared UI components -> `apps/club-vivo/components/`
+- shared client helpers and API utilities -> `apps/club-vivo/lib/`
+- route-local helper files may stay inside a route folder when only used there
 
 Examples:
-- tenant context building
-- request parsing
-- shared validation helpers
-- platform error types
-- structured logging
-- HTTP middleware/wrappers
+- `apps/club-vivo/components/coach/`
+- `apps/club-vivo/lib/session-builder-api.ts`
+- `apps/club-vivo/app/sessions/new/session-new-flow.tsx`
 
-### Domain code
-Business logic belongs under:
+### `apps/athlete-evolution-ai/`
+Reserved app area. Currently placeholder-level.
 
-- `src/domains/athletes/`
-- `src/domains/clubs/`
-- `src/domains/memberships/`
-- `src/domains/session-builder/`
-- `src/domains/sessions/`
-- `src/domains/teams/`
+### `apps/ruta-viva/`
+Reserved app area. Currently placeholder-level.
 
-Use domain folders for logic that belongs to a specific product capability or business entity.
+Do not expand placeholder apps unless the work is intentionally starting there.
+
+---
+
+## Services
+
+### `services/club-vivo/api/`
+Primary backend API service.
+
+Structure:
+
+```text
+services/club-vivo/api/
+├── athletes/
+├── clubs/
+├── exports-domain/
+├── lake-etl/
+├── lake-ingest/
+├── me/
+├── memberships/
+├── session-packs/
+├── sessions/
+├── teams/
+├── src/
+│   ├── domains/
+│   └── platform/
+└── _testHelpers/
+```
+
+#### Route entrypoints
+Top-level route folders contain handler entrypoints.
 
 Examples:
+- `services/club-vivo/api/athletes/handler.js`
+- `services/club-vivo/api/sessions/handler.js`
+- `services/club-vivo/api/session-packs/handler.js`
+
+Keep handlers thin.
+
+#### Shared backend platform code
+Cross-cutting backend code lives in:
+
+- `services/club-vivo/api/src/platform/tenancy/`
+- `services/club-vivo/api/src/platform/http/`
+- `services/club-vivo/api/src/platform/logging/`
+- `services/club-vivo/api/src/platform/errors/`
+- `services/club-vivo/api/src/platform/validation/`
+
+Use `src/platform/` for:
+- tenant context
+- request wrapper logic
+- parsing
+- validation helpers
+- logging
+- shared platform errors
+
+Do not create new generic `_lib` folders.
+
+#### Domain-owned backend logic
+Business logic lives in:
+
+- `services/club-vivo/api/src/domains/athletes/`
+- `services/club-vivo/api/src/domains/clubs/`
+- `services/club-vivo/api/src/domains/memberships/`
+- `services/club-vivo/api/src/domains/session-builder/`
+- `services/club-vivo/api/src/domains/sessions/`
+- `services/club-vivo/api/src/domains/teams/`
+
+Use `src/domains/<domain>/` for:
 - repositories
-- domain validation
+- validation tied to a domain
 - generation pipelines
-- templates
-- domain-specific export helpers
-- PDF/session helpers tied to one domain
-
-## Domain Placement Rules
-
-### `src/domains/session-builder`
-Put logic here when it belongs to session generation or session-pack creation.
+- domain-specific persistence logic
+- domain-owned PDF/output helpers when they clearly belong to that domain
 
 Examples:
-- session builder pipeline
-- session validation
-- session-pack validation
-- session-pack templates
-- diagram spec validation
+- `src/domains/session-builder/session-builder-pipeline.js`
+- `src/domains/sessions/session-repository.js`
+- `src/domains/sessions/pdf/session-pdf.js`
 
-### `src/domains/sessions`
-Put logic here when it belongs to persisted sessions and session output workflows.
+#### Test helpers
+Shared service-local test helpers belong in:
+- `services/club-vivo/api/_testHelpers/`
+
+This is acceptable because it is specific to test support, not a catch-all production library.
+
+### `services/auth/`
+Auth-related lambdas live here.
+
+Current structure:
+- `services/auth/post-confirmation/`
+- `services/auth/pre-token-generation/`
+
+Keep each auth lambda in its own folder.
+
+---
+
+## Infrastructure
+
+### `infra/cdk/`
+Tracked infrastructure as code for SIC.
+
+Use this for:
+- CDK entrypoints in `bin/`
+- stack definitions in `lib/`
+- CDK config files
+- tracked infra README and package metadata
+
+Keep generated and local-only artifacts out of tracked source structure.
+
+Tracked source shape should stay roughly like:
+
+```text
+infra/cdk/
+├── bin/
+├── lib/
+├── cdk.json
+├── package.json
+├── tsconfig.json
+├── README.md
+└── .gitignore
+```
+
+### Local-only infra artifacts
+Local operator artifacts belong in:
+- `infra/cdk/.local/`
 
 Examples:
-- session repository
-- session PDF generation
-- session PDF storage helpers
-- future session export helpers
-- future session feedback logic
+- temporary DynamoDB lookup payloads
+- local backups
+- local CloudWatch export files
 
-### `src/domains/athletes`
-Put athlete-specific data access and business logic here.
+These should stay ignored and should not become tracked repo truth.
 
-### `src/domains/clubs`
-Put club-specific data access and business logic here.
+---
 
-### `src/domains/memberships`
-Put membership-specific data access and business logic here.
+## Documentation
 
-### `src/domains/teams`
-Put team-specific data access and business logic here.
+### `docs/api/`
+API contracts and API-facing behavior.
 
-## Specialized Workflow Folders
-
-Some top-level folders are workflow-specific and should remain separate from generic domain folders:
-
-- `exports-domain/` for export endpoint handlers and export workflows
-- `lake-ingest/` for ingest pipeline handlers
-- `lake-etl/` for ETL handlers/jobs
-
-Keep these focused on their operational workflow.
-
-## Test Placement
-
-Prefer tests close to the module they cover.
+Use this for:
+- endpoint contracts
+- request and response behavior
+- platform error behavior
+- API-facing rendering contracts
+- human-readable API guidance
 
 Examples:
-- `src/platform/http/with-platform.test.js`
-- `src/domains/session-builder/session-validate.test.js`
-- `src/domains/sessions/session-repository.test.js`
+- `docs/api/session-builder-v1-contract.md`
+- `docs/api/session-pack-contract-v2.md`
+- `docs/api/platform-error-contract.md`
+- `docs/api/error-handling.md`
 
-Handler tests may remain next to handlers where that is already the repo pattern.
+### `docs/architecture/`
+Platform and system architecture.
 
-## Import Direction Rules
+Use this for:
+- architecture rules
+- repo structure
+- platform overviews
+- tenancy model
+- observability architecture
+- system diagrams
+- implementation architecture notes
 
-Keep imports flowing in a clean direction:
+Examples:
+- `docs/architecture/architecture-principles.md`
+- `docs/architecture/platform-constitution.md`
+- `docs/architecture/platform-overview.md`
+- `docs/architecture/repo-structure.md`
 
-- handlers may import from `src/platform` and `src/domains`
-- domain modules may import from `src/platform`
-- platform modules must not import from domain modules
-- avoid domain-to-domain imports unless clearly necessary and stable
+#### `docs/architecture/coach-lite/`
+Use this only for Coach Lite architecture material, not product scope docs.
 
-This keeps the architecture understandable and reduces circular drift.
+Examples:
+- generation flow
+- rendering architecture
+- diagram spec
+- tenant-safe methodology knowledge
 
-## Tenancy and Safety Rules
+### `docs/product/`
+Product-specific tracked docs.
 
-Repo structure must support SIC’s multi-tenant model.
+Use this for:
+- product overviews
+- scope docs
+- user flows
+- product roadmaps
+- product specifications
 
-That means:
+Current product area:
+- `docs/product/sic-coach-lite/`
 
-- tenant context comes from verified auth and entitlements
-- never accept tenant identity from request body, query, or headers
-- data access must remain tenant-scoped by construction
-- do not introduce scan-then-filter tenancy patterns
-- keep fail-closed behavior intact during refactors
+### `docs/adr/`
+Architecture decision records.
 
-## What Not To Do
+Use this for:
+- meaningful architectural decisions
+- approved structural changes
+- tenancy or auth decisions
+- repository/data-access boundary decisions
 
-Do not:
+### `docs/runbooks/`
+Operational runbooks and support procedures.
 
-- create a new generic `_lib` dumping ground
-- place business logic inside handlers
-- place domain-specific code inside `src/platform`
-- move long-term idea placeholders into active product paths without implementation value
-- mix scratch files or local export folders into the tracked repo
+Use this for:
+- alarms
+- triage
+- incident response
+- release hygiene
+- smoke test operations
+- operator procedures
 
-## How To Place New Code
+Do not place week-specific demo scripts here if they are really historical build artifacts.
 
-Use this decision rule:
+### `docs/exports/`
+Human-readable export specs.
 
-1. Is it shared across multiple domains and truly cross-cutting?
-   - put it in `src/platform`
+Use this for:
+- export contracts
+- export format specs
+- export behavior docs
 
-2. Does it belong to one business capability or entity?
-   - put it in `src/domains/<domain>`
+### `docs/progress/`
+Build history, weekly work, closeouts, and long-running progress references.
 
-3. Is it the Lambda entrypoint or route-specific orchestration?
-   - keep it in the top-level handler folder
+Structure:
 
-4. Is it a specialized operational workflow like exports, ingest, or ETL?
-   - keep it in its dedicated workflow folder
+```text
+docs/progress/
+├── build-progress/
+├── qa/
+├── templates/
+├── week_00/
+├── week_01/
+├── ...
+└── week_13/
+```
 
-## Examples
+#### Progress placement rules
+- padded week folders only: `week_00`, `week_01`, `week_12`
+- weekly closeouts -> `closeout-summary.md`
+- week demo walkthroughs -> `demo-script.md`
+- Q and A reference material -> `docs/progress/qa/`
+- long-running roadmap and architect log -> `docs/progress/build-progress/`
 
-- new shared auth/HTTP wrapper  
-  -> `src/platform/http/`
+Keep historical notes historical. Do not rewrite old notes just to modernize past file paths unless there is a strong reason.
 
-- new session builder validator  
-  -> `src/domains/session-builder/`
+---
 
-- new session feedback repository  
-  -> `src/domains/sessions/`
+## Datasets
 
-- new team membership rule  
-  -> `src/domains/memberships/` or `src/domains/teams/` depending on ownership
+### `datasets/schemas/exports/v1/`
+Machine-readable export schemas.
 
-- new route handler for sessions  
-  -> `sessions/handler.js`
+Use this for:
+- JSON schemas
+- versioned machine-readable export definitions
 
-- new lake ingest processor  
-  -> `lake-ingest/`
+Keep machine-readable schemas here, not under `docs/`.
 
-## Working Rule for AI Coding Tools
+---
 
-When adding files, prefer the current domain structure over creating new top-level utility folders.
+## Postman
 
-Default assumption:
-- platform concern -> `src/platform`
-- business/domain concern -> `src/domains/<domain>`
-- route entrypoint -> existing handler folder
+### `postman/`
+Postman assets and usage guidance.
 
-If uncertain, choose the narrowest domain folder that fits the behavior instead of introducing a generic shared folder.
+Use this for:
+- collections
+- environments
+- Postman workflow documentation
 
-## Status
+Current guidance doc:
+- `postman/README.md`
 
-This document reflects the implemented repo structure after the repo hardening phases that moved:
+Do not place Postman workflow docs under `docs/api/` unless they are truly API contract docs rather than tooling workflow docs.
 
-- shared platform utilities into `src/platform`
-- session builder domain logic into `src/domains/session-builder`
-- repositories into domain folders
-- session PDF helpers into `src/domains/sessions/pdf`
+---
 
-This file should be updated whenever the repo structure changes in a meaningful way.
+## Scripts
+
+### `scripts/`
+Repo utility scripts.
+
+Current example:
+- `scripts/smoke/smoke.mjs`
+
+Use this for:
+- repo tooling
+- validation helpers
+- smoke and operational helper scripts
+
+---
+
+## GitHub repo guidance
+
+### `.github/`
+Tracked repository automation and repo-level AI guidance.
+
+Current example:
+- `.github/copilot-instructions.md`
+
+Use this for:
+- workflow automation
+- repo-level assistant guidance that should be tracked
+- shared repository guardrails
+
+Do not put private, machine-specific, or personal workflow notes here.
+Those belong in `.workspace/`.
+
+## Naming rules
+
+### Tracked docs
+Prefer lowercase kebab-case file names.
+
+Examples:
+- `architecture-principles.md`
+- `closeout-summary.md`
+- `demo-script.md`
+
+Avoid:
+- mixed case doc names
+- apostrophes in folder names
+- ad hoc names like `Day_01.md`
+- generic names that do not explain purpose
+
+### Week folders
+Use padded week numbering:
+- `week_00`
+- `week_01`
+- `week_02`
+
+Not:
+- `week_0`
+- `week_1`
+
+### Catch-all folders
+Avoid generic production folders like:
+- `_lib`
+- `misc`
+- `helpers` at repo level
+
+Prefer the narrowest correct existing folder.
+
+---
+
+## Local-only material
+
+Local-only helper material belongs outside tracked repo truth, primarily under:
+
+- `.workspace/`
+- `infra/cdk/.local/`
+
+Examples:
+- AI helper notes
+- scratch files
+- repo exports
+- machine-specific working material
+- temporary operator artifacts
+
+Do not treat local-only files as canonical SIC documentation.
+
+---
+
+## Anti-patterns to avoid
+
+- creating new generic `_lib` folders
+- inventing parallel folder structures when a correct folder already exists
+- placing product docs under architecture folders
+- placing local-only notes in tracked docs
+- putting operator artifacts beside tracked infra source
+- keeping empty placeholder folders around after migration
+- creating one-file top-level documentation categories without a strong reason
+
+---
+
+## Placement decision rule
+
+When deciding where a file should live, use this order:
+
+1. Is there already a clear existing folder for this exact purpose?
+2. Is this tracked repo truth or local-only helper material?
+3. Is this product, architecture, API, runbook, or progress history?
+4. Can this stay route-local or domain-local instead of becoming global?
+5. Is the new location more specific and easier to understand than the old one?
+
+If the answer is still unclear, choose the narrowest existing folder and keep the diff small.

@@ -1,7 +1,7 @@
 // services/club-vivo/api/me/handler.js
 "use strict";
 
-const { withPlatform } = require("../_lib/with-platform");
+const { withPlatform } = require("../src/platform/http/with-platform");
 
 async function inner({ tenantCtx }) {
   return {

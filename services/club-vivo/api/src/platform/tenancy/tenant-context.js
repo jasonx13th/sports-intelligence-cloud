@@ -1,8 +1,8 @@
-// services/club-vivo/api/_lib/tenant-context.js
+// services/club-vivo/api/src/platform/tenancy/tenant-context.js
 "use strict";
 
 const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
-const { UnauthorizedError, ForbiddenError, InternalError } = require("./errors");
+const { UnauthorizedError, ForbiddenError, InternalError } = require("../errors/errors");
 
 const ddb = new DynamoDBClient({});
 const TENANT_ID_RE = /^tenant_[a-z0-9-]{3,}$/;

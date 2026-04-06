@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { UnauthorizedError, ForbiddenError } = require("./errors");
+const { UnauthorizedError, ForbiddenError } = require("../errors/errors");
 const { createWithPlatform } = require("./with-platform");
 
 function createCapturingLogger(store, bound = {}) {

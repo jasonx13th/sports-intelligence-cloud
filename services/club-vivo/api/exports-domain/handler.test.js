@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const { createExportsDomainInner } = require("./handler");
-const { ForbiddenError, InternalError } = require("../_lib/errors");
+const { ForbiddenError, InternalError } = require("../src/platform/errors/errors");
 
 function makeTenantCtx({ tenantId = "tenant_authoritative", role = "admin" } = {}) {
   return {

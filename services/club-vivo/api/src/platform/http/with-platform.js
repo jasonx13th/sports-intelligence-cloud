@@ -1,13 +1,13 @@
-// services/club-vivo/api/_lib/with-platform.js
+// services/club-vivo/api/src/platform/http/with-platform.js
 "use strict";
 
-const { createLogger, resolveCorrelation } = require("./logger");
-const { toErrorResponse, InternalError } = require("./errors");
+const { createLogger, resolveCorrelation } = require("../logging/logger");
+const { toErrorResponse, InternalError } = require("../errors/errors");
 
 function loadBuildTenantContext() {
   // Lazy-load to avoid local require-time dependency issues (AWS SDK) during simple node sanity checks.
   // In Lambda runtime, this still loads normally when the handler executes.
-  return require("./tenant-context").buildTenantContext;
+  return require("../tenancy/tenant-context").buildTenantContext;
 }
 
 function getHttpMethod(event) {

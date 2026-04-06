@@ -1,8 +1,8 @@
 // services/club-vivo/api/sessions/handler.js
 "use strict";
 
-const { withPlatform } = require("../_lib/with-platform");
-const { parseJsonBody } = require("../_lib/parse-body");
+const { withPlatform } = require("../src/platform/http/with-platform");
+const { parseJsonBody } = require("../src/platform/http/parse-body");
 const { SessionRepository } = require("../_lib/session-repository");
 const { createSessionPdfBuffer } = require("../_lib/session-pdf");
 const { createSessionPdfStorage } = require("../_lib/session-pdf-storage");
@@ -11,7 +11,7 @@ const {
   exportPersistedSession,
 } = require("../_lib/session-builder-pipeline");
 const { validateCreateSession } = require("../_lib/session-validate");
-const { BadRequestError, NotFoundError, InternalError } = require("../_lib/errors");
+const { BadRequestError, NotFoundError, InternalError } = require("../src/platform/errors/errors");
 
 function assertEnv({ requirePdfBucket = false } = {}) {
   const missing = [];

@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { ConflictError } = require("../_lib/errors");
+const { ConflictError } = require("../src/platform/errors/errors");
 const { createClubsInner } = require("./handler");
 
 function makeLogger(events) {

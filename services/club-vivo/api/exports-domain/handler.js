@@ -2,8 +2,8 @@
 
 const { randomUUID } = require("crypto");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-const { withPlatform } = require("../_lib/with-platform");
-const { InternalError, ForbiddenError } = require("../_lib/errors");
+const { withPlatform } = require("../src/platform/http/with-platform");
+const { InternalError, ForbiddenError } = require("../src/platform/errors/errors");
 const { SessionRepository } = require("../_lib/session-repository");
 const { ClubRepository } = require("../_lib/club-repository");
 const { TeamRepository } = require("../_lib/team-repository");

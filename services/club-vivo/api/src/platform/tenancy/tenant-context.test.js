@@ -7,7 +7,7 @@ const { createBuildTenantContext } = require("./tenant-context");
 const {
   UnauthorizedError,
   ForbiddenError,
-} = require("./errors");
+} = require("../errors/errors");
 
 function makeEvent({
   requestId = "req-123",

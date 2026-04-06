@@ -1,15 +1,15 @@
 "use strict";
 
-const { withPlatform } = require("../_lib/with-platform");
-const { parseJsonBody } = require("../_lib/parse-body");
-const { requireFields } = require("../_lib/validate");
+const { withPlatform } = require("../src/platform/http/with-platform");
+const { parseJsonBody } = require("../src/platform/http/parse-body");
+const { requireFields } = require("../src/platform/validation/validate");
 const { MembershipRepository } = require("../_lib/membership-repository");
 const {
   BadRequestError,
   ForbiddenError,
   NotFoundError,
   InternalError,
-} = require("../_lib/errors");
+} = require("../src/platform/errors/errors");
 
 function assertEnv() {
   const missing = [];

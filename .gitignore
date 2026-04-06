@@ -39,3 +39,8 @@ CHAT/CODEX.private.md
 
 # local virtual env
 .venv/
+
+# Local-only workspace
+.workspace/
+repo-export/
+*.local.md

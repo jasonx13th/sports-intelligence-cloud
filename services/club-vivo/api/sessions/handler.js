@@ -4,8 +4,8 @@
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
 const { SessionRepository } = require("../src/domains/sessions/session-repository");
-const { createSessionPdfBuffer } = require("../_lib/session-pdf");
-const { createSessionPdfStorage } = require("../_lib/session-pdf-storage");
+const { createSessionPdfBuffer } = require("../src/domains/sessions/pdf/session-pdf");
+const { createSessionPdfStorage } = require("../src/domains/sessions/pdf/session-pdf-storage");
 const {
   persistSession,
   exportPersistedSession,

@@ -4,7 +4,7 @@
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
 const { requireFields } = require("../src/platform/validation/validate");
-const { AthleteRepository } = require("../_lib/athlete-repository");
+const { AthleteRepository } = require("../src/domains/athletes/athlete-repository");
 const { BadRequestError, NotFoundError, InternalError } = require("../src/platform/errors/errors");
 
 function assertEnv() {

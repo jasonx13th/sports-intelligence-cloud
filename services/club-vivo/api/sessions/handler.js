@@ -3,7 +3,7 @@
 
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
-const { SessionRepository } = require("../_lib/session-repository");
+const { SessionRepository } = require("../src/domains/sessions/session-repository");
 const { createSessionPdfBuffer } = require("../_lib/session-pdf");
 const { createSessionPdfStorage } = require("../_lib/session-pdf-storage");
 const {

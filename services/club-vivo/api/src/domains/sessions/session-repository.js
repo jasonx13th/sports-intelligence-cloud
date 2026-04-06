@@ -1,4 +1,4 @@
-// services/club-vivo/api/_lib/session-repository.js
+// services/club-vivo/api/src/domains/sessions/session-repository.js
 "use strict";
 
 const {

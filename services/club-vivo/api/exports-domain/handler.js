@@ -4,10 +4,10 @@ const { randomUUID } = require("crypto");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { InternalError, ForbiddenError } = require("../src/platform/errors/errors");
-const { SessionRepository } = require("../_lib/session-repository");
-const { ClubRepository } = require("../_lib/club-repository");
-const { TeamRepository } = require("../_lib/team-repository");
-const { MembershipRepository } = require("../_lib/membership-repository");
+const { SessionRepository } = require("../src/domains/sessions/session-repository");
+const { ClubRepository } = require("../src/domains/clubs/club-repository");
+const { TeamRepository } = require("../src/domains/teams/team-repository");
+const { MembershipRepository } = require("../src/domains/memberships/membership-repository");
 
 function assertEnv() {
   const missing = [];

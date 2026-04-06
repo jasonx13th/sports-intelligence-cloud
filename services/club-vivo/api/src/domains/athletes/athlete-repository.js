@@ -1,4 +1,4 @@
-// services/club-vivo/api/_lib/athlete-repository.js
+// services/club-vivo/api/src/domains/athletes/athlete-repository.js
 "use strict";
 
 /**

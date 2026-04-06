@@ -6,7 +6,7 @@ const {
   PutItemCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
-const { ConflictError } = require("./errors");
+const { ConflictError } = require("../../platform/errors/errors");
 
 const ddb = new DynamoDBClient({});
 

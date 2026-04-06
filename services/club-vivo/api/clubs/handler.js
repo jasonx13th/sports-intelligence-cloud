@@ -3,7 +3,7 @@
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
 const { requireFields } = require("../src/platform/validation/validate");
-const { ClubRepository } = require("../_lib/club-repository");
+const { ClubRepository } = require("../src/domains/clubs/club-repository");
 const {
   BadRequestError,
   ForbiddenError,

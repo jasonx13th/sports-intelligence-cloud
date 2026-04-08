@@ -75,7 +75,7 @@ test("createSession persists equipment when provided and returns it in the respo
   assert.equal(Object.hasOwn(writtenSession, "clubId"), true);
 });
 
-test("getSessionById returns equipment on detail reads when present", async () => {
+test("getSessionById returns Week 13 detail metadata when present", async () => {
   const repo = new SessionRepository({ tableName: "domain-table" });
   const commands = [];
 
@@ -108,6 +108,8 @@ test("getSessionById returns equipment on detail reads when present", async () =
         ageBand: "u14",
         durationMin: 45,
         objectiveTags: ["pressing"],
+        tags: ["defending", "transition"],
+        sourceTemplateId: "template-123",
         equipment: ["cones", "balls"],
         activities: [{ name: "Warm-up", minutes: 10, description: "Prep" }],
         teamId: "team-1",
@@ -117,12 +119,14 @@ test("getSessionById returns equipment on detail reads when present", async () =
     const session = await repo.getSessionById(makeTenantContext(), "session-123");
 
     assert.deepEqual(session.equipment, ["cones", "balls"]);
+    assert.deepEqual(session.tags, ["defending", "transition"]);
+    assert.equal(session.sourceTemplateId, "template-123");
     assert.deepEqual(session.activities, [{ name: "Warm-up", minutes: 10, description: "Prep" }]);
     assert.equal(session.teamId, "team-1");
   });
 });
 
-test("listSessions summary remains unchanged and does not include equipment", async () => {
+test("listSessions summary remains unchanged and does not include detail-only Week 13 fields", async () => {
   const repo = new SessionRepository({ tableName: "domain-table" });
 
   await withMockedSend(async (command) => {
@@ -138,6 +142,8 @@ test("listSessions summary remains unchanged and does not include equipment", as
           ageBand: "u14",
           durationMin: 45,
           objectiveTags: ["pressing"],
+          tags: ["defending", "transition"],
+          sourceTemplateId: "template-123",
           equipment: ["cones", "balls"],
           activities: [
             { name: "Warm-up", minutes: 10, description: "Prep" },
@@ -154,5 +160,41 @@ test("listSessions summary remains unchanged and does not include equipment", as
     assert.equal(result.items[0].activityCount, 2);
     assert.equal(Object.hasOwn(result.items[0], "equipment"), false);
     assert.equal(Object.hasOwn(result.items[0], "activities"), false);
+    assert.equal(Object.hasOwn(result.items[0], "tags"), false);
+    assert.equal(Object.hasOwn(result.items[0], "sourceTemplateId"), false);
   });
+});
+
+test("createSession persists Week 13 tags and sourceTemplateId", async () => {
+  const repo = new SessionRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedUuid("session-123", async () => {
+    await withMockedSend(async (command) => {
+      calls.push(command);
+      assert.equal(command instanceof TransactWriteItemsCommand, true);
+      return {};
+    }, async () => {
+      const result = await repo.createSession(makeTenantContext(), {
+        sport: "soccer",
+        ageBand: "u14",
+        durationMin: 45,
+        objectiveTags: ["pressing"],
+        tags: ["defending", "transition"],
+        sourceTemplateId: "template-123",
+        equipment: ["cones", "balls"],
+        activities: [{ name: "Warm-up", minutes: 10, description: "Prep" }],
+      });
+
+      assert.deepEqual(result.session.tags, ["defending", "transition"]);
+      assert.equal(result.session.sourceTemplateId, "template-123");
+    });
+  });
+
+  assert.equal(calls.length, 1);
+  const write = calls[0].input.TransactItems[0].Put.Item;
+  const writtenSession = unmarshall(write);
+
+  assert.deepEqual(writtenSession.tags, ["defending", "transition"]);
+  assert.equal(writtenSession.sourceTemplateId, "template-123");
 });

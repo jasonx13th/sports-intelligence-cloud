@@ -99,3 +99,15 @@ test("validateCreateSession keeps legacy optional fields runtime-tolerated", () 
   assert.equal(result.teamId, "team-1");
   assert.equal(result.seasonId, "season-1");
 });
+
+test("validateCreateSession accepts Week 13 optional tags and sourceTemplateId", () => {
+  const result = validateCreateSession(
+    makeValidSession({
+      tags: ["defending", "transition"],
+      sourceTemplateId: "template-123",
+    })
+  );
+
+  assert.deepEqual(result.tags, ["defending", "transition"]);
+  assert.equal(result.sourceTemplateId, "template-123");
+});

@@ -1,4 +1,4 @@
-// services/club-vivo/api/src/domains/sessions/session-repository.js
+// services/club-vivo/api/src/domains/templates/template-repository.js
 "use strict";
 
 const {
@@ -12,9 +12,6 @@ const crypto = require("crypto");
 
 const ddb = new DynamoDBClient({});
 
-/**
- * Cursor helpers (pagination) — mirrored from athlete-repository.js
- */
 function encodeNextToken(lastEvaluatedKey) {
   if (!lastEvaluatedKey) return undefined;
   return Buffer.from(JSON.stringify(lastEvaluatedKey), "utf8").toString("base64");
@@ -71,45 +68,54 @@ function requireTenantId(tenantContext) {
   return tenantId;
 }
 
-function normalizeSession(obj, { includeActivities }) {
-  // obj is unmarshalled item
+function normalizeTemplate(obj, { includeActivities }) {
   const base = {
-    sessionId: obj.sessionId,
+    templateId: obj.templateId,
     createdAt: obj.createdAt,
+    updatedAt: obj.updatedAt,
     createdBy: obj.createdBy,
+    name: obj.name,
+    description: obj.description,
     sport: obj.sport,
     ageBand: obj.ageBand,
     durationMin: obj.durationMin,
     objectiveTags: obj.objectiveTags || [],
     tags: obj.tags || [],
     equipment: obj.equipment || [],
-    clubId: obj.clubId,
-    teamId: obj.teamId,
-    seasonId: obj.seasonId,
-    sourceTemplateId: obj.sourceTemplateId,
+    usageCount: obj.usageCount || 0,
+    lastGeneratedAt: obj.lastGeneratedAt,
+    sourceSessionId: obj.sourceSessionId,
     schemaVersion: obj.schemaVersion,
   };
 
   if (includeActivities) {
-    return { ...base, activities: obj.activities || [] };
+    return {
+      ...base,
+      activities: obj.activities || [],
+    };
   }
 
-  // summary: omit activities
   return {
-    sessionId: base.sessionId,
+    templateId: base.templateId,
     createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
+    name: base.name,
+    description: base.description,
     sport: base.sport,
     ageBand: base.ageBand,
     durationMin: base.durationMin,
     objectiveTags: base.objectiveTags,
+    tags: base.tags,
+    usageCount: base.usageCount,
+    lastGeneratedAt: base.lastGeneratedAt,
     activityCount: Array.isArray(obj.activities) ? obj.activities.length : 0,
   };
 }
 
-class SessionRepository {
+class TemplateRepository {
   constructor({ tableName }) {
     if (!tableName) {
-      const err = new Error("SessionRepository requires tableName");
+      const err = new Error("TemplateRepository requires tableName");
       err.code = "missing_table_name";
       err.statusCode = 500;
       throw err;
@@ -117,60 +123,55 @@ class SessionRepository {
     this.tableName = tableName;
   }
 
-  /**
-   * createSession (atomic write of Session + SessionLookup)
-   * - Uses TransactWriteItems
-   * - Both puts are conditional (fail if either exists)
-   */
-  async createSession(tenantContext, sessionInput) {
+  async createTemplate(tenantContext, templateInput) {
     const tenantId = requireTenantId(tenantContext);
 
-    if (!sessionInput || typeof sessionInput !== "object") {
-      const err = new Error("Missing session input");
+    if (!templateInput || typeof templateInput !== "object") {
+      const err = new Error("Missing template input");
       err.code = "invalid_request";
       err.statusCode = 400;
       throw err;
     }
 
-    const sessionId = newId();
+    const templateId = newId();
     const now = new Date().toISOString();
 
     const pk = `TENANT#${tenantId}`;
-    const sessionSk = `SESSION#${now}#${sessionId}`;
-    const lookupSk = `SESSIONLOOKUP#${sessionId}`;
+    const templateSk = `TEMPLATE#${now}#${templateId}`;
+    const lookupSk = `TEMPLATELOOKUP#${templateId}`;
 
-    const sessionItem = {
+    const templateItem = {
       PK: pk,
-      SK: sessionSk,
-      type: "SESSION",
-      sessionId,
+      SK: templateSk,
+      type: "TEMPLATE",
+      templateId,
       createdAt: now,
+      updatedAt: now,
       createdBy: tenantContext?.userId || null,
       schemaVersion: 1,
 
-      // domain fields (already validated upstream)
-      sport: sessionInput.sport,
-      ageBand: sessionInput.ageBand,
-      durationMin: sessionInput.durationMin,
-      objectiveTags: sessionInput.objectiveTags || [],
-      tags: sessionInput.tags || [],
-      equipment: sessionInput.equipment || [],
-      activities: sessionInput.activities || [],
+      name: templateInput.name,
+      ...(templateInput.description ? { description: templateInput.description } : {}),
+      sport: templateInput.sport,
+      ageBand: templateInput.ageBand,
+      durationMin: templateInput.durationMin,
+      objectiveTags: templateInput.objectiveTags || [],
+      tags: templateInput.tags || [],
+      equipment: templateInput.equipment || [],
+      activities: templateInput.activities || [],
+      usageCount: 0,
 
-      ...(sessionInput.clubId ? { clubId: sessionInput.clubId } : {}),
-      ...(sessionInput.teamId ? { teamId: sessionInput.teamId } : {}),
-      ...(sessionInput.seasonId ? { seasonId: sessionInput.seasonId } : {}),
-      ...(sessionInput.sourceTemplateId ? { sourceTemplateId: sessionInput.sourceTemplateId } : {}),
+      ...(templateInput.sourceSessionId ? { sourceSessionId: templateInput.sourceSessionId } : {}),
     };
 
     const lookupItem = {
       PK: pk,
       SK: lookupSk,
-      type: "SESSION_LOOKUP",
-      sessionId,
+      type: "TEMPLATE_LOOKUP",
+      templateId,
       createdAt: now,
       targetPK: pk,
-      targetSK: sessionSk,
+      targetSK: templateSk,
     };
 
     await ddb.send(
@@ -180,7 +181,7 @@ class SessionRepository {
           {
             Put: {
               TableName: this.tableName,
-              Item: marshall(sessionItem),
+              Item: marshall(templateItem),
               ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
             },
           },
@@ -196,19 +197,11 @@ class SessionRepository {
     );
 
     return {
-      session: normalizeSession(sessionItem, { includeActivities: true }),
+      template: normalizeTemplate(templateItem, { includeActivities: true }),
     };
   }
 
-  /**
-   * listSessions (tenant-scoped, time-ordered)
-   * Access pattern:
-   * - PK = TENANT#<tenantId>
-   * - SK begins_with SESSION#
-   *
-   * Returns summaries only (no activities[]).
-   */
-  async listSessions(tenantContext, { limit, nextToken } = {}) {
+  async listTemplates(tenantContext, { limit, nextToken } = {}) {
     const tenantId = requireTenantId(tenantContext);
 
     const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
@@ -219,9 +212,8 @@ class SessionRepository {
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
       ExpressionAttributeValues: {
         ":pk": { S: `TENANT#${tenantId}` },
-        ":skPrefix": { S: "SESSION#" },
+        ":skPrefix": { S: "TEMPLATE#" },
       },
-      // newest first
       ScanIndexForward: false,
       Limit: safeLimit,
       ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
@@ -231,7 +223,7 @@ class SessionRepository {
 
     const items = (res.Items ?? []).map((it) => {
       const obj = unmarshall(it);
-      return normalizeSession(obj, { includeActivities: false });
+      return normalizeTemplate(obj, { includeActivities: false });
     });
 
     return {
@@ -240,23 +232,18 @@ class SessionRepository {
     };
   }
 
-  /**
-   * getSessionById (tenant-scoped, 2-step GetItem)
-   * 1) Get lookup item by sessionId
-   * 2) Get target session item by targetPK/targetSK
-   */
-  async getSessionById(tenantContext, sessionId) {
+  async getTemplateById(tenantContext, templateId) {
     const tenantId = requireTenantId(tenantContext);
 
-    if (!sessionId || typeof sessionId !== "string" || sessionId.length > 128) {
-      const err = new Error("Missing or invalid sessionId");
+    if (!templateId || typeof templateId !== "string" || templateId.length > 128) {
+      const err = new Error("Missing or invalid templateId");
       err.code = "invalid_request";
       err.statusCode = 400;
       throw err;
     }
 
     const pk = `TENANT#${tenantId}`;
-    const lookupSk = `SESSIONLOOKUP#${sessionId}`;
+    const lookupSk = `TEMPLATELOOKUP#${templateId}`;
 
     const lookupRes = await ddb.send(
       new GetItemCommand({
@@ -271,7 +258,7 @@ class SessionRepository {
     const lookup = unmarshall(lookupRes.Item);
     if (!lookup?.targetPK || !lookup?.targetSK) return null;
 
-    const sessionRes = await ddb.send(
+    const templateRes = await ddb.send(
       new GetItemCommand({
         TableName: this.tableName,
         Key: marshall({ PK: lookup.targetPK, SK: lookup.targetSK }),
@@ -279,11 +266,76 @@ class SessionRepository {
       })
     );
 
-    if (!sessionRes.Item) return null;
+    if (!templateRes.Item) return null;
 
-    const obj = unmarshall(sessionRes.Item);
-    return normalizeSession(obj, { includeActivities: true });
+    const obj = unmarshall(templateRes.Item);
+    return normalizeTemplate(obj, { includeActivities: true });
+  }
+
+  async markTemplateGenerated(tenantContext, templateId) {
+    const tenantId = requireTenantId(tenantContext);
+
+    if (!templateId || typeof templateId !== "string" || templateId.length > 128) {
+      const err = new Error("Missing or invalid templateId");
+      err.code = "invalid_request";
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const existing = await this.getTemplateById(tenantContext, templateId);
+    if (!existing) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    const nextUsageCount = Number(existing.usageCount || 0) + 1;
+
+    const pk = `TENANT#${tenantId}`;
+    const templateSk = `TEMPLATE#${existing.createdAt}#${templateId}`;
+
+    await ddb.send(
+      new TransactWriteItemsCommand({
+        ReturnCancellationReasons: true,
+        TransactItems: [
+          {
+            Put: {
+              TableName: this.tableName,
+              Item: marshall({
+                PK: pk,
+                SK: templateSk,
+                type: "TEMPLATE",
+                templateId,
+                createdAt: existing.createdAt,
+                updatedAt: now,
+                createdBy: existing.createdBy || null,
+                schemaVersion: existing.schemaVersion || 1,
+                name: existing.name,
+                ...(existing.description ? { description: existing.description } : {}),
+                sport: existing.sport,
+                ageBand: existing.ageBand,
+                durationMin: existing.durationMin,
+                objectiveTags: existing.objectiveTags || [],
+                tags: existing.tags || [],
+                equipment: existing.equipment || [],
+                activities: existing.activities || [],
+                usageCount: nextUsageCount,
+                lastGeneratedAt: now,
+                ...(existing.sourceSessionId ? { sourceSessionId: existing.sourceSessionId } : {}),
+              }),
+              ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+            },
+          },
+        ],
+      })
+    );
+
+    return {
+      ...existing,
+      updatedAt: now,
+      usageCount: nextUsageCount,
+      lastGeneratedAt: now,
+    };
   }
 }
 
-module.exports = { SessionRepository };
+module.exports = { TemplateRepository };

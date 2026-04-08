@@ -119,6 +119,8 @@ test("POST /sessions keeps the public { session } response shape while using the
     ageBand: "u14",
     durationMin: 60,
     objectiveTags: ["pressing"],
+    tags: ["defending", "transition"],
+    sourceTemplateId: "template-123",
     activities: [{ name: "Warm-up", minutes: 60, description: "Prep" }],
     equipment: ["cones", "balls"],
   };
@@ -133,6 +135,9 @@ test("POST /sessions keeps the public { session } response shape while using the
       assert.equal(tenantCtx.tenantId, "tenant_authoritative");
       assert.equal(typeof sessionRepository.createSession, "function");
       assert.deepEqual(normalizedInput.equipment, ["cones", "balls"]);
+      assert.deepEqual(normalizedInput.tags, ["defending", "transition"]);
+      assert.equal(normalizedInput.sourceTemplateId, "template-123");
+
       return {
         normalizedInput,
         persistedSession: expectedSession,
@@ -151,6 +156,8 @@ test("POST /sessions keeps the public { session } response shape while using the
         ageBand: "u14",
         durationMin: 60,
         objectiveTags: ["pressing"],
+        tags: ["defending", "transition"],
+        sourceTemplateId: "template-123",
         activities: [{ name: "Warm-up", minutes: 60, description: "Prep" }],
         equipment: ["cones", "balls"],
       }),
@@ -193,9 +200,7 @@ test("GET /sessions/{sessionId}/pdf returns 404 when session is not found", asyn
     }
   );
 
-  assert.deepEqual(calls, [
-    { tenantCtx: makeTenantCtx(), sessionId: "session-123" },
-  ]);
+  assert.deepEqual(calls, [{ tenantCtx: makeTenantCtx(), sessionId: "session-123" }]);
 });
 
 test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from tenant context only", async () => {
@@ -299,7 +304,13 @@ test("GET /sessions/{sessionId}/pdf keeps the public response shape while using 
     getSessionRepoFn: () => ({
       getSessionById: async () => session,
     }),
-    exportPersistedSessionFn: async ({ tenantCtx, persistedSession, sessionId, createSessionPdfBufferFn, sessionPdfStorage }) => {
+    exportPersistedSessionFn: async ({
+      tenantCtx,
+      persistedSession,
+      sessionId,
+      createSessionPdfBufferFn,
+      sessionPdfStorage,
+    }) => {
       assert.equal(tenantCtx.tenantId, "tenant_authoritative");
       assert.equal(persistedSession, session);
       assert.equal(sessionId, "session-123");

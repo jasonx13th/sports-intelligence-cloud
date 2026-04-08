@@ -160,6 +160,8 @@ function validateCreateSession(body) {
     "clubId",
     "teamId",
     "seasonId",
+    "tags",
+    "sourceTemplateId",
   ];
   rejectUnknownFields(body, allowed);
 
@@ -178,11 +180,21 @@ function validateCreateSession(body) {
     itemMax: LIMITS.tagMax,
   });
 
+  const tags = requireStringArray(body, "tags", {
+    optional: true,
+    maxItems: LIMITS.objectiveTagsMax,
+    itemMax: LIMITS.tagMax,
+  });
+
   const equipment = requireEquipmentArray(body, "equipment");
 
   const clubId = requireString(body, "clubId", { max: LIMITS.idMax, optional: true });
   const teamId = requireString(body, "teamId", { max: LIMITS.idMax, optional: true });
   const seasonId = requireString(body, "seasonId", { max: LIMITS.idMax, optional: true });
+  const sourceTemplateId = requireString(body, "sourceTemplateId", {
+    max: LIMITS.idMax,
+    optional: true,
+  });
 
   const activities = body.activities;
   if (!Array.isArray(activities) || activities.length < 1) {
@@ -276,15 +288,11 @@ function validateCreateSession(body) {
     ...(clubId ? { clubId } : {}),
     ...(teamId ? { teamId } : {}),
     ...(seasonId ? { seasonId } : {}),
+    ...(tags.length ? { tags } : {}),
+    ...(sourceTemplateId ? { sourceTemplateId } : {}),
   };
 }
 
 module.exports = {
   validateCreateSession,
-  LIMITS,
-  SUPPORTED_AGE_BANDS,
-  normalizeAgeBand,
-  normalizeEquipmentName,
-  requireEquipmentArray,
-  getMissingEquipmentForActivities,
 };

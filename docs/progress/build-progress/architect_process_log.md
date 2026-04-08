@@ -1,6 +1,6 @@
 # Architect Process Log
 
-Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_12/` notes.
+Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_13/` notes.
 
 ## Running index
 
@@ -17,6 +17,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 10](#week-10)
 - [Week 11](#week-11)
 - [Week 12](#week-12)
+- [Week 13](#week-13)
 
 ## Week 0
 
@@ -467,3 +468,51 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Begin Week 13 session-library and template work only where backed by explicit backend endpoints.
 - Keep Coach Lite product-first and preview-only while deciding the smallest stable bridge boundary for richer preview data.
 - Tighten app-layer validation and user feedback while preserving the existing tenant and auth boundary.
+
+
+## Week 13 — Session Library and Templates
+
+### Goals
+- Enable reuse and repeat usage through Session Library and Templates.
+- Complete Week 13 model work, safe `/templates` deployment, and Day 3 usage metrics/dashboard coverage.
+
+### Work completed
+- Day 1 template domain/model work was completed in app code, including the template domain and saved-session metadata support needed for reuse flows.
+- Day 2 `/templates` routes were safely isolated and deployed to dev:
+  - `POST /templates`
+  - `GET /templates`
+  - `POST /templates/{templateId}/generate`
+- Initial live `POST /templates` failed until `TemplatesFn` domain-table IAM was corrected with `dynamodb:PutItem`.
+- Tracked Week 13 notes record that live validation proved:
+  - template creation from a saved session
+  - template generation into a saved session
+  - generated sessions stamp `sourceTemplateId`
+  - `usageCount` increments
+  - `lastGeneratedAt` populates
+- Day 3 completed the thin observability slice with:
+  - `template_create_success`
+  - `template_generate_success`
+  - dashboard coverage updated for Week 13 usage signals
+- Broader undeployed memberships/export/lake/Glue drift was not shipped as part of Week 13.
+
+### Tenancy/security checks
+- No `tenant_id`, `tenantId`, or `x-tenant-id` were used in request contracts.
+- Tenant context remained server-derived from verified auth plus entitlements.
+- Template routes stayed JWT-protected and tenant-scoped by construction.
+- No auth-boundary or entitlements-model change was introduced.
+- No wildcard IAM was introduced.
+
+### Observability notes
+- CloudWatch logs were used to isolate the initial `POST /templates` failure.
+- Template creation and template generation are now measurable.
+- Dashboard coverage was updated for Week 13 usage signals.
+- No new alarms are recorded as part of the Week 13 slice.
+
+### Evidence
+- Tracked Week 13 notes record the roadmap intent for Session Library and Templates in `docs/progress/build-progress/roadmap-vnext.md`.
+- Tracked Week 13 notes record the Day 2 deployment blocker and the decision not to ship broader undeployed memberships/export/lake/Glue drift in `docs/progress/week_13/day2-api-wiring-blocker.md`.
+- Tracked Week 13 notes record the app-layer model completion, safe `/templates` deployment, the narrow `TemplatesFn` IAM correction, live route validation, and the Day 3 metrics/dashboard outcome in `docs/progress/week_13/closeout-summary.md`.
+
+### Next steps
+- Proceed to Week 14 feedback-loop planning.
+- Keep tooling debt and broader infra drift separate from Week 13 completion.

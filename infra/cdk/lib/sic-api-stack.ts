@@ -1,5 +1,3 @@
-// infra/cdk/lib/sic-api-stack.ts
-
 import { Stack, StackProps, CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
@@ -10,11 +8,8 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
-import * as assets from "aws-cdk-lib/aws-s3-assets";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import * as notifications from "aws-cdk-lib/aws-s3-notifications";
-import * as glue from "aws-cdk-lib/aws-glue";
 
 export interface SicApiStackProps extends StackProps {
   readonly userPoolId: string;
@@ -38,7 +33,7 @@ export class SicApiStack extends Stack {
     });
 
     // -----------------------------
-    // SIC Domain Store (DynamoDB) — tenant-partitioned single table
+    // SIC Domain Store (DynamoDB) - tenant-partitioned single table
     // -----------------------------
     const sicDomainTable = new dynamodb.Table(this, "SicDomainTable", {
       tableName: `sic-domain-${envName}`,
@@ -50,9 +45,6 @@ export class SicApiStack extends Stack {
 
     const isDev = envName === "dev";
 
-    // -----------------------------
-    // S3 Buckets
-    // -----------------------------
     const sessionPdfBucket = new s3.Bucket(this, "SessionPdfBucket", {
       bucketName: `sic-session-pdfs-${envName}-${Stack.of(this).account}-${Stack.of(this).region}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -61,243 +53,6 @@ export class SicApiStack extends Stack {
       removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDev,
     });
-
-    // NEW: Domain export bucket (lake-ready domain datasets; NOT PDFs)
-    const domainExportBucket = new s3.Bucket(this, "DomainExportBucket", {
-      bucketName: `sic-domain-exports-${envName}-${Stack.of(this).account}-${Stack.of(this).region}`,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      enforceSSL: true,
-      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
-      autoDeleteObjects: isDev,
-    });
-
-    // NEW: Data lake bucket (bronze/silver/gold). App-only access in v1.
-    const lakeBucket = new s3.Bucket(this, "LakeBucket", {
-      bucketName: `sic-data-lake-${envName}-${Stack.of(this).account}-${Stack.of(this).region}`,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      enforceSSL: true,
-      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
-      autoDeleteObjects: isDev,
-      lifecycleRules: [
-        {
-          prefix: "bronze/",
-          expiration: Duration.days(30),
-        },
-      ],
-    });
-
-    const lakeGlueDatabaseName = `sic_lake_${envName}`;
-
-    new glue.CfnDatabase(this, "LakeGlueDatabase", {
-      catalogId: Stack.of(this).account,
-      databaseInput: {
-        name: lakeGlueDatabaseName,
-      },
-    });
-
-    const bronzeSessionsCrawlerRole = new iam.Role(this, "BronzeSessionsCrawlerRole", {
-      assumedBy: new iam.ServicePrincipal("glue.amazonaws.com"),
-      description: "Least-privilege role for the Glue crawler that catalogs bronze sessions data.",
-    });
-
-    bronzeSessionsCrawlerRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:ListBucket"],
-        resources: [lakeBucket.bucketArn],
-        conditions: {
-          StringLike: {
-            // FIXED: "bonze" -> "bronze"
-            "s3:prefix": ["bronze/sessions/v=1/", "bronze/sessions/v=1/*"],
-          },
-        },
-      })
-    );
-
-    bronzeSessionsCrawlerRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:GetObject"],
-        resources: [lakeBucket.arnForObjects("bronze/sessions/v=1/*")],
-      })
-    );
-
-    bronzeSessionsCrawlerRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: [
-          "glue:GetDatabase",
-          "glue:GetTable",
-          "glue:CreateTable",
-          "glue:UpdateTable",
-          "glue:GetPartition",
-          "glue:GetPartitions",
-          "glue:BatchCreatePartition",
-        ],
-        resources: [
-          this.formatArn({
-            service: "glue",
-            resource: "database",
-            resourceName: lakeGlueDatabaseName,
-          }),
-          this.formatArn({
-            service: "glue",
-            resource: "table",
-            resourceName: `${lakeGlueDatabaseName}/*`,
-          }),
-        ],
-      })
-    );
-
-    bronzeSessionsCrawlerRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
-        resources: [
-          this.formatArn({
-            service: "logs",
-            resource: "log-group",
-            resourceName: "/aws-glue/crawlers/*",
-          }),
-        ],
-      })
-    );
-
-    const bronzeSessionsCrawler = new glue.CfnCrawler(this, "BronzeSessionsCrawler", {
-      name: `sic-club-vivo-bronze-sessions-crawler-${envName}`,
-      role: bronzeSessionsCrawlerRole.roleArn,
-      databaseName: lakeGlueDatabaseName,
-      targets: {
-        s3Targets: [
-          {
-            path: `s3://${lakeBucket.bucketName}/bronze/sessions/v=1/`,
-          },
-        ],
-      },
-      tablePrefix: "bronze_sessions_",
-      schemaChangePolicy: {
-        updateBehavior: "UPDATE_IN_DATABASE",
-        deleteBehavior: "LOG",
-      },
-      recrawlPolicy: {
-        recrawlBehavior: "CRAWL_NEW_FOLDERS_ONLY",
-      },
-    });
-
-    const lakeEtlScriptAsset = new assets.Asset(this, "LakeEtlScriptAsset", {
-      path: path.join(__dirname, "../../../services/club-vivo/api/lake-etl/etl.py"),
-    });
-
-    const bronzeToSilverSessionsJobRole = new iam.Role(this, "BronzeToSilverSessionsJobRole", {
-      assumedBy: new iam.ServicePrincipal("glue.amazonaws.com"),
-      description: "Least-privilege Glue job role for bronze sessions to silver sessions ETL.",
-    });
-
-    bronzeToSilverSessionsJobRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:ListBucket"],
-        resources: [lakeBucket.bucketArn],
-        conditions: {
-          StringLike: {
-            "s3:prefix": [
-              "bronze/sessions/v=1/",
-              "bronze/sessions/v=1/*",
-              "silver/sessions/v=1/",
-              "silver/sessions/v=1/*",
-            ],
-          },
-        },
-      })
-    );
-
-    bronzeToSilverSessionsJobRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:GetObject"],
-        resources: [lakeBucket.arnForObjects("bronze/sessions/v=1/*")],
-      })
-    );
-
-    bronzeToSilverSessionsJobRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:PutObject"],
-        resources: [lakeBucket.arnForObjects("silver/sessions/v=1/*")],
-      })
-    );
-
-    bronzeToSilverSessionsJobRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
-        resources: [
-          this.formatArn({
-            service: "logs",
-            resource: "log-group",
-            resourceName: "/aws-glue/jobs/*",
-          }),
-        ],
-      })
-    );
-
-    const lakeEtlJobName = `sic-club-vivo-bronze-to-silver-sessions-${envName}`;
-
-    new glue.CfnJob(this, "BronzeToSilverSessionsJob", {
-      name: lakeEtlJobName,
-      role: bronzeToSilverSessionsJobRole.roleArn,
-      command: {
-        name: "glueetl",
-        pythonVersion: "3",
-        scriptLocation: lakeEtlScriptAsset.s3ObjectUrl,
-      },
-      glueVersion: "3.0",
-      maxCapacity: 2,
-      defaultArguments: {
-        "--TempDir": `s3://${lakeBucket.bucketName}/glue-temp/`,
-        "--job-bookmark-option": "job-bookmark-disable",
-        "--LAKE_BUCKET": lakeBucket.bucketName,
-        "--BRONZE_PREFIX": "bronze/sessions/v=1",
-        "--SILVER_PREFIX": "silver/sessions/v=1",
-      },
-      executionProperty: {
-        maxConcurrentRuns: 1,
-      },
-    });
-
-    // Lake ingest function
-    const lakeIngestFn = new lambda.Function(this, "LakeIngestFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "lake-ingest/handler.handler",
-      functionName: `sic-club-vivo-lake-ingest-${envName}`,
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
-      timeout: Duration.seconds(30),
-      environment: {
-        DOMAIN_EXPORT_BUCKET: domainExportBucket.bucketName,
-        LAKE_BUCKET: lakeBucket.bucketName,
-      },
-    });
-
-    domainExportBucket.addEventNotification(
-      s3.EventType.OBJECT_CREATED_PUT,
-      new notifications.LambdaDestination(lakeIngestFn),
-      {
-        prefix: "exports/domain/",
-        suffix: ".ndjson",
-      }
-    );
-
-    lakeIngestFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:GetObject", "s3:HeadObject"],
-        resources: [domainExportBucket.arnForObjects("exports/domain/*")],
-      })
-    );
-
-    lakeIngestFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:PutObject", "s3:HeadObject"],
-        resources: [lakeBucket.arnForObjects("bronze/*")],
-      })
-    );
-
-    // -----------------------------
-    // Lambdas
-    // -----------------------------
 
     // Lambda: /me
     const meFn = new lambda.Function(this, "MeFn", {
@@ -339,11 +94,11 @@ export class SicApiStack extends Stack {
       },
     });
 
-    // Lambda: /memberships
-    const membershipsFn = new lambda.Function(this, "MembershipsFn", {
+    // Lambda: /templates
+    const templatesFn = new lambda.Function(this, "TemplatesFn", {
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "memberships/handler.handler",
-      functionName: `sic-club-vivo-memberships-${envName}`,
+      handler: "templates/handler.handler",
+      functionName: `sic-club-vivo-templates-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
       timeout: Duration.seconds(15),
       environment: {
@@ -365,25 +120,10 @@ export class SicApiStack extends Stack {
       },
     });
 
-    // NEW: /exports/domain (domain export job; admin-only enforced in handler)
-    const exportsDomainFn = new lambda.Function(this, "ExportsDomainFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "exports-domain/handler.handler",
-      functionName: `sic-club-vivo-exports-domain-${envName}`,
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
-      timeout: Duration.seconds(30),
-      environment: {
-        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
-        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
-        DOMAIN_EXPORT_BUCKET: domainExportBucket.bucketName,
-      },
-    });
-
     // -----------------------------
     // IAM grants (least privilege)
     // -----------------------------
-
-    // Entitlements: read-only for /me (NOTE: grantReadData includes Scan; we’ll tighten later)
+    // Entitlements: read-only for /me (NOTE: grantReadData includes Scan; we'll tighten later)
     tenantEntitlementsTable.grantReadData(meFn);
 
     // Entitlements: explicit allow-list for /athletes (NO Scan)
@@ -402,35 +142,18 @@ export class SicApiStack extends Stack {
       })
     );
 
-    // Entitlements: explicit allow-list for /memberships (NO Scan)
-    membershipsFn.addToRolePolicy(
+    // Entitlements: templates only need direct entitlements lookup.
+    templatesFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
+        actions: ["dynamodb:GetItem", "dynamodb:DescribeTable"],
         resources: [tenantEntitlementsTable.tableArn],
       })
     );
 
-    // Entitlements: explicit allow-list for /exports/domain (NO Scan)
-    exportsDomainFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
-        resources: [tenantEntitlementsTable.tableArn],
-      })
-    );
-
-    // S3: session PDFs (existing behavior; consider tightening later to a prefix)
     sessionsFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["s3:PutObject", "s3:GetObject"],
         resources: [sessionPdfBucket.arnForObjects("*")],
-      })
-    );
-
-    // S3: domain exports — PUT ONLY to exports/domain/*
-    exportsDomainFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:PutObject"],
-        resources: [domainExportBucket.arnForObjects("exports/domain/*")],
       })
     );
 
@@ -442,8 +165,8 @@ export class SicApiStack extends Stack {
       })
     );
 
-    // Domain table: explicit allow-list (NO Scan)
-    const domainReadWriteActions = [
+    // Domain table: explicit allow-list (NO Scan) + writes
+    const domainAccessActions = [
       // reads
       "dynamodb:Query",
       "dynamodb:GetItem",
@@ -451,39 +174,26 @@ export class SicApiStack extends Stack {
       "dynamodb:DescribeTable",
       // writes
       "dynamodb:PutItem",
+      "dynamodb:TransactWriteItems",
     ];
-
-    // Keep TransactWriteItems only where truly needed (leave existing behavior for now)
-    const domainReadWriteActionsWithTransact = [...domainReadWriteActions, "dynamodb:TransactWriteItems"];
 
     athletesFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: domainReadWriteActionsWithTransact,
+        actions: domainAccessActions,
         resources: [sicDomainTable.tableArn],
       })
     );
 
     sessionsFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: domainReadWriteActionsWithTransact,
+        actions: domainAccessActions,
         resources: [sicDomainTable.tableArn],
       })
     );
 
-    // Memberships v1 does not use transactions; keep permission tight
-    membershipsFn.addToRolePolicy(
+    templatesFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: domainReadWriteActions,
-        resources: [sicDomainTable.tableArn],
-      })
-    );
-
-    // Exports only need reads from domain table (keep tight)
-    const domainReadActions = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:BatchGetItem", "dynamodb:DescribeTable"];
-
-    exportsDomainFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: domainReadActions,
+        actions: ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:DescribeTable", "dynamodb:PutItem", "dynamodb:TransactWriteItems"],
         resources: [sicDomainTable.tableArn],
       })
     );
@@ -574,11 +284,18 @@ export class SicApiStack extends Stack {
       authorizer,
     });
 
-    // Routes: /memberships
+    // Routes: /templates
     api.addRoutes({
-      path: "/memberships",
+      path: "/templates",
       methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.GET],
-      integration: new apigwv2Integrations.HttpLambdaIntegration("MembershipsIntegration", membershipsFn),
+      integration: new apigwv2Integrations.HttpLambdaIntegration("TemplatesIntegration", templatesFn),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/templates/{templateId}/generate",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("TemplateGenerateIntegration", templatesFn),
       authorizer,
     });
 
@@ -587,14 +304,6 @@ export class SicApiStack extends Stack {
       path: "/session-packs",
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwv2Integrations.HttpLambdaIntegration("SessionPacksIntegration", sessionPacksFn),
-      authorizer,
-    });
-
-    // NEW: Routes: /exports/domain
-    api.addRoutes({
-      path: "/exports/domain",
-      methods: [apigwv2.HttpMethod.POST],
-      integration: new apigwv2Integrations.HttpLambdaIntegration("ExportsDomainIntegration", exportsDomainFn),
       authorizer,
     });
 
@@ -614,17 +323,6 @@ export class SicApiStack extends Stack {
     new CfnOutput(this, "SicDomainTableName", {
       value: sicDomainTable.tableName,
       exportName: `SicDomainTableName-${envName}`,
-    });
-
-    // Lake outputs (FIX: use imported CfnOutput, not cdk.CfnOutput)
-    new CfnOutput(this, "LakeBucketName", {
-      value: lakeBucket.bucketName,
-      exportName: `LakeBucketName-${envName}`,
-    });
-
-    new CfnOutput(this, "LakeBucketArn", {
-      value: lakeBucket.bucketArn,
-      exportName: `LakeBucketArn-${envName}`,
     });
 
     // -----------------------------
@@ -648,17 +346,10 @@ export class SicApiStack extends Stack {
       `/aws/lambda/${sessionPacksFn.functionName}`
     );
 
-    // NEW: ExportsDomain log group (for metric filters + alarms)
-    const exportsDomainLogGroup = logs.LogGroup.fromLogGroupName(
+    const templatesLogGroup = logs.LogGroup.fromLogGroupName(
       this,
-      "ExportsDomainFnLogGroup",
-      `/aws/lambda/${exportsDomainFn.functionName}`
-    );
-
-    const lakeIngestLogGroup = logs.LogGroup.fromLogGroupName(
-      this,
-      "LakeIngestFnLogGroup",
-      `/aws/lambda/${lakeIngestFn.functionName}`
+      "TemplatesFnLogGroup",
+      `/aws/lambda/${templatesFn.functionName}`
     );
 
     new logs.MetricFilter(this, "AthleteCreateSuccessMetricFilter", {
@@ -690,6 +381,22 @@ export class SicApiStack extends Stack {
       metricNamespace: "SIC/ClubVivo",
       metricName: "session_create_success",
       filterPattern: logs.FilterPattern.literal('{ $.eventType = "session_created" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "TemplateCreateSuccessMetricFilter", {
+      logGroup: templatesLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "template_create_success",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "template_created" }'),
+      metricValue: "1",
+    });
+
+    new logs.MetricFilter(this, "TemplateGenerateSuccessMetricFilter", {
+      logGroup: templatesLogGroup,
+      metricNamespace: "SIC/ClubVivo",
+      metricName: "template_generate_success",
+      filterPattern: logs.FilterPattern.literal('{ $.eventType = "template_generated" }'),
       metricValue: "1",
     });
 
@@ -733,40 +440,6 @@ export class SicApiStack extends Stack {
       metricValue: "1",
     });
 
-    // NEW: Domain export success metric (log-based)
-    new logs.MetricFilter(this, "DomainExportSuccessMetricFilter", {
-      logGroup: exportsDomainLogGroup,
-      metricNamespace: "SIC/ClubVivo",
-      metricName: "domain_export_success",
-      filterPattern: logs.FilterPattern.literal('{ $.eventType = "domain_export_completed" }'),
-      metricValue: "1",
-    });
-
-    // NEW: Domain export failure metric (log-based)
-    new logs.MetricFilter(this, "DomainExportFailureMetricFilter", {
-      logGroup: exportsDomainLogGroup,
-      metricNamespace: "SIC/ClubVivo",
-      metricName: "domain_export_failure",
-      filterPattern: logs.FilterPattern.literal('{ $.level = "ERROR" && $.eventType = "handler_error" }'),
-      metricValue: "1",
-    });
-
-    new logs.MetricFilter(this, "LakeIngestSuccessMetricFilter", {
-      logGroup: lakeIngestLogGroup,
-      metricNamespace: "SIC/Lake",
-      metricName: "lake_ingest_success",
-      filterPattern: logs.FilterPattern.literal('{ $.eventType = "lake_ingest_success" }'),
-      metricValue: "1",
-    });
-
-    new logs.MetricFilter(this, "LakeIngestFailureMetricFilter", {
-      logGroup: lakeIngestLogGroup,
-      metricNamespace: "SIC/Lake",
-      metricName: "lake_ingest_failure",
-      filterPattern: logs.FilterPattern.literal('{ $.eventType = "lake_ingest_failure" }'),
-      metricValue: "1",
-    });
-
     const athleteCreateFailureMetric = new cloudwatch.Metric({
       namespace: "SIC/ClubVivo",
       metricName: "athlete_create_failure",
@@ -779,111 +452,6 @@ export class SicApiStack extends Stack {
       metric: athleteCreateFailureMetric,
       threshold: 1,
       evaluationPeriods: 1,
-    });
-
-    // NEW: Domain export alarms
-    const domainExportFailureMetric = new cloudwatch.Metric({
-      namespace: "SIC/ClubVivo",
-      metricName: "domain_export_failure",
-      period: Duration.minutes(5),
-      statistic: "Sum",
-    });
-
-    new cloudwatch.Alarm(this, "DomainExportFailureAlarm", {
-      alarmName: `sic-${envName}-domain-export-failures`,
-      alarmDescription: "Domain export failures",
-      metric: domainExportFailureMetric,
-      threshold: 1,
-      evaluationPeriods: 1,
-      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    });
-
-    const domainExportSuccessMetric = new cloudwatch.Metric({
-      namespace: "SIC/ClubVivo",
-      metricName: "domain_export_success",
-      period: Duration.hours(24),
-      statistic: "Sum",
-    });
-
-    new cloudwatch.Alarm(this, "DomainExportNoSuccessAlarm", {
-      alarmName: `sic-${envName}-domain-export-no-success-24h`,
-      alarmDescription: "No successful domain exports in the last 24 hours",
-      metric: domainExportSuccessMetric,
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-      treatMissingData: cloudwatch.TreatMissingData.BREACHING,
-    });
-
-    const lakeIngestFailureMetric = new cloudwatch.Metric({
-      namespace: "SIC/Lake",
-      metricName: "lake_ingest_failure",
-      period: Duration.minutes(5),
-      statistic: "Sum",
-    });
-
-    new cloudwatch.Alarm(this, "LakeIngestFailureAlarm", {
-      alarmName: `sic-${envName}-lake-ingest-failures`,
-      alarmDescription: "Lake ingest failures. See docs/runbooks/lake-ingest-failure.md",
-      metric: lakeIngestFailureMetric,
-      threshold: 1,
-      evaluationPeriods: 1,
-      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    });
-
-    const lakeIngestSuccessMetric = new cloudwatch.Metric({
-      namespace: "SIC/Lake",
-      metricName: "lake_ingest_success",
-      period: Duration.hours(24),
-      statistic: "Sum",
-    });
-
-    new cloudwatch.Alarm(this, "LakeIngestNoSuccess24hAlarm", {
-      alarmName: `sic-${envName}-lake-ingest-no-success-24h`,
-      alarmDescription: "No successful lake ingest events in the last 24 hours. See docs/runbooks/lake-ingest-failure.md",
-      metric: lakeIngestSuccessMetric,
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-      treatMissingData: cloudwatch.TreatMissingData.BREACHING,
-    });
-
-    const glueCrawlerFailureMetric = new cloudwatch.Metric({
-      namespace: "AWS/Glue",
-      metricName: "CrawlerRunsFailed",
-      dimensionsMap: {
-        CrawlerName: bronzeSessionsCrawler.ref,
-      },
-      period: Duration.minutes(5),
-      statistic: "Sum",
-    });
-
-    new cloudwatch.Alarm(this, "BronzeSessionsCrawlerFailureAlarm", {
-      alarmName: `sic-${envName}-glue-crawler-failures`,
-      alarmDescription: "Glue crawler failure count for bronze sessions. See docs/runbooks/glue-crawler-failure.md",
-      metric: glueCrawlerFailureMetric,
-      threshold: 1,
-      evaluationPeriods: 1,
-      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    });
-
-    const glueEtlJobFailureMetric = new cloudwatch.Metric({
-      namespace: "AWS/Glue",
-      metricName: "JobsFailed",
-      dimensionsMap: {
-        JobName: lakeEtlJobName,
-      },
-      period: Duration.minutes(5),
-      statistic: "Sum",
-    });
-
-    new cloudwatch.Alarm(this, "BronzeToSilverSessionsJobFailureAlarm", {
-      alarmName: `sic-${envName}-glue-etl-job-failures`,
-      alarmDescription: "Glue ETL job failures for bronze-to-silver sessions. See docs/runbooks/etl-job-failure.md",
-      metric: glueEtlJobFailureMetric,
-      threshold: 1,
-      evaluationPeriods: 1,
-      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
     // -----------------------------
@@ -940,6 +508,20 @@ export class SicApiStack extends Stack {
       statistic: "Sum",
     });
 
+    const templateCreateSuccessMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "template_create_success",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
+    const templateGenerateSuccessMetric = new cloudwatch.Metric({
+      namespace: "SIC/ClubVivo",
+      metricName: "template_generate_success",
+      period: Duration.minutes(5),
+      statistic: "Sum",
+    });
+
     const sessionPackSuccessMetric = new cloudwatch.Metric({
       namespace: "SIC/ClubVivo",
       metricName: "session_pack_success",
@@ -972,6 +554,14 @@ export class SicApiStack extends Stack {
       new cloudwatch.GraphWidget({
         title: "Session Create Success",
         left: [sessionCreateSuccessMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Templates Created",
+        left: [templateCreateSuccessMetric],
+      }),
+      new cloudwatch.GraphWidget({
+        title: "Templates Reused / Generated",
+        left: [templateGenerateSuccessMetric],
       }),
       new cloudwatch.GraphWidget({
         title: "Session Pack Success",

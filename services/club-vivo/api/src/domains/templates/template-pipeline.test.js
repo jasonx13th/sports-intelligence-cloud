@@ -231,6 +231,101 @@ test("generateSessionFromTemplate loads template, persists session, stamps sourc
   ]);
 });
 
+test("generateSessionFromTemplate wraps persisted session creation to include session_generated metadata", async () => {
+  const tenantCtx = makeTenantCtx();
+  const calls = [];
+
+  const template = {
+    templateId: "template-123",
+    createdAt: "2026-04-01T00:00:00.000Z",
+    name: "Pressing Template",
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    objectiveTags: ["pressing"],
+    equipment: ["cones", "balls"],
+    activities: [{ name: "Warm-up", minutes: 10, description: "Prep" }],
+  };
+
+  const persistedSession = {
+    sessionId: "session-999",
+    createdAt: "2026-04-02T00:00:00.000Z",
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    objectiveTags: ["pressing"],
+    sourceTemplateId: "template-123",
+    equipment: ["cones", "balls"],
+    activities: [{ name: "Warm-up", minutes: 10, description: "Prep" }],
+  };
+
+  const result = await generateSessionFromTemplate(
+    tenantCtx,
+    "template-123",
+    {},
+    {
+      templateRepository: {
+        getTemplateById: async () => template,
+        markTemplateGenerated: async (actualTenantCtx, templateId) => {
+          calls.push({ step: "markTemplateGenerated", actualTenantCtx, templateId });
+        },
+      },
+      sessionRepository: {
+        createSession: async (actualTenantCtx, normalizedInput, options) => {
+          calls.push({ step: "createSession", actualTenantCtx, normalizedInput, options });
+          return { session: persistedSession };
+        },
+      },
+      persistSessionFn: async ({ tenantCtx: actualTenantCtx, normalizedInput, sessionRepository }) => {
+        calls.push({ step: "persistSession", actualTenantCtx, normalizedInput });
+        return {
+          normalizedInput,
+          persistedSession: (await sessionRepository.createSession(actualTenantCtx, normalizedInput))
+            .session,
+        };
+      },
+    }
+  );
+
+  assert.deepEqual(result, { session: persistedSession });
+  assert.deepEqual(calls, [
+    {
+      step: "persistSession",
+      actualTenantCtx: tenantCtx,
+      normalizedInput: {
+        sport: "soccer",
+        ageBand: "u14",
+        durationMin: 60,
+        objectiveTags: ["pressing"],
+        sourceTemplateId: "template-123",
+        equipment: ["cones", "balls"],
+        activities: [{ name: "Warm-up", minutes: 10, description: "Prep" }],
+      },
+    },
+    {
+      step: "createSession",
+      actualTenantCtx: tenantCtx,
+      normalizedInput: {
+        sport: "soccer",
+        ageBand: "u14",
+        durationMin: 60,
+        objectiveTags: ["pressing"],
+        sourceTemplateId: "template-123",
+        equipment: ["cones", "balls"],
+        activities: [{ name: "Warm-up", minutes: 10, description: "Prep" }],
+      },
+      options: {
+        sessionGeneratedEventMetadata: { templateId: "template-123" },
+      },
+    },
+    {
+      step: "markTemplateGenerated",
+      actualTenantCtx: tenantCtx,
+      templateId: "template-123",
+    },
+  ]);
+});
+
 test("generateSessionFromTemplate fails when template not found", async () => {
   const tenantCtx = makeTenantCtx();
 

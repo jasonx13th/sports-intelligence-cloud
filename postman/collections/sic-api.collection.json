@@ -171,6 +171,276 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "POST /sessions/{sessionId}/feedback",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 201\", function () {\r",
+                  "  pm.response.to.have.status(201);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has feedback\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"feedback\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"feedback has expected core fields\", function () {\r",
+                  "  pm.expect(json.feedback).to.have.property(\"sessionId\", pm.environment.get(\"sessionId\"));\r",
+                  "  pm.expect(json.feedback).to.have.property(\"submittedAt\");\r",
+                  "  pm.expect(json.feedback).to.have.property(\"submittedBy\");\r",
+                  "  pm.expect(json.feedback).to.have.property(\"rating\", 4);\r",
+                  "  pm.expect(json.feedback).to.have.property(\"runStatus\", \"ran_with_changes\");\r",
+                  "  pm.expect(json.feedback).to.have.property(\"objectiveMet\", true);\r",
+                  "  pm.expect(json.feedback).to.have.property(\"difficulty\", \"about_right\");\r",
+                  "  pm.expect(json.feedback).to.have.property(\"wouldReuse\", true);\r",
+                  "  pm.expect(json.feedback).to.have.property(\"schemaVersion\", 1);\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"rating\": 4,\r\n  \"runStatus\": \"ran_with_changes\",\r\n  \"objectiveMet\": true,\r\n  \"difficulty\": \"about_right\",\r\n  \"wouldReuse\": true,\r\n  \"notes\": \"Useful session.\",\r\n  \"changesNextTime\": \"Add more finishing.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}/feedback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}",
+                "feedback"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /sessions/{sessionId}/feedback - invalid body (intentional tenantId rejection coverage only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 400\", function () {\r",
+                  "  pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error shape exists\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"platform.bad_request\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"unknown field includes tenantId\", function () {\r",
+                  "  pm.expect(json.error).to.have.property(\"details\");\r",
+                  "  pm.expect(json.error.details).to.have.property(\"unknown\");\r",
+                  "  pm.expect(json.error.details.unknown).to.include(\"tenantId\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"rating\": 4,\r\n  \"runStatus\": \"ran_as_planned\",\r\n  \"tenantId\": \"should-not-be-here\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}/feedback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}",
+                "feedback"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /sessions/{sessionId}/feedback - invalid session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 404\", function () {\r",
+                  "  pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"session not found error code is stable\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"sessions.not_found\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"rating\": 3,\r\n  \"runStatus\": \"not_run\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sessions/00000000-0000-0000-0000-000000000000/feedback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "00000000-0000-0000-0000-000000000000",
+                "feedback"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /sessions/{sessionId}/feedback - duplicate submission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 409\", function () {\r",
+                  "  pm.response.to.have.status(409);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"duplicate feedback error code is stable\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"sessions.feedback_exists\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"rating\": 4,\r\n  \"runStatus\": \"ran_with_changes\",\r\n  \"objectiveMet\": true,\r\n  \"difficulty\": \"about_right\",\r\n  \"wouldReuse\": true,\r\n  \"notes\": \"Useful session.\",\r\n  \"changesNextTime\": \"Add more finishing.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}/feedback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}",
+                "feedback"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /sessions/{sessionId}/feedback - no auth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 401\", function () {\r",
+                  "  pm.response.to.have.status(401);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"unauthorized error shape exists\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"rating\": 4,\r\n  \"runStatus\": \"ran_as_planned\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}/feedback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}",
+                "feedback"
+              ]
+            }
+          },
+          "response": []
         }
       ],
       "auth": {

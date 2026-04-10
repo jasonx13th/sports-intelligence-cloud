@@ -3,6 +3,7 @@
 
 const {
   DynamoDBClient,
+  PutItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
   GetItemCommand,
@@ -106,6 +107,87 @@ function normalizeSession(obj, { includeActivities }) {
   };
 }
 
+function normalizeSessionFeedback(obj) {
+  return {
+    sessionId: obj.sessionId,
+    submittedAt: obj.submittedAt,
+    submittedBy: obj.submittedBy,
+    rating: obj.rating,
+    runStatus: obj.runStatus,
+    ...(obj.objectiveMet !== undefined ? { objectiveMet: obj.objectiveMet } : {}),
+    ...(obj.difficulty !== undefined ? { difficulty: obj.difficulty } : {}),
+    ...(obj.wouldReuse !== undefined ? { wouldReuse: obj.wouldReuse } : {}),
+    ...(obj.notes !== undefined ? { notes: obj.notes } : {}),
+    ...(obj.changesNextTime !== undefined ? { changesNextTime: obj.changesNextTime } : {}),
+    schemaVersion: obj.schemaVersion,
+  };
+}
+
+const SESSION_EVENT_TYPES = new Set([
+  "session_generated",
+  "session_exported",
+  "feedback_submitted",
+  "session_run_confirmed",
+]);
+
+function validateSessionEventType(eventType) {
+  if (!SESSION_EVENT_TYPES.has(eventType)) {
+    const err = new Error("Invalid session event type");
+    err.code = "invalid_session_event_type";
+    err.statusCode = 400;
+    err.details = { eventType };
+    throw err;
+  }
+
+  return eventType;
+}
+
+function requireSessionId(sessionId) {
+  if (!sessionId || typeof sessionId !== "string" || sessionId.length > 128) {
+    const err = new Error("Missing or invalid sessionId");
+    err.code = "invalid_request";
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return sessionId;
+}
+
+function normalizeSessionEventMetadata(metadata) {
+  if (metadata === undefined) return undefined;
+
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    const err = new Error("Invalid session event metadata");
+    err.code = "invalid_request";
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const sanitized = {};
+
+  for (const [key, value] of Object.entries(metadata)) {
+    if (value === undefined) continue;
+
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      sanitized[key] = value;
+      continue;
+    }
+
+    if (value === null) {
+      sanitized[key] = null;
+      continue;
+    }
+
+    const err = new Error("Invalid session event metadata");
+    err.code = "invalid_request";
+    err.statusCode = 400;
+    err.details = { key };
+    throw err;
+  }
+
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
+
 class SessionRepository {
   constructor({ tableName }) {
     if (!tableName) {
@@ -122,7 +204,7 @@ class SessionRepository {
    * - Uses TransactWriteItems
    * - Both puts are conditional (fail if either exists)
    */
-  async createSession(tenantContext, sessionInput) {
+  async createSession(tenantContext, sessionInput, options = {}) {
     const tenantId = requireTenantId(tenantContext);
 
     if (!sessionInput || typeof sessionInput !== "object") {
@@ -173,6 +255,17 @@ class SessionRepository {
       targetSK: sessionSk,
     };
 
+    const eventTransactItems = options.sessionGeneratedEventMetadata
+      ? [
+          this.buildSessionEventTransactItem(tenantContext, {
+            sessionId,
+            eventType: "session_generated",
+            occurredAt: now,
+            metadata: options.sessionGeneratedEventMetadata,
+          }),
+        ]
+      : [];
+
     await ddb.send(
       new TransactWriteItemsCommand({
         ReturnCancellationReasons: true,
@@ -191,6 +284,7 @@ class SessionRepository {
               ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
             },
           },
+          ...eventTransactItems,
         ],
       })
     );
@@ -248,12 +342,7 @@ class SessionRepository {
   async getSessionById(tenantContext, sessionId) {
     const tenantId = requireTenantId(tenantContext);
 
-    if (!sessionId || typeof sessionId !== "string" || sessionId.length > 128) {
-      const err = new Error("Missing or invalid sessionId");
-      err.code = "invalid_request";
-      err.statusCode = 400;
-      throw err;
-    }
+    requireSessionId(sessionId);
 
     const pk = `TENANT#${tenantId}`;
     const lookupSk = `SESSIONLOOKUP#${sessionId}`;
@@ -283,6 +372,172 @@ class SessionRepository {
 
     const obj = unmarshall(sessionRes.Item);
     return normalizeSession(obj, { includeActivities: true });
+  }
+
+  buildSessionEventItem(tenantContext, { sessionId, eventType, occurredAt, actorUserId, metadata } = {}) {
+    const tenantId = requireTenantId(tenantContext);
+    requireSessionId(sessionId);
+    validateSessionEventType(eventType);
+
+    const effectiveOccurredAt = occurredAt || new Date().toISOString();
+    const eventId = newId();
+    const normalizedMetadata = normalizeSessionEventMetadata(metadata);
+
+    return {
+      PK: `TENANT#${tenantId}`,
+      SK: `SESSIONEVENT#${sessionId}#${effectiveOccurredAt}#${eventType}`,
+      type: "SESSION_EVENT",
+      eventId,
+      sessionId,
+      eventType,
+      occurredAt: effectiveOccurredAt,
+      actorUserId: actorUserId || tenantContext?.userId || null,
+      schemaVersion: 1,
+      ...(normalizedMetadata ? { metadata: normalizedMetadata } : {}),
+    };
+  }
+
+  buildSessionEventTransactItem(tenantContext, eventInput) {
+    const eventItem = this.buildSessionEventItem(tenantContext, eventInput);
+
+    return {
+      Put: {
+        TableName: this.tableName,
+        Item: marshall(eventItem),
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      },
+    };
+  }
+
+  buildFeedbackEventTransactItems(
+    tenantContext,
+    { sessionId, runStatus, occurredAt, actorUserId, feedbackMetadata, runConfirmedMetadata } = {}
+  ) {
+    const effectiveOccurredAt = occurredAt || new Date().toISOString();
+    const transactItems = [
+      this.buildSessionEventTransactItem(tenantContext, {
+        sessionId,
+        eventType: "feedback_submitted",
+        occurredAt: effectiveOccurredAt,
+        actorUserId,
+        metadata: feedbackMetadata,
+      }),
+    ];
+
+    if (runStatus && runStatus !== "not_run") {
+      transactItems.push(
+        this.buildSessionEventTransactItem(tenantContext, {
+          sessionId,
+          eventType: "session_run_confirmed",
+          occurredAt: effectiveOccurredAt,
+          actorUserId,
+          metadata: runConfirmedMetadata,
+        })
+      );
+    }
+
+    return transactItems;
+  }
+
+  async writeSessionExportedEvent(
+    tenantContext,
+    { sessionId, occurredAt, actorUserId, metadata } = {}
+  ) {
+    const eventItem = this.buildSessionEventItem(tenantContext, {
+      sessionId,
+      eventType: "session_exported",
+      occurredAt,
+      actorUserId,
+      metadata,
+    });
+
+    await ddb.send(
+      new PutItemCommand({
+        TableName: this.tableName,
+        Item: marshall(eventItem),
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      })
+    );
+
+    return { event: eventItem };
+  }
+
+  async createSessionFeedback(tenantContext, sessionId, feedbackInput, options = {}) {
+    const tenantId = requireTenantId(tenantContext);
+    requireSessionId(sessionId);
+
+    if (!feedbackInput || typeof feedbackInput !== "object") {
+      const err = new Error("Missing feedback input");
+      err.code = "invalid_request";
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const now = new Date().toISOString();
+    const feedbackItem = {
+      PK: `TENANT#${tenantId}`,
+      SK: `SESSIONFEEDBACK#${sessionId}`,
+      type: "SESSION_FEEDBACK",
+      sessionId,
+      submittedAt: now,
+      submittedBy: tenantContext?.userId || null,
+      schemaVersion: 1,
+      rating: feedbackInput.rating,
+      runStatus: feedbackInput.runStatus,
+      ...(feedbackInput.objectiveMet !== undefined ? { objectiveMet: feedbackInput.objectiveMet } : {}),
+      ...(feedbackInput.difficulty !== undefined ? { difficulty: feedbackInput.difficulty } : {}),
+      ...(feedbackInput.wouldReuse !== undefined ? { wouldReuse: feedbackInput.wouldReuse } : {}),
+      ...(feedbackInput.notes !== undefined ? { notes: feedbackInput.notes } : {}),
+      ...(feedbackInput.changesNextTime !== undefined
+        ? { changesNextTime: feedbackInput.changesNextTime }
+        : {}),
+    };
+
+    const eventTransactItems = this.buildFeedbackEventTransactItems(tenantContext, {
+      sessionId,
+      runStatus: feedbackInput.runStatus,
+      occurredAt: now,
+      feedbackMetadata: options.feedbackEventMetadata,
+      runConfirmedMetadata: options.runConfirmedEventMetadata,
+    });
+
+    try {
+      await ddb.send(
+        new TransactWriteItemsCommand({
+          ReturnCancellationReasons: true,
+          TransactItems: [
+            {
+              Put: {
+                TableName: this.tableName,
+                Item: marshall(feedbackItem),
+                ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+              },
+            },
+            ...eventTransactItems,
+          ],
+        })
+      );
+    } catch (err) {
+      const hasConditionalFailure =
+        err?.name === "ConditionalCheckFailedException" ||
+        (err?.name === "TransactionCanceledException" &&
+          Array.isArray(err?.CancellationReasons) &&
+          err.CancellationReasons.some((reason) => reason?.Code === "ConditionalCheckFailed"));
+
+      if (hasConditionalFailure) {
+        const conflictErr = new Error("Feedback already exists");
+        conflictErr.code = "sessions.feedback_exists";
+        conflictErr.statusCode = 409;
+        conflictErr.details = { entityType: "SESSION_FEEDBACK", sessionId };
+        throw conflictErr;
+      }
+
+      throw err;
+    }
+
+    return {
+      feedback: normalizeSessionFeedback(feedbackItem),
+    };
   }
 }
 

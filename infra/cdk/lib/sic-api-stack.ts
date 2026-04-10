@@ -284,6 +284,13 @@ export class SicApiStack extends Stack {
       authorizer,
     });
 
+    api.addRoutes({
+      path: "/sessions/{sessionId}/feedback",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("SessionFeedbackIntegration", sessionsFn),
+      authorizer,
+    });
+
     // Routes: /templates
     api.addRoutes({
       path: "/templates",

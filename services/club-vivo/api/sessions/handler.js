@@ -4,6 +4,8 @@
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
 const { SessionRepository } = require("../src/domains/sessions/session-repository");
+const { validateSessionFeedback } = require("../src/domains/sessions/session-feedback-validate");
+const { submitSessionFeedback } = require("../src/domains/sessions/session-feedback-service");
 const { createSessionPdfBuffer } = require("../src/domains/sessions/pdf/session-pdf");
 const { createSessionPdfStorage } = require("../src/domains/sessions/pdf/session-pdf-storage");
 const {
@@ -11,7 +13,12 @@ const {
   exportPersistedSession,
 } = require("../src/domains/session-builder/session-builder-pipeline");
 const { validateCreateSession } = require("../src/domains/session-builder/session-validate");
-const { BadRequestError, NotFoundError, InternalError } = require("../src/platform/errors/errors");
+const {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  InternalError,
+} = require("../src/platform/errors/errors");
 
 function assertEnv({ requirePdfBucket = false } = {}) {
   const missing = [];
@@ -88,8 +95,76 @@ function isGetSessionPdfRoute(event) {
   return getHttpMethod(event) === "GET" && /^\/sessions\/[^/]+\/pdf$/.test(getRequestPath(event));
 }
 
+function findDisallowedTenantKeys(values) {
+  return Object.keys(values || {}).filter((key) => {
+    const normalized = String(key).toLowerCase();
+    return normalized === "tenant_id" || normalized === "tenantid" || normalized === "x-tenant-id";
+  });
+}
+
+function assertNoClientTenantInputs(event) {
+  const headerKeys = findDisallowedTenantKeys(event?.headers);
+  if (headerKeys.length) {
+    throw new BadRequestError({
+      code: "platform.bad_request",
+      message: "Bad request",
+      details: { unknown: headerKeys },
+    });
+  }
+
+  const queryKeys = findDisallowedTenantKeys(event?.queryStringParameters);
+  if (queryKeys.length) {
+    throw new BadRequestError({
+      code: "platform.bad_request",
+      message: "Bad request",
+      details: { unknown: queryKeys },
+    });
+  }
+}
+
+function toBadRequest(err) {
+  return new BadRequestError({
+    code: "platform.bad_request",
+    message: "Bad request",
+    details: err?.details || {},
+    cause: err,
+  });
+}
+
+function rethrowSessionDomainError(err) {
+  if (err?.httpStatus) {
+    throw err;
+  }
+
+  if (err?.statusCode === 404) {
+    throw new NotFoundError({
+      code: err.code || "sessions.not_found",
+      message: "Not found",
+      details: err.details || { entityType: "SESSION" },
+      cause: err,
+    });
+  }
+
+  if (err?.statusCode === 409) {
+    throw new ConflictError({
+      code: err.code || "sessions.feedback_exists",
+      message: "Conflict",
+      details: err.details || { entityType: "SESSION_FEEDBACK" },
+      cause: err,
+    });
+  }
+
+  if (err?.statusCode === 400) {
+    throw toBadRequest(err);
+  }
+
+  throw err;
+}
+
 function createSessionsInner({
   getSessionRepoFn = getSessionRepo,
+  validateSessionFeedbackFn = validateSessionFeedback,
+  submitSessionFeedbackFn = submitSessionFeedback,
   createSessionPdfBufferFn = createSessionPdfBuffer,
   getSessionPdfStorageFn = getSessionPdfStorage,
   persistSessionFn = persistSession,
@@ -143,6 +218,52 @@ function createSessionsInner({
     }
 
     // -------------------------
+    // POST /sessions/{sessionId}/feedback
+    // -------------------------
+    if (rk === "POST /sessions/{sessionId}/feedback") {
+      const sessionId = event?.pathParameters?.sessionId;
+
+      if (!sessionId) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing: ["sessionId"] },
+        });
+      }
+
+      assertNoClientTenantInputs(event);
+
+      let body;
+      try {
+        body = parseJsonBody(event);
+      } catch (err) {
+        throw toBadRequest(err);
+      }
+
+      let feedbackInput;
+      try {
+        feedbackInput = validateSessionFeedbackFn(body);
+      } catch (err) {
+        throw toBadRequest(err);
+      }
+
+      try {
+        const result = await submitSessionFeedbackFn(tenantCtx, sessionId, feedbackInput, {
+          sessionRepository: getSessionRepoFn(),
+        });
+
+        logger.info("session_feedback_created", "session feedback created", {
+          http: { statusCode: 201 },
+          resource: { entityType: "SESSION", entityId: sessionId },
+        });
+
+        return json(201, result);
+      } catch (err) {
+        rethrowSessionDomainError(err);
+      }
+    }
+
+    // -------------------------
     // GET /sessions
     // -------------------------
     if (rk === "GET /sessions") {
@@ -166,6 +287,7 @@ function createSessionsInner({
     // -------------------------
     if (isGetSessionPdfRoute(event)) {
       assertEnv({ requirePdfBucket: true });
+      const sessionRepository = getSessionRepoFn();
 
       const sessionId = event?.pathParameters?.sessionId;
 
@@ -177,7 +299,7 @@ function createSessionsInner({
         });
       }
 
-      const session = await getSessionRepoFn().getSessionById(tenantCtx, sessionId);
+      const session = await sessionRepository.getSessionById(tenantCtx, sessionId);
 
       if (!session) {
         logger.warn("session_pdf_not_found", "session not found", {
@@ -199,6 +321,11 @@ function createSessionsInner({
           sessionId,
           createSessionPdfBufferFn,
           sessionPdfStorage: getSessionPdfStorageFn(),
+        });
+
+        await sessionRepository.writeSessionExportedEvent(tenantCtx, {
+          sessionId,
+          metadata: { exportFormat: "pdf" },
         });
 
         logger.info("session_pdf_exported", "session pdf exported", {

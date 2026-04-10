@@ -77,10 +77,18 @@ async function generateSessionFromTemplate(tenantCtx, templateId, input = {}, de
     activities: template.activities || [],
   };
 
+  const sessionRepositoryWithGeneratedEvent = {
+    ...sessionRepo,
+    createSession: (actualTenantCtx, actualInput) =>
+      sessionRepo.createSession(actualTenantCtx, actualInput, {
+        sessionGeneratedEventMetadata: { templateId },
+      }),
+  };
+
   const persistResult = await persistSessionFn({
     tenantCtx,
     normalizedInput,
-    sessionRepository: sessionRepo,
+    sessionRepository: sessionRepositoryWithGeneratedEvent,
   });
 
   await templateRepo.markTemplateGenerated(tenantCtx, templateId);

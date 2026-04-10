@@ -171,6 +171,199 @@ test("POST /sessions keeps the public { session } response shape while using the
   assert.equal(loggerEvents[0].eventType, "session_created");
 });
 
+test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response shape", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const loggerEvents = [];
+  const expectedFeedback = {
+    sessionId: "session-123",
+    submittedAt: "2026-04-10T00:00:00.000Z",
+    submittedBy: "user-123",
+    rating: 4,
+    runStatus: "ran_with_changes",
+    objectiveMet: true,
+    difficulty: "about_right",
+    wouldReuse: true,
+    notes: "Useful session.",
+    changesNextTime: "Add more finishing.",
+    schemaVersion: 1,
+  };
+
+  const inner = createSessionsInner({
+    validateSessionFeedbackFn: (body) => {
+      assert.deepEqual(body, {
+        rating: 4,
+        runStatus: "ran_with_changes",
+        objectiveMet: true,
+        difficulty: "about_right",
+        wouldReuse: true,
+        notes: "Useful session.",
+        changesNextTime: "Add more finishing.",
+      });
+
+      return body;
+    },
+    submitSessionFeedbackFn: async (tenantCtx, sessionId, input, deps) => {
+      assert.equal(tenantCtx.tenantId, "tenant_authoritative");
+      assert.equal(sessionId, "session-123");
+      assert.equal(typeof deps.sessionRepository.getSessionById, "function");
+      assert.equal(typeof deps.sessionRepository.createSessionFeedback, "function");
+      assert.equal(input.rating, 4);
+      return { feedback: expectedFeedback };
+    },
+  });
+
+  const response = await inner({
+    event: {
+      rawPath: "/sessions/session-123/feedback",
+      path: "/sessions/session-123/feedback",
+      routeKey: "POST /sessions/{sessionId}/feedback",
+      requestContext: {
+        http: { method: "POST", path: "/sessions/session-123/feedback" },
+      },
+      pathParameters: { sessionId: "session-123" },
+      body: JSON.stringify({
+        rating: 4,
+        runStatus: "ran_with_changes",
+        objectiveMet: true,
+        difficulty: "about_right",
+        wouldReuse: true,
+        notes: "Useful session.",
+        changesNextTime: "Add more finishing.",
+      }),
+    },
+    tenantCtx: makeTenantCtx(),
+    logger: makeLogger(loggerEvents),
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(JSON.parse(response.body), { feedback: expectedFeedback });
+  assert.equal(loggerEvents[0].eventType, "session_feedback_created");
+});
+
+test("POST /sessions/{sessionId}/feedback rejects client-supplied tenant scope in headers and query", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createSessionsInner({
+    submitSessionFeedbackFn: async () => {
+      throw new Error("should not reach feedback service");
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: {
+          rawPath: "/sessions/session-123/feedback",
+          path: "/sessions/session-123/feedback",
+          routeKey: "POST /sessions/{sessionId}/feedback",
+          requestContext: {
+            http: { method: "POST", path: "/sessions/session-123/feedback" },
+          },
+          pathParameters: { sessionId: "session-123" },
+          headers: { "x-tenant-id": "spoofed" },
+          queryStringParameters: { tenantId: "spoofed" },
+          body: JSON.stringify({
+            rating: 4,
+            runStatus: "ran_as_planned",
+          }),
+        },
+        tenantCtx: makeTenantCtx(),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "platform.bad_request");
+      assert.equal(err.httpStatus, 400);
+      assert.deepEqual(err.details, { unknown: ["x-tenant-id"] });
+      return true;
+    }
+  );
+});
+
+test("POST /sessions/{sessionId}/feedback returns 404 when session is not found", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createSessionsInner({
+    submitSessionFeedbackFn: async () => {
+      const err = new Error("Not found");
+      err.code = "sessions.not_found";
+      err.statusCode = 404;
+      err.details = { entityType: "SESSION" };
+      throw err;
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: {
+          rawPath: "/sessions/session-404/feedback",
+          path: "/sessions/session-404/feedback",
+          routeKey: "POST /sessions/{sessionId}/feedback",
+          requestContext: {
+            http: { method: "POST", path: "/sessions/session-404/feedback" },
+          },
+          pathParameters: { sessionId: "session-404" },
+          body: JSON.stringify({
+            rating: 3,
+            runStatus: "not_run",
+          }),
+        },
+        tenantCtx: makeTenantCtx(),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "sessions.not_found");
+      assert.equal(err.httpStatus, 404);
+      return true;
+    }
+  );
+});
+
+test("POST /sessions/{sessionId}/feedback returns 409 on duplicate feedback", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createSessionsInner({
+    submitSessionFeedbackFn: async () => {
+      const err = new Error("Conflict");
+      err.code = "sessions.feedback_exists";
+      err.statusCode = 409;
+      err.details = { entityType: "SESSION_FEEDBACK", sessionId: "session-123" };
+      throw err;
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: {
+          rawPath: "/sessions/session-123/feedback",
+          path: "/sessions/session-123/feedback",
+          routeKey: "POST /sessions/{sessionId}/feedback",
+          requestContext: {
+            http: { method: "POST", path: "/sessions/session-123/feedback" },
+          },
+          pathParameters: { sessionId: "session-123" },
+          body: JSON.stringify({
+            rating: 5,
+            runStatus: "ran_as_planned",
+          }),
+        },
+        tenantCtx: makeTenantCtx(),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "sessions.feedback_exists");
+      assert.equal(err.httpStatus, 409);
+      return true;
+    }
+  );
+});
+
 test("GET /sessions/{sessionId}/pdf returns 404 when session is not found", async () => {
   process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
   process.env.SIC_DOMAIN_TABLE = "domain-table";
@@ -228,6 +421,9 @@ test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from ten
         calls.push({ actualTenantCtx, sessionId });
         return session;
       },
+      writeSessionExportedEvent: async (actualTenantCtx, args) => {
+        calls.push({ eventTenantCtx: actualTenantCtx, eventArgs: args });
+      },
     }),
     createSessionPdfBufferFn: ({ tenantId, session: actualSession }) => {
       calls.push({ pdfTenantId: tenantId, actualSession });
@@ -279,6 +475,13 @@ test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from ten
         sessionId: "session-123",
       },
     },
+    {
+      eventTenantCtx: tenantCtx,
+      eventArgs: {
+        sessionId: "session-123",
+        metadata: { exportFormat: "pdf" },
+      },
+    },
   ]);
 
   assert.equal(loggerEvents[0].eventType, "session_pdf_exported");
@@ -303,6 +506,13 @@ test("GET /sessions/{sessionId}/pdf keeps the public response shape while using 
   const inner = createSessionsInner({
     getSessionRepoFn: () => ({
       getSessionById: async () => session,
+      writeSessionExportedEvent: async (tenantCtx, args) => {
+        assert.equal(tenantCtx.tenantId, "tenant_authoritative");
+        assert.deepEqual(args, {
+          sessionId: "session-123",
+          metadata: { exportFormat: "pdf" },
+        });
+      },
     }),
     exportPersistedSessionFn: async ({
       tenantCtx,
@@ -357,10 +567,14 @@ test("GET /sessions/{sessionId}/pdf logs pdf_export_failed and rethrows the orig
     activities: [{ title: "Warm-up" }],
   };
   const originalError = new Error("s3 put failed");
+  const eventWrites = [];
 
   const inner = createSessionsInner({
     getSessionRepoFn: () => ({
       getSessionById: async () => session,
+      writeSessionExportedEvent: async (...args) => {
+        eventWrites.push(args);
+      },
     }),
     createSessionPdfBufferFn: () => Buffer.from("%PDF-1.4\nfake\n", "utf8"),
     getSessionPdfStorageFn: () => ({
@@ -395,4 +609,5 @@ test("GET /sessions/{sessionId}/pdf logs pdf_export_failed and rethrows the orig
   assert.equal(errorEvent.http.method, "GET");
   assert.equal(errorEvent.resource.entityId, "session-123");
   assert.equal(errorEvent.route, "GET /sessions/{sessionId}/pdf");
+  assert.equal(eventWrites.length, 0);
 });

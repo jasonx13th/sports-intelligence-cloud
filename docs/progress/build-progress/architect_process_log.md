@@ -20,6 +20,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 13](#week-13)
 - [Week 14](#week-14)
 - [Week 15](#week-15)
+- [Week 16](#week-16)
 
 ## Week 0
 
@@ -633,3 +634,67 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 ### Next steps
 - Move into Week 16 attendance planning without widening Week 15 into broader team or platform behavior.
 - Keep future team work narrow: attendance, scheduling, roster, UI, analytics, and broader authorization should remain separate follow-on slices rather than being implied by current Team Layer v1.
+
+
+## Week 16 - Attendance System
+
+### Goals
+- Implement the attendance model.
+- Add:
+  - `POST /teams/{teamId}/attendance`
+  - `GET /teams/{teamId}/attendance`
+- Build:
+  - `GET /teams/{teamId}/planning/weekly`
+- Document architecture, failures, demo flow, and closeout.
+
+### Work completed
+- Frozen the occurrence-level attendance contract and storage design for the smallest useful Team Layer attendance slice.
+- Implemented:
+  - `POST /teams/{teamId}/attendance`
+  - `GET /teams/{teamId}/attendance`
+- Implemented weekly planning as a current-week UTC composition read over current assignments plus current-week attendance:
+  - `GET /teams/{teamId}/planning/weekly`
+- Shipped duplicate replay behavior for attendance:
+  - first create returns `201`
+  - exact normalized replay returns `200`
+  - conflicting replay returns `409 teams.attendance_exists`
+- Added focused tests and Postman attendance coverage for the shipped routes.
+- Added the supporting Week 16 docs:
+  - architecture note
+  - failure runbook
+  - observability catalog update
+  - demo script
+  - closeout summary
+
+### Tenancy/security checks
+- Tenant scope remained server-derived from verified auth plus authoritative entitlements.
+- Requests reject:
+  - `tenant_id`
+  - `tenantId`
+  - `x-tenant-id`
+- Attendance writes and attendance/weekly-planning reads remain tenant-scoped by construction.
+- No scan-then-filter pattern was introduced.
+- No infra, IAM, auth-boundary, tenancy-boundary, entitlements-model, table, or GSI changes were introduced.
+
+### Observability notes
+- Week 16 remained route-level and intentionally minimal on observability.
+- Current Attendance System success events are:
+  - `team_attendance_recorded`
+  - `team_attendance_replayed`
+  - `team_attendance_listed`
+  - `team_weekly_planning_fetched`
+- No dedicated metrics filters, dashboards, or alarms were added yet for this slice.
+
+### Evidence
+- `docs/api/team-attendance-v1-contract.md`
+- `docs/api/team-weekly-planning-v1-contract.md`
+- `docs/progress/week_16/attendance-storage-design.md`
+- `docs/progress/week_16/day-1-evidence-note.md`
+- `docs/architecture/attendance-system-v1.md`
+- `docs/runbooks/attendance-system-v1-failures.md`
+- `docs/progress/week_16/demo-script.md`
+- `docs/progress/week_16/closeout-summary.md`
+
+### Next steps
+- Run and capture the Week 16 demo in the target environment.
+- Move into Week 17 with a plan-only pass first so the next slice stays thin and explicit.

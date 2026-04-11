@@ -294,5 +294,9 @@ function validateCreateSession(body) {
 }
 
 module.exports = {
+  SUPPORTED_AGE_BANDS,
+  normalizeAgeBand,
+  normalizeEquipmentName,
+  requireEquipmentArray,
   validateCreateSession,
 };

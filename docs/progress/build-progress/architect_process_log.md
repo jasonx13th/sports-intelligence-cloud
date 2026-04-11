@@ -1,6 +1,6 @@
 # Architect Process Log
 
-Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_13/` notes.
+Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_15/` notes.
 
 ## Running index
 
@@ -18,6 +18,8 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 11](#week-11)
 - [Week 12](#week-12)
 - [Week 13](#week-13)
+- [Week 14](#week-14)
+- [Week 15](#week-15)
 
 ## Week 0
 
@@ -516,3 +518,118 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 ### Next steps
 - Proceed to Week 14 feedback-loop planning.
 - Keep tooling debt and broader infra drift separate from Week 13 completion.
+
+
+## Week 14 - Coach Feedback Loop
+
+### Goals
+- Capture structured coach feedback for learning and improvement.
+- Extend the session event timeline with meaningful product events.
+- Document the feedback architecture and establish a lightweight weekly review workflow.
+
+### Work completed
+- Added the authenticated feedback endpoint:
+  - `POST /sessions/{sessionId}/feedback`
+- Hardened the feedback request contract around the approved v1 feedback fields, unknown-field rejection, and stable error behavior.
+- Added tenant-scoped feedback persistence and tenant-scoped session event timeline writes in the existing domain table.
+- Shipped the current Week 14 event timeline additions:
+  - `feedback_submitted`
+  - `session_run_confirmed`
+  - `session_exported`
+  - `session_generated`
+- Kept feedback and feedback-related event writes transactional while leaving export events as standalone tenant-scoped writes after successful export preparation.
+- Documented the feedback architecture and the current manual-first weekly review workflow.
+
+### Tenancy/security checks
+- Tenant scope remained server-derived from verified auth plus entitlements.
+- No `tenant_id`, `tenantId`, or `x-tenant-id` was accepted from body, query, or headers.
+- Feedback records and session event items remained tenant-scoped by construction.
+- Session existence checks remained tenant-scoped.
+- No scan-then-filter pattern was introduced for feedback or session events.
+- The only approved infra change was the route wiring required to expose the feedback endpoint on the existing authenticated sessions surface.
+
+### Observability notes
+- Week 14 stayed intentionally minimal and real on observability.
+- Current evidence surfaces are:
+  - structured success/error logs
+  - durable `SESSION_EVENT` items in the domain table
+  - current success events such as:
+    - `session_feedback_created`
+    - `session_pdf_exported`
+    - `template_generated`
+- No dashboard, alarm, scheduled review job, or timeline read endpoint was added in this slice.
+
+### Evidence
+- `docs/api/session-feedback-v1-contract.md`
+- `docs/architecture/feedback-loop-architecture.md`
+- `docs/runbooks/weekly-feedback-review.md`
+- `docs/progress/week_14/day1-feedback-endpoint.md`
+- `docs/progress/week_14/day3-feedback-architecture-and-review-workflow.md`
+- `docs/progress/week_14/closeout-summary.md`
+
+### Next steps
+- Move into Week 15 Team Layer v1.
+- Add the smallest tenant-safe team model and assignment workflow without expanding into attendance, scheduling, or broader team-platform scope.
+
+
+## Week 15 - Team Layer v1
+
+### Goals
+- Add the first real Team Layer backend surface on top of the coach-first session workflow.
+- Ship tenant-safe team create/list/detail behavior plus a small team-session assignment workflow.
+- Document the Team Layer architecture and create a lightweight demo flow for the shipped slice.
+
+### Work completed
+- Added the first Team Layer core endpoints:
+  - `POST /teams`
+  - `GET /teams`
+  - `GET /teams/{teamId}`
+- Kept `POST /teams` admin-only in the current implementation.
+- Added the first Team Layer session workflow:
+  - `POST /teams/{teamId}/sessions/{sessionId}/assign`
+  - `GET /teams/{teamId}/sessions`
+- Shipped idempotent duplicate assignment replay behavior:
+  - first assign returns `201`
+  - duplicate replay returns `200` with the existing assignment payload
+- Kept the assignment payload aligned to the implemented denormalized session summary fields:
+  - `sessionCreatedAt`
+  - `sport`
+  - `ageBand`
+  - `durationMin`
+  - `objectiveTags`
+- Added Team Layer API and architecture documentation plus a lightweight Week 15 demo flow.
+
+### Tenancy/security checks
+- Tenant scope remained server-derived from verified auth plus entitlements.
+- No `tenant_id`, `tenantId`, or `x-tenant-id` was accepted from body, query, or headers.
+- Team records remained tenant-scoped by construction:
+  - `PK = TENANT#<tenantId>`
+  - `SK = TEAM#<teamId>`
+- Team-session assignment records remained tenant-scoped by construction:
+  - `PK = TENANT#<tenantId>`
+  - `SK = TEAMSESSION#<teamId>#<sessionId>`
+- Team existence and session existence checks remained inside tenant scope before assignment writes.
+- No scan-then-filter pattern was introduced.
+- No auth-boundary, tenancy-boundary, or entitlements-model change was introduced beyond the approved Teams Lambda and route registrations.
+
+### Observability notes
+- Week 15 remained route-level and intentionally minimal on observability.
+- Current Team Layer success events are:
+  - `team_created`
+  - `team_listed`
+  - `team_fetched`
+  - `team_session_assigned`
+  - `team_session_assignment_replayed`
+  - `team_sessions_listed`
+- No dashboard, alarm, analytics expansion, or new reporting surface was added in this slice.
+
+### Evidence
+- `docs/api/team-layer-v1-contract.md`
+- `docs/architecture/team-layer-v1.md`
+- `docs/progress/week_15/day1-team-model-and-core-endpoints.md`
+- `docs/progress/week_15/day2-session-assignment-workflow.md`
+- `docs/progress/week_15/demo-script.md`
+
+### Next steps
+- Move into Week 16 attendance planning without widening Week 15 into broader team or platform behavior.
+- Keep future team work narrow: attendance, scheduling, roster, UI, analytics, and broader authorization should remain separate follow-on slices rather than being implied by current Team Layer v1.

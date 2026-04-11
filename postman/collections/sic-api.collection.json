@@ -479,6 +479,664 @@
       ]
     },
     {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "POST /teams",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 201\", function () {\r",
+                  "  pm.response.to.have.status(201);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has team\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"team\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"team has Team v1 core fields\", function () {\r",
+                  "  pm.expect(json.team).to.have.property(\"teamId\");\r",
+                  "  pm.expect(json.team).to.have.property(\"name\", \"U14 Blue\");\r",
+                  "  pm.expect(json.team).to.have.property(\"sport\", \"soccer\");\r",
+                  "  pm.expect(json.team).to.have.property(\"ageBand\", \"U14\");\r",
+                  "  pm.expect(json.team).to.have.property(\"level\", \"competitive\");\r",
+                  "  pm.expect(json.team).to.have.property(\"notes\", \"Strong group\");\r",
+                  "  pm.expect(json.team).to.have.property(\"status\", \"active\");\r",
+                  "  pm.expect(json.team).to.have.property(\"createdAt\");\r",
+                  "  pm.expect(json.team).to.have.property(\"updatedAt\");\r",
+                  "  pm.expect(json.team).to.have.property(\"createdBy\");\r",
+                  "});\r",
+                  "\r",
+                  "if (json.team && json.team.teamId) {\r",
+                  "  pm.environment.set(\"teamId\", json.team.teamId);\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"U14 Blue\",\r\n  \"sport\": \"soccer\",\r\n  \"ageBand\": \"U14\",\r\n  \"level\": \"competitive\",\r\n  \"notes\": \"Strong group\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams - non-admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 403\", function () {\r",
+                  "  pm.response.to.have.status(403);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is teams.admin_required\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"teams.admin_required\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{nonAdminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"U14 Blue\",\r\n  \"sport\": \"soccer\",\r\n  \"ageBand\": \"U14\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams - invalid body (intentional tenantId rejection coverage only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 400\", function () {\r",
+                  "  pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error shape exists\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"platform.bad_request\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"unknown field includes tenantId\", function () {\r",
+                  "  pm.expect(json.error).to.have.property(\"details\");\r",
+                  "  pm.expect(json.error.details).to.have.property(\"unknown\");\r",
+                  "  pm.expect(json.error.details.unknown).to.include(\"tenantId\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"U14 Blue\",\r\n  \"sport\": \"soccer\",\r\n  \"ageBand\": \"U14\",\r\n  \"tenantId\": \"should-not-be-here\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 200\", function () {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has items array\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"items\");\r",
+                  "  pm.expect(json.items).to.be.an(\"array\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams/{teamId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 200\", function () {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has team\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"team\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"team detail matches requested teamId\", function () {\r",
+                  "  pm.expect(json.team).to.have.property(\"teamId\", pm.environment.get(\"teamId\"));\r",
+                  "  pm.expect(json.team).to.have.property(\"name\");\r",
+                  "  pm.expect(json.team).to.have.property(\"sport\");\r",
+                  "  pm.expect(json.team).to.have.property(\"ageBand\");\r",
+                  "  pm.expect(json.team).to.have.property(\"status\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams/{teamId} - missing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 404\", function () {\r",
+                  "  pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is teams.not_found\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"teams.not_found\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/sessions/{sessionId}/assign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 201\", function () {\r",
+                  "  pm.response.to.have.status(201);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has assignment\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"assignment\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"assignment has expected fields\", function () {\r",
+                  "  pm.expect(json.assignment).to.have.property(\"teamId\", pm.environment.get(\"teamId\"));\r",
+                  "  pm.expect(json.assignment).to.have.property(\"sessionId\", pm.environment.get(\"sessionId\"));\r",
+                  "  pm.expect(json.assignment).to.have.property(\"assignedAt\");\r",
+                  "  pm.expect(json.assignment).to.have.property(\"assignedBy\");\r",
+                  "  pm.expect(json.assignment).to.have.property(\"notes\", \"Use next Tuesday\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"notes\": \"Use next Tuesday\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/sessions/{{sessionId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "sessions",
+                "{{sessionId}}",
+                "assign"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/sessions/{sessionId}/assign - duplicate replay",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 200\", function () {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has assignment\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"assignment\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"duplicate replay preserves idempotent assignment\", function () {\r",
+                  "  pm.expect(json.assignment).to.have.property(\"teamId\", pm.environment.get(\"teamId\"));\r",
+                  "  pm.expect(json.assignment).to.have.property(\"sessionId\", pm.environment.get(\"sessionId\"));\r",
+                  "  pm.expect(json.assignment).to.have.property(\"assignedAt\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"notes\": \"Use next Tuesday\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/sessions/{{sessionId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "sessions",
+                "{{sessionId}}",
+                "assign"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/sessions/{sessionId}/assign - invalid body (intentional tenantId rejection coverage only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 400\", function () {\r",
+                  "  pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is platform.bad_request\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"platform.bad_request\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"unknown field includes tenantId\", function () {\r",
+                  "  pm.expect(json.error).to.have.property(\"details\");\r",
+                  "  pm.expect(json.error.details).to.have.property(\"unknown\");\r",
+                  "  pm.expect(json.error.details.unknown).to.include(\"tenantId\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"tenantId\": \"should-not-be-here\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/sessions/{{sessionId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "sessions",
+                "{{sessionId}}",
+                "assign"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/sessions/{sessionId}/assign - missing session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 404\", function () {\r",
+                  "  pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is sessions.not_found\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"sessions.not_found\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/sessions/00000000-0000-0000-0000-000000000000/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "sessions",
+                "00000000-0000-0000-0000-000000000000",
+                "assign"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams/{teamId}/sessions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 200\", function () {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has items array\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"items\");\r",
+                  "  pm.expect(json.items).to.be.an(\"array\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"assigned session is present\", function () {\r",
+                  "  const match = json.items.find(function (item) {\r",
+                  "    return item.teamId === pm.environment.get(\"teamId\") && item.sessionId === pm.environment.get(\"sessionId\");\r",
+                  "  });\r",
+                  "  pm.expect(match).to.exist;\r",
+                  "  pm.expect(match).to.have.property(\"assignedAt\");\r",
+                  "  pm.expect(match).to.have.property(\"assignedBy\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "sessions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams/{teamId}/sessions - missing team",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 404\", function () {\r",
+                  "  pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is teams.not_found\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"teams.not_found\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/00000000-0000-0000-0000-000000000000/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "00000000-0000-0000-0000-000000000000",
+                "sessions"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{accessToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Session Packs",
       "item": [
         {

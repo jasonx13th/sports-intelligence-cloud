@@ -45,6 +45,12 @@
 			"enabled": true
 		},
 		{
+			"key": "nonAdminAccessToken",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "idToken",
 			"value": "",
 			"type": "default",
@@ -52,6 +58,12 @@
 		},
 		{
 			"key": "sessionId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "teamId",
 			"value": "",
 			"type": "default",
 			"enabled": true

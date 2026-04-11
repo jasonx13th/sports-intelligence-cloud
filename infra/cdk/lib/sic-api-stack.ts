@@ -120,6 +120,19 @@ export class SicApiStack extends Stack {
       },
     });
 
+    // Lambda: /teams
+    const teamsFn = new lambda.Function(this, "TeamsFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "teams/handler.handler",
+      functionName: `sic-club-vivo-teams-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(15),
+      environment: {
+        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
+      },
+    });
+
     // -----------------------------
     // IAM grants (least privilege)
     // -----------------------------
@@ -165,6 +178,14 @@ export class SicApiStack extends Stack {
       })
     );
 
+    // Entitlements: teams only need direct entitlements lookup.
+    teamsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem"],
+        resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
     // Domain table: explicit allow-list (NO Scan) + writes
     const domainAccessActions = [
       // reads
@@ -194,6 +215,13 @@ export class SicApiStack extends Stack {
     templatesFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:DescribeTable", "dynamodb:PutItem", "dynamodb:TransactWriteItems"],
+        resources: [sicDomainTable.tableArn],
+      })
+    );
+
+    teamsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:Query", "dynamodb:PutItem"],
         resources: [sicDomainTable.tableArn],
       })
     );
@@ -311,6 +339,35 @@ export class SicApiStack extends Stack {
       path: "/session-packs",
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwv2Integrations.HttpLambdaIntegration("SessionPacksIntegration", sessionPacksFn),
+      authorizer,
+    });
+
+    // Routes: /teams
+    api.addRoutes({
+      path: "/teams",
+      methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.GET],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("TeamsIntegration", teamsFn),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/teams/{teamId}",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("TeamByIdIntegration", teamsFn),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/teams/{teamId}/sessions",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("TeamSessionsIntegration", teamsFn),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/teams/{teamId}/sessions/{sessionId}/assign",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("TeamSessionAssignIntegration", teamsFn),
       authorizer,
     });
 

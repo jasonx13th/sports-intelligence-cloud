@@ -2,8 +2,11 @@
 
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
-const { requireFields } = require("../src/platform/validation/validate");
 const { TeamRepository } = require("../src/domains/teams/team-repository");
+const { validateCreateTeam } = require("../src/domains/teams/team-validate");
+const {
+  validateAssignSession,
+} = require("../src/domains/teams/team-session-assignment-validate");
 const {
   BadRequestError,
   ForbiddenError,
@@ -50,6 +53,60 @@ function routeKey(event) {
   return `${method} ${path}`;
 }
 
+function findDisallowedTenantKeys(values) {
+  return Object.keys(values || {}).filter((key) => {
+    const normalized = String(key).toLowerCase();
+    return normalized === "tenant_id" || normalized === "tenantid" || normalized === "x-tenant-id";
+  });
+}
+
+function assertNoClientTenantInputs(event) {
+  const headerKeys = findDisallowedTenantKeys(event?.headers);
+  if (headerKeys.length) {
+    throw new BadRequestError({
+      code: "platform.bad_request",
+      message: "Bad request",
+      details: { unknown: headerKeys },
+    });
+  }
+
+  const queryKeys = findDisallowedTenantKeys(event?.queryStringParameters);
+  if (queryKeys.length) {
+    throw new BadRequestError({
+      code: "platform.bad_request",
+      message: "Bad request",
+      details: { unknown: queryKeys },
+    });
+  }
+}
+
+function toBadRequest(err) {
+  return new BadRequestError({
+    code: "platform.bad_request",
+    message: "Bad request",
+    details: err?.details || {},
+    cause: err,
+  });
+}
+
+function isGetTeamByIdRoute(event) {
+  const rk = routeKey(event);
+  if (rk === "GET /teams/{teamId}") return true;
+  return /^GET \/teams\/[^/]+$/.test(rk);
+}
+
+function isListAssignedSessionsRoute(event) {
+  const rk = routeKey(event);
+  if (rk === "GET /teams/{teamId}/sessions") return true;
+  return /^GET \/teams\/[^/]+\/sessions$/.test(rk);
+}
+
+function isAssignSessionRoute(event) {
+  const rk = routeKey(event);
+  if (rk === "POST /teams/{teamId}/sessions/{sessionId}/assign") return true;
+  return /^POST \/teams\/[^/]+\/sessions\/[^/]+\/assign$/.test(rk);
+}
+
 function requireAdminRole(tenantCtx) {
   if (tenantCtx?.role !== "admin") {
     throw new ForbiddenError({
@@ -60,7 +117,11 @@ function requireAdminRole(tenantCtx) {
   }
 }
 
-function createTeamsInner({ getTeamRepoFn = getTeamRepo } = {}) {
+function createTeamsInner({
+  getTeamRepoFn = getTeamRepo,
+  validateCreateTeamFn = validateCreateTeam,
+  validateAssignSessionFn = validateAssignSession,
+} = {}) {
   return async function inner({ event, tenantCtx, logger }) {
     assertEnv();
 
@@ -68,31 +129,23 @@ function createTeamsInner({ getTeamRepoFn = getTeamRepo } = {}) {
 
     if (rk === "POST /teams") {
       requireAdminRole(tenantCtx);
+      assertNoClientTenantInputs(event);
 
       let body;
       try {
         body = parseJsonBody(event);
-      } catch (err) {
-        throw new BadRequestError({
-          code: err?.code || "platform.bad_request",
-          message: "Bad request",
-          details: err?.details || {},
-          cause: err,
-        });
+      } catch (e) {
+        throw toBadRequest(e);
       }
 
+      let teamInput;
       try {
-        requireFields(body, ["name"]);
-      } catch (err) {
-        throw new BadRequestError({
-          code: "platform.bad_request",
-          message: "Bad request",
-          details: err?.details || { missing: ["name"] },
-          cause: err,
-        });
+        teamInput = validateCreateTeamFn(body);
+      } catch (e) {
+        throw toBadRequest(e);
       }
 
-      const result = await getTeamRepoFn().createTeam(tenantCtx, body);
+      const result = await getTeamRepoFn().createTeam(tenantCtx, teamInput);
 
       logger.info("team_created", "team created", {
         http: { statusCode: 201 },
@@ -103,6 +156,7 @@ function createTeamsInner({ getTeamRepoFn = getTeamRepo } = {}) {
     }
 
     if (rk === "GET /teams") {
+      assertNoClientTenantInputs(event);
       const { nextToken, cursor, limit } = event?.queryStringParameters || {};
       const result = await getTeamRepoFn().listTeams(tenantCtx, {
         limit,
@@ -111,6 +165,136 @@ function createTeamsInner({ getTeamRepoFn = getTeamRepo } = {}) {
 
       logger.info("team_listed", "teams listed", {
         http: { statusCode: 200 },
+      });
+
+      return json(200, result);
+    }
+
+    if (isAssignSessionRoute(event)) {
+      assertNoClientTenantInputs(event);
+
+      const teamId = event?.pathParameters?.teamId;
+      const sessionId = event?.pathParameters?.sessionId;
+      const missing = [];
+      if (!teamId) missing.push("teamId");
+      if (!sessionId) missing.push("sessionId");
+      if (missing.length) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing },
+        });
+      }
+
+      let body;
+      try {
+        body = parseJsonBody(event);
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      let assignmentInput;
+      try {
+        assignmentInput = validateAssignSessionFn(body);
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      const repo = getTeamRepoFn();
+      const team = await repo.getTeamById(tenantCtx, teamId);
+      if (!team) {
+        throw new NotFoundError({
+          code: "teams.not_found",
+          message: "Not found",
+          details: { entityType: "TEAM", teamId },
+        });
+      }
+
+      const sessionSummary = await repo.getSessionSummaryForAssignment(tenantCtx, sessionId);
+      if (!sessionSummary) {
+        throw new NotFoundError({
+          code: "sessions.not_found",
+          message: "Not found",
+          details: { entityType: "SESSION", sessionId },
+        });
+      }
+
+      const result = await repo.assignSessionToTeam(tenantCtx, {
+        teamId,
+        sessionId,
+        ...assignmentInput,
+        sessionSummary,
+      });
+
+      const statusCode = result.created ? 201 : 200;
+      logger.info(
+        result.created ? "team_session_assigned" : "team_session_assignment_replayed",
+        result.created ? "team session assigned" : "team session assignment replayed",
+        {
+          http: { statusCode },
+          resource: { entityType: "TEAM_SESSION_ASSIGNMENT", entityId: `${teamId}:${sessionId}` },
+        }
+      );
+
+      return json(statusCode, { assignment: result.assignment });
+    }
+
+    if (isListAssignedSessionsRoute(event)) {
+      assertNoClientTenantInputs(event);
+
+      const teamId = event?.pathParameters?.teamId;
+      if (!teamId) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing: ["teamId"] },
+        });
+      }
+
+      const repo = getTeamRepoFn();
+      const team = await repo.getTeamById(tenantCtx, teamId);
+      if (!team) {
+        throw new NotFoundError({
+          code: "teams.not_found",
+          message: "Not found",
+          details: { entityType: "TEAM", teamId },
+        });
+      }
+
+      const result = await repo.listAssignedSessionsForTeam(tenantCtx, teamId);
+
+      logger.info("team_sessions_listed", "team sessions listed", {
+        http: { statusCode: 200 },
+        resource: { entityType: "TEAM", entityId: teamId },
+      });
+
+      return json(200, result);
+    }
+
+    if (isGetTeamByIdRoute(event)) {
+      assertNoClientTenantInputs(event);
+
+      const teamId = event?.pathParameters?.teamId;
+      if (!teamId) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing: ["teamId"] },
+        });
+      }
+
+      const result = await getTeamRepoFn().getTeamById(tenantCtx, teamId);
+      if (!result) {
+        throw new NotFoundError({
+          code: "teams.not_found",
+          message: "Not found",
+          details: { entityType: "TEAM", teamId },
+        });
+      }
+
+      logger.info("team_fetched", "team fetched", {
+        http: { statusCode: 200 },
+        resource: { entityType: "TEAM", entityId: teamId },
       });
 
       return json(200, result);

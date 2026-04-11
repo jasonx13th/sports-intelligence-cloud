@@ -735,3 +735,727 @@ test("GET /teams/{teamId}/sessions returns 404 when the team is missing in tenan
     }
   );
 });
+
+test("POST /teams/{teamId}/attendance returns 201 with the recorded attendance", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const calls = [];
+  const loggerEvents = [];
+  const tenantCtx = makeTenantCtx({ role: "coach" });
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async (actualTenantCtx, teamId) => {
+        calls.push({ step: "team", actualTenantCtx, teamId });
+        return { team: { teamId } };
+      },
+      getSessionSummaryForAssignment: async (actualTenantCtx, sessionId) => {
+        calls.push({ step: "session", actualTenantCtx, sessionId });
+        return { sessionId };
+      },
+      createAttendanceForTeam: async (actualTenantCtx, input) => {
+        calls.push({ step: "create", actualTenantCtx, input });
+        return {
+          created: true,
+          attendance: {
+            teamId: input.teamId,
+            sessionId: input.sessionId,
+            sessionDate: input.sessionDate,
+            status: input.status,
+            notes: input.notes,
+            recordedAt: "2026-04-15T23:00:00.000Z",
+            recordedBy: actualTenantCtx.userId,
+          },
+        };
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123/attendance",
+      method: "POST",
+      routeKey: "POST /teams/{teamId}/attendance",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: {},
+      body: {
+        sessionId: " session-123 ",
+        sessionDate: "2026-04-15",
+        status: "completed",
+        notes: "  Good intensity, full group  ",
+      },
+    }),
+    tenantCtx,
+    logger: makeLogger(loggerEvents),
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(JSON.parse(response.body), {
+    attendance: {
+      teamId: "team-123",
+      sessionId: "session-123",
+      sessionDate: "2026-04-15",
+      status: "completed",
+      notes: "Good intensity, full group",
+      recordedAt: "2026-04-15T23:00:00.000Z",
+      recordedBy: "user-123",
+    },
+  });
+  assert.deepEqual(calls, [
+    { step: "team", actualTenantCtx: tenantCtx, teamId: "team-123" },
+    { step: "session", actualTenantCtx: tenantCtx, sessionId: "session-123" },
+    {
+      step: "create",
+      actualTenantCtx: tenantCtx,
+      input: {
+        teamId: "team-123",
+        sessionId: "session-123",
+        sessionDate: "2026-04-15",
+        status: "completed",
+        notes: "Good intensity, full group",
+      },
+    },
+  ]);
+  assert.equal(loggerEvents[0].eventType, "team_attendance_recorded");
+});
+
+test("POST /teams/{teamId}/attendance returns 200 on exact replay", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      getSessionSummaryForAssignment: async () => ({ sessionId: "session-123" }),
+      createAttendanceForTeam: async () => ({
+        created: false,
+        attendance: {
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+          status: "completed",
+          recordedAt: "2026-04-15T23:00:00.000Z",
+          recordedBy: "user-123",
+        },
+      }),
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123/attendance",
+      method: "POST",
+      routeKey: "POST /teams/{teamId}/attendance",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: {},
+      body: {
+        sessionId: "session-123",
+        sessionDate: "2026-04-15",
+        status: "completed",
+      },
+    }),
+    tenantCtx: makeTenantCtx({ role: "coach" }),
+    logger: makeLogger([]),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(JSON.parse(response.body).attendance.sessionId, "session-123");
+});
+
+test("POST /teams/{teamId}/attendance returns 409 on conflicting replay", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      getSessionSummaryForAssignment: async () => ({ sessionId: "session-123" }),
+      createAttendanceForTeam: async () => {
+        const err = new Error("conflict");
+        err.code = "teams.attendance_exists";
+        err.statusCode = 409;
+        err.details = {
+          entityType: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+        };
+        throw err;
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-123/attendance",
+          method: "POST",
+          routeKey: "POST /teams/{teamId}/attendance",
+          pathParameters: { teamId: "team-123" },
+          headers: {},
+          queryStringParameters: {},
+          body: {
+            sessionId: "session-123",
+            sessionDate: "2026-04-15",
+            status: "completed",
+          },
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "teams.attendance_exists");
+      assert.equal(err.httpStatus, 409);
+      return true;
+    }
+  );
+});
+
+test("POST /teams/{teamId}/attendance returns 404 when the team is missing in tenant scope", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => null,
+      getSessionSummaryForAssignment: async () => ({ sessionId: "session-123" }),
+      createAttendanceForTeam: async () => {
+        throw new Error("repo should not create");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-404/attendance",
+          method: "POST",
+          routeKey: "POST /teams/{teamId}/attendance",
+          pathParameters: { teamId: "team-404" },
+          headers: {},
+          queryStringParameters: {},
+          body: {
+            sessionId: "session-123",
+            sessionDate: "2026-04-15",
+            status: "completed",
+          },
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "teams.not_found");
+      assert.equal(err.httpStatus, 404);
+      return true;
+    }
+  );
+});
+
+test("POST /teams/{teamId}/attendance returns 404 when the session is missing in tenant scope", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      getSessionSummaryForAssignment: async () => null,
+      createAttendanceForTeam: async () => {
+        throw new Error("repo should not create");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-123/attendance",
+          method: "POST",
+          routeKey: "POST /teams/{teamId}/attendance",
+          pathParameters: { teamId: "team-123" },
+          headers: {},
+          queryStringParameters: {},
+          body: {
+            sessionId: "session-404",
+            sessionDate: "2026-04-15",
+            status: "completed",
+          },
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "sessions.not_found");
+      assert.equal(err.httpStatus, 404);
+      return true;
+    }
+  );
+});
+
+test("POST /teams/{teamId}/attendance returns 400 when tenant scope is spoofed", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => {
+        throw new Error("repo should not be called");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-123/attendance",
+          method: "POST",
+          routeKey: "POST /teams/{teamId}/attendance",
+          pathParameters: { teamId: "team-123" },
+          headers: {},
+          queryStringParameters: {},
+          body: {
+            sessionId: "session-123",
+            sessionDate: "2026-04-15",
+            status: "completed",
+            tenantId: "tenant-from-body",
+          },
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "platform.bad_request");
+      assert.equal(err.httpStatus, 400);
+      return true;
+    }
+  );
+});
+
+test("GET /teams/{teamId}/attendance returns history with 200", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const calls = [];
+  const tenantCtx = makeTenantCtx({ role: "coach" });
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async (actualTenantCtx, teamId) => {
+        calls.push({ step: "team", actualTenantCtx, teamId });
+        return { team: { teamId } };
+      },
+      listAttendanceForTeam: async (actualTenantCtx, teamId, query) => {
+        calls.push({ step: "list", actualTenantCtx, teamId, query });
+        return {
+          items: [
+            {
+              teamId,
+              sessionId: "session-123",
+              sessionDate: "2026-04-15",
+              status: "completed",
+              recordedAt: "2026-04-15T23:00:00.000Z",
+              recordedBy: actualTenantCtx.userId,
+            },
+          ],
+        };
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123/attendance",
+      method: "GET",
+      routeKey: "GET /teams/{teamId}/attendance",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: {},
+    }),
+    tenantCtx,
+    logger: makeLogger([]),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), {
+    items: [
+      {
+        teamId: "team-123",
+        sessionId: "session-123",
+        sessionDate: "2026-04-15",
+        status: "completed",
+        recordedAt: "2026-04-15T23:00:00.000Z",
+        recordedBy: "user-123",
+      },
+    ],
+  });
+  assert.deepEqual(calls, [
+    { step: "team", actualTenantCtx: tenantCtx, teamId: "team-123" },
+    { step: "list", actualTenantCtx: tenantCtx, teamId: "team-123", query: {} },
+  ]);
+});
+
+test("GET /teams/{teamId}/attendance accepts a startDate-only filter", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const calls = [];
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      listAttendanceForTeam: async (_actualTenantCtx, _teamId, query) => {
+        calls.push(query);
+        return { items: [] };
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123/attendance",
+      method: "GET",
+      routeKey: "GET /teams/{teamId}/attendance",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: { startDate: "2026-04-10" },
+    }),
+    tenantCtx: makeTenantCtx({ role: "coach" }),
+    logger: makeLogger([]),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(calls, [{ startDate: "2026-04-10" }]);
+});
+
+test("GET /teams/{teamId}/attendance accepts an endDate-only filter", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const calls = [];
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      listAttendanceForTeam: async (_actualTenantCtx, _teamId, query) => {
+        calls.push(query);
+        return { items: [] };
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123/attendance",
+      method: "GET",
+      routeKey: "GET /teams/{teamId}/attendance",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: { endDate: "2026-04-15" },
+    }),
+    tenantCtx: makeTenantCtx({ role: "coach" }),
+    logger: makeLogger([]),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(calls, [{ endDate: "2026-04-15" }]);
+});
+
+test("GET /teams/{teamId}/attendance accepts a bounded date window and nextToken", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const calls = [];
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      listAttendanceForTeam: async (_actualTenantCtx, _teamId, query) => {
+        calls.push(query);
+        return { items: [], nextToken: "opaque-token" };
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123/attendance",
+      method: "GET",
+      routeKey: "GET /teams/{teamId}/attendance",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: {
+        startDate: "2026-04-10",
+        endDate: "2026-04-15",
+        limit: "10",
+        nextToken: "opaque-token",
+      },
+    }),
+    tenantCtx: makeTenantCtx({ role: "coach" }),
+    logger: makeLogger([]),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(calls, [
+    {
+      startDate: "2026-04-10",
+      endDate: "2026-04-15",
+      limit: 10,
+      nextToken: "opaque-token",
+    },
+  ]);
+});
+
+test("GET /teams/{teamId}/attendance returns 400 for invalid date filters", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      listAttendanceForTeam: async () => {
+        throw new Error("repo should not list");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-123/attendance",
+          method: "GET",
+          routeKey: "GET /teams/{teamId}/attendance",
+          pathParameters: { teamId: "team-123" },
+          headers: {},
+          queryStringParameters: { startDate: "2026-04-31" },
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "platform.bad_request");
+      assert.equal(err.httpStatus, 400);
+      return true;
+    }
+  );
+});
+
+test("GET /teams/{teamId}/attendance returns 404 when the team is missing in tenant scope", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => null,
+      listAttendanceForTeam: async () => {
+        throw new Error("repo should not list");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-404/attendance",
+          method: "GET",
+          routeKey: "GET /teams/{teamId}/attendance",
+          pathParameters: { teamId: "team-404" },
+          headers: {},
+          queryStringParameters: {},
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "teams.not_found");
+      assert.equal(err.httpStatus, 404);
+      return true;
+    }
+  );
+});
+
+test("GET /teams/{teamId}/planning/weekly returns 200 with the current weekly planning view", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const calls = [];
+  const loggerEvents = [];
+  const tenantCtx = makeTenantCtx({ role: "coach" });
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async (actualTenantCtx, teamId) => {
+        calls.push({ step: "team", actualTenantCtx, teamId });
+        return { team: { teamId } };
+      },
+      getWeeklyPlanningForTeam: async (actualTenantCtx, teamId, query) => {
+        calls.push({ step: "weekly", actualTenantCtx, teamId, query });
+        return {
+          teamId,
+          weekStart: "2026-04-06",
+          weekEnd: "2026-04-12",
+          summary: {
+            attendanceCount: 1,
+            assignmentOnlyCount: 1,
+            completedCount: 1,
+            plannedCount: 0,
+            cancelledCount: 0,
+          },
+          items: [
+            {
+              sessionId: "session-123",
+              source: "attendance",
+              sessionDate: "2026-04-08",
+              status: "completed",
+              recordedAt: "2026-04-08T22:15:00.000Z",
+              recordedBy: actualTenantCtx.userId,
+            },
+            {
+              sessionId: "session-456",
+              source: "assignment",
+              assignedAt: "2026-04-05T18:00:00.000Z",
+              assignedBy: actualTenantCtx.userId,
+            },
+          ],
+        };
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123/planning/weekly",
+      method: "GET",
+      routeKey: "GET /teams/{teamId}/planning/weekly",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: {},
+    }),
+    tenantCtx,
+    logger: makeLogger(loggerEvents),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), {
+    teamId: "team-123",
+    weekStart: "2026-04-06",
+    weekEnd: "2026-04-12",
+    summary: {
+      attendanceCount: 1,
+      assignmentOnlyCount: 1,
+      completedCount: 1,
+      plannedCount: 0,
+      cancelledCount: 0,
+    },
+    items: [
+      {
+        sessionId: "session-123",
+        source: "attendance",
+        sessionDate: "2026-04-08",
+        status: "completed",
+        recordedAt: "2026-04-08T22:15:00.000Z",
+        recordedBy: "user-123",
+      },
+      {
+        sessionId: "session-456",
+        source: "assignment",
+        assignedAt: "2026-04-05T18:00:00.000Z",
+        assignedBy: "user-123",
+      },
+    ],
+  });
+  assert.deepEqual(calls, [
+    { step: "team", actualTenantCtx: tenantCtx, teamId: "team-123" },
+    { step: "weekly", actualTenantCtx: tenantCtx, teamId: "team-123", query: {} },
+  ]);
+  assert.equal(loggerEvents[0].eventType, "team_weekly_planning_fetched");
+});
+
+test("GET /teams/{teamId}/planning/weekly returns 404 when the team is missing in tenant scope", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => null,
+      getWeeklyPlanningForTeam: async () => {
+        throw new Error("repo should not fetch weekly planning");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-404/planning/weekly",
+          method: "GET",
+          routeKey: "GET /teams/{teamId}/planning/weekly",
+          pathParameters: { teamId: "team-404" },
+          headers: {},
+          queryStringParameters: {},
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "teams.not_found");
+      assert.equal(err.httpStatus, 404);
+      return true;
+    }
+  );
+});
+
+test("GET /teams/{teamId}/planning/weekly returns 400 for forbidden query params", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => ({ team: { teamId: "team-123" } }),
+      getWeeklyPlanningForTeam: async () => {
+        throw new Error("repo should not fetch weekly planning");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-123/planning/weekly",
+          method: "GET",
+          routeKey: "GET /teams/{teamId}/planning/weekly",
+          pathParameters: { teamId: "team-123" },
+          headers: {},
+          queryStringParameters: { weekStart: "2026-04-06" },
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "platform.bad_request");
+      assert.equal(err.httpStatus, 400);
+      return true;
+    }
+  );
+});
+
+test("GET /teams/{teamId}/planning/weekly returns 400 when tenant scope is spoofed", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      getTeamById: async () => {
+        throw new Error("repo should not be called");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-123/planning/weekly",
+          method: "GET",
+          routeKey: "GET /teams/{teamId}/planning/weekly",
+          pathParameters: { teamId: "team-123" },
+          headers: { "x-tenant-id": "tenant-from-header" },
+          queryStringParameters: {},
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "platform.bad_request");
+      assert.equal(err.httpStatus, 400);
+      return true;
+    }
+  );
+});

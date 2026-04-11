@@ -100,6 +100,18 @@ function normalizeAssignedSession(obj) {
   };
 }
 
+function normalizeAttendance(obj) {
+  return {
+    teamId: obj.teamId,
+    sessionId: obj.sessionId,
+    sessionDate: obj.sessionDate,
+    status: obj.status,
+    ...(obj.notes ? { notes: obj.notes } : {}),
+    recordedAt: obj.recordedAt,
+    recordedBy: obj.recordedBy,
+  };
+}
+
 function normalizeSessionSummaryForAssignment(obj) {
   return {
     sessionId: obj.sessionId,
@@ -131,6 +143,113 @@ function requireSessionId(sessionId) {
   }
 
   return sessionId.trim();
+}
+
+function requireSessionDate(sessionDate) {
+  if (typeof sessionDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
+    const err = new Error("sessionDate is required");
+    err.code = "invalid_request";
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return sessionDate;
+}
+
+function requireAttendanceStatus(status) {
+  if (typeof status !== "string" || !["planned", "completed", "cancelled"].includes(status)) {
+    const err = new Error("status is invalid");
+    err.code = "invalid_request";
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return status;
+}
+
+function attendanceSortKey(teamId, sessionDate, sessionId) {
+  return `TEAMATTENDANCE#${teamId}#${sessionDate}#${sessionId}`;
+}
+
+function attendanceSortKeyPrefix(teamId) {
+  return `TEAMATTENDANCE#${teamId}#`;
+}
+
+function normalizeAttendancePayload({ teamId, sessionId, sessionDate, status, notes }) {
+  return {
+    teamId,
+    sessionId,
+    sessionDate,
+    status,
+    ...(notes !== undefined ? { notes } : {}),
+  };
+}
+
+function attendancePayloadMatches(existing, incoming) {
+  return (
+    JSON.stringify(normalizeAttendancePayload(existing)) ===
+    JSON.stringify(normalizeAttendancePayload(incoming))
+  );
+}
+
+function formatUtcDateOnly(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function deriveCurrentWeekWindowUtc(now = new Date()) {
+  const current = now instanceof Date ? new Date(now.getTime()) : new Date(now);
+  const currentDay = new Date(
+    Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate())
+  );
+  const daysFromMonday = (currentDay.getUTCDay() + 6) % 7;
+  const weekStartDate = new Date(currentDay.getTime());
+  weekStartDate.setUTCDate(currentDay.getUTCDate() - daysFromMonday);
+
+  const weekEndDate = new Date(weekStartDate.getTime());
+  weekEndDate.setUTCDate(weekStartDate.getUTCDate() + 6);
+
+  return {
+    weekStart: formatUtcDateOnly(weekStartDate),
+    weekEnd: formatUtcDateOnly(weekEndDate),
+  };
+}
+
+function pickWeeklyPlanningSessionSummary(obj) {
+  const summary = {
+    ...(obj?.sessionCreatedAt ? { sessionCreatedAt: obj.sessionCreatedAt } : {}),
+    ...(obj?.sport ? { sport: obj.sport } : {}),
+    ...(obj?.ageBand ? { ageBand: obj.ageBand } : {}),
+    ...(obj?.durationMin !== undefined ? { durationMin: obj.durationMin } : {}),
+    ...(Array.isArray(obj?.objectiveTags) ? { objectiveTags: obj.objectiveTags } : {}),
+  };
+
+  return Object.keys(summary).length > 0 ? summary : undefined;
+}
+
+function buildWeeklyPlanningSummary(items) {
+  const summary = {
+    attendanceCount: 0,
+    assignmentOnlyCount: 0,
+    completedCount: 0,
+    plannedCount: 0,
+    cancelledCount: 0,
+  };
+
+  for (const item of items || []) {
+    if (item?.source === "attendance") {
+      summary.attendanceCount += 1;
+      if (item.status === "completed") summary.completedCount += 1;
+      if (item.status === "planned") summary.plannedCount += 1;
+      if (item.status === "cancelled") summary.cancelledCount += 1;
+      continue;
+    }
+
+    if (item?.source === "assignment") {
+      summary.assignmentOnlyCount += 1;
+    }
+  }
+
+  return summary;
 }
 
 class TeamRepository {
@@ -258,6 +377,30 @@ class TeamRepository {
     return normalizeAssignedSession(unmarshall(item));
   }
 
+  async getAttendanceByKey(tenantContext, { teamId, sessionDate, sessionId }) {
+    const tenantId = requireTenantId(tenantContext);
+    const safeTeamId = requireTeamId(teamId);
+    const safeSessionDate = requireSessionDate(sessionDate);
+    const safeSessionId = requireSessionId(sessionId);
+
+    const res = await ddb.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        KeyConditionExpression: "PK = :pk AND SK = :sk",
+        ExpressionAttributeValues: {
+          ":pk": { S: `TENANT#${tenantId}` },
+          ":sk": { S: attendanceSortKey(safeTeamId, safeSessionDate, safeSessionId) },
+        },
+        ConsistentRead: true,
+        Limit: 1,
+      })
+    );
+
+    const item = res.Items?.[0];
+    if (!item) return null;
+    return normalizeAttendance(unmarshall(item));
+  }
+
   async assignSessionToTeam(tenantContext, { teamId, sessionId, notes, sessionSummary }) {
     const tenantId = requireTenantId(tenantContext);
     const safeTeamId = requireTeamId(teamId);
@@ -342,6 +485,184 @@ class TeamRepository {
 
     return {
       items: (res.Items ?? []).map((item) => normalizeAssignedSession(unmarshall(item))),
+    };
+  }
+
+  async createAttendanceForTeam(
+    tenantContext,
+    { teamId, sessionId, sessionDate, status, notes }
+  ) {
+    const tenantId = requireTenantId(tenantContext);
+    const safeTeamId = requireTeamId(teamId);
+    const safeSessionId = requireSessionId(sessionId);
+    const safeSessionDate = requireSessionDate(sessionDate);
+    const safeStatus = requireAttendanceStatus(status);
+
+    const attendanceItem = {
+      PK: `TENANT#${tenantId}`,
+      SK: attendanceSortKey(safeTeamId, safeSessionDate, safeSessionId),
+      type: "TEAM_ATTENDANCE",
+      teamId: safeTeamId,
+      sessionId: safeSessionId,
+      sessionDate: safeSessionDate,
+      status: safeStatus,
+      ...(notes !== undefined ? { notes } : {}),
+      recordedAt: new Date().toISOString(),
+      recordedBy: tenantContext?.userId || null,
+    };
+
+    try {
+      await ddb.send(
+        new PutItemCommand({
+          TableName: this.tableName,
+          Item: marshall(attendanceItem),
+          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        })
+      );
+
+      return {
+        attendance: normalizeAttendance(attendanceItem),
+        created: true,
+      };
+    } catch (err) {
+      if (err?.name === "ConditionalCheckFailedException") {
+        const replay = await this.getAttendanceByKey(tenantContext, {
+          teamId: safeTeamId,
+          sessionDate: safeSessionDate,
+          sessionId: safeSessionId,
+        });
+
+        if (replay) {
+          const incoming = normalizeAttendancePayload({
+            teamId: safeTeamId,
+            sessionId: safeSessionId,
+            sessionDate: safeSessionDate,
+            status: safeStatus,
+            ...(notes !== undefined ? { notes } : {}),
+          });
+
+          if (attendancePayloadMatches(replay, incoming)) {
+            return { attendance: replay, created: false };
+          }
+
+          const conflict = new Error("Attendance already exists");
+          conflict.code = "teams.attendance_exists";
+          conflict.statusCode = 409;
+          conflict.details = {
+            entityType: "TEAM_ATTENDANCE",
+            teamId: safeTeamId,
+            sessionId: safeSessionId,
+            sessionDate: safeSessionDate,
+          };
+          throw conflict;
+        }
+      }
+
+      throw err;
+    }
+  }
+
+  async listAttendanceForTeam(
+    tenantContext,
+    teamId,
+    { startDate, endDate, limit, nextToken } = {}
+  ) {
+    const tenantId = requireTenantId(tenantContext);
+    const safeTeamId = requireTeamId(teamId);
+    const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
+    const exclusiveStartKey = decodeNextToken(nextToken);
+    const teamPrefix = attendanceSortKeyPrefix(safeTeamId);
+
+    let keyConditionExpression = "PK = :pk AND begins_with(SK, :skPrefix)";
+    const expressionAttributeValues = {
+      ":pk": { S: `TENANT#${tenantId}` },
+      ":skPrefix": { S: teamPrefix },
+    };
+
+    if (startDate || endDate) {
+      keyConditionExpression = "PK = :pk AND SK BETWEEN :from AND :to";
+      delete expressionAttributeValues[":skPrefix"];
+      expressionAttributeValues[":from"] = {
+        S: startDate ? `${teamPrefix}${requireSessionDate(startDate)}#` : teamPrefix,
+      };
+      expressionAttributeValues[":to"] = {
+        S: endDate ? `${teamPrefix}${requireSessionDate(endDate)}#\uFFFF` : `${teamPrefix}\uFFFF`,
+      };
+    }
+
+    const res = await ddb.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        KeyConditionExpression: keyConditionExpression,
+        ExpressionAttributeValues: expressionAttributeValues,
+        Limit: safeLimit,
+        ScanIndexForward: false,
+        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+      })
+    );
+
+    return {
+      items: (res.Items ?? []).map((item) => normalizeAttendance(unmarshall(item))),
+      nextToken: encodeNextToken(res.LastEvaluatedKey),
+    };
+  }
+
+  async getWeeklyPlanningForTeam(tenantContext, teamId, { now } = {}) {
+    const safeTeamId = requireTeamId(teamId);
+    const { weekStart, weekEnd } = deriveCurrentWeekWindowUtc(now);
+
+    const [assignmentResult, attendanceResult] = await Promise.all([
+      this.listAssignedSessionsForTeam(tenantContext, safeTeamId),
+      this.listAttendanceForTeam(tenantContext, safeTeamId, {
+        startDate: weekStart,
+        endDate: weekEnd,
+      }),
+    ]);
+
+    const assignments = assignmentResult.items || [];
+    const attendanceItems = attendanceResult.items || [];
+    const assignmentBySessionId = new Map(
+      assignments.map((assignment) => [assignment.sessionId, assignment])
+    );
+    const sessionsWithAttendance = new Set();
+
+    const items = attendanceItems.map((attendance) => {
+      sessionsWithAttendance.add(attendance.sessionId);
+      const sessionSummary = pickWeeklyPlanningSessionSummary(
+        assignmentBySessionId.get(attendance.sessionId)
+      );
+
+      return {
+        sessionId: attendance.sessionId,
+        source: "attendance",
+        sessionDate: attendance.sessionDate,
+        status: attendance.status,
+        ...(attendance.notes ? { notes: attendance.notes } : {}),
+        recordedAt: attendance.recordedAt,
+        recordedBy: attendance.recordedBy,
+        ...(sessionSummary ? { sessionSummary } : {}),
+      };
+    });
+
+    for (const assignment of assignments) {
+      if (sessionsWithAttendance.has(assignment.sessionId)) continue;
+
+      const sessionSummary = pickWeeklyPlanningSessionSummary(assignment);
+      items.push({
+        sessionId: assignment.sessionId,
+        source: "assignment",
+        assignedAt: assignment.assignedAt,
+        assignedBy: assignment.assignedBy,
+        ...(sessionSummary ? { sessionSummary } : {}),
+      });
+    }
+
+    return {
+      teamId: safeTeamId,
+      weekStart,
+      weekEnd,
+      summary: buildWeeklyPlanningSummary(items),
+      items,
     };
   }
 

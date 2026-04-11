@@ -784,6 +784,449 @@
           "response": []
         },
         {
+          "name": "POST /teams/{teamId}/attendance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 201\", function () {\r",
+                  "  pm.response.to.have.status(201);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has attendance\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"attendance\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"attendance has expected fields\", function () {\r",
+                  "  pm.expect(json.attendance).to.have.property(\"teamId\", pm.environment.get(\"teamId\"));\r",
+                  "  pm.expect(json.attendance).to.have.property(\"sessionId\", pm.environment.get(\"sessionId\"));\r",
+                  "  pm.expect(json.attendance).to.have.property(\"sessionDate\", \"2026-04-15\");\r",
+                  "  pm.expect(json.attendance).to.have.property(\"status\", \"completed\");\r",
+                  "  pm.expect(json.attendance).to.have.property(\"notes\", \"Good intensity, full group\");\r",
+                  "  pm.expect(json.attendance).to.have.property(\"recordedAt\");\r",
+                  "  pm.expect(json.attendance).to.have.property(\"recordedBy\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sessionId\": \"{{sessionId}}\",\r\n  \"sessionDate\": \"2026-04-15\",\r\n  \"status\": \"completed\",\r\n  \"notes\": \"Good intensity, full group\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "attendance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/attendance - duplicate replay",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 200\", function () {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has attendance\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"attendance\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"duplicate replay preserves idempotent attendance\", function () {\r",
+                  "  pm.expect(json.attendance).to.have.property(\"teamId\", pm.environment.get(\"teamId\"));\r",
+                  "  pm.expect(json.attendance).to.have.property(\"sessionId\", pm.environment.get(\"sessionId\"));\r",
+                  "  pm.expect(json.attendance).to.have.property(\"sessionDate\", \"2026-04-15\");\r",
+                  "  pm.expect(json.attendance).to.have.property(\"status\", \"completed\");\r",
+                  "  pm.expect(json.attendance).to.have.property(\"recordedAt\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sessionId\": \"{{sessionId}}\",\r\n  \"sessionDate\": \"2026-04-15\",\r\n  \"status\": \"completed\",\r\n  \"notes\": \"Good intensity, full group\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "attendance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/attendance - conflicting replay",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 409\", function () {\r",
+                  "  pm.response.to.have.status(409);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"conflict error code is stable\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"teams.attendance_exists\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"conflict details include the natural key\", function () {\r",
+                  "  pm.expect(json.error).to.have.property(\"details\");\r",
+                  "  pm.expect(json.error.details).to.have.property(\"teamId\", pm.environment.get(\"teamId\"));\r",
+                  "  pm.expect(json.error.details).to.have.property(\"sessionId\", pm.environment.get(\"sessionId\"));\r",
+                  "  pm.expect(json.error.details).to.have.property(\"sessionDate\", \"2026-04-15\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sessionId\": \"{{sessionId}}\",\r\n  \"sessionDate\": \"2026-04-15\",\r\n  \"status\": \"planned\",\r\n  \"notes\": \"Same occurrence, different payload\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "attendance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/attendance - missing session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 404\", function () {\r",
+                  "  pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is sessions.not_found\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"sessions.not_found\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sessionId\": \"00000000-0000-0000-0000-000000000000\",\r\n  \"sessionDate\": \"2026-04-15\",\r\n  \"status\": \"completed\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "attendance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /teams/{teamId}/attendance - invalid body (intentional tenantId rejection coverage only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 400\", function () {\r",
+                  "  pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is platform.bad_request\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"platform.bad_request\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"unknown field includes tenantId\", function () {\r",
+                  "  pm.expect(json.error).to.have.property(\"details\");\r",
+                  "  pm.expect(json.error.details).to.have.property(\"unknown\");\r",
+                  "  pm.expect(json.error.details.unknown).to.include(\"tenantId\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sessionId\": \"{{sessionId}}\",\r\n  \"sessionDate\": \"2026-04-15\",\r\n  \"status\": \"completed\",\r\n  \"tenantId\": \"should-not-be-here\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "attendance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams/{teamId}/attendance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 200\", function () {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"response has items array\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"items\");\r",
+                  "  pm.expect(json.items).to.be.an(\"array\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"attendance item is present\", function () {\r",
+                  "  const match = json.items.find(function (item) {\r",
+                  "    return item.teamId === pm.environment.get(\"teamId\") && item.sessionId === pm.environment.get(\"sessionId\");\r",
+                  "  });\r",
+                  "  pm.expect(match).to.exist;\r",
+                  "  pm.expect(match).to.have.property(\"sessionDate\");\r",
+                  "  pm.expect(match).to.have.property(\"status\");\r",
+                  "  pm.expect(match).to.have.property(\"recordedAt\");\r",
+                  "  pm.expect(match).to.have.property(\"recordedBy\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "attendance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams/{teamId}/attendance - startDate/endDate window",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 200\", function () {\r",
+                  "  pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "const startDate = \"2026-04-10\";\r",
+                  "const endDate = \"2026-04-15\";\r",
+                  "\r",
+                  "pm.test(\"response has items array\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"items\");\r",
+                  "  pm.expect(json.items).to.be.an(\"array\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"windowed attendance stays within the requested dates\", function () {\r",
+                  "  json.items.forEach(function (item) {\r",
+                  "    pm.expect(item).to.have.property(\"sessionDate\");\r",
+                  "    pm.expect(item.sessionDate >= startDate).to.equal(true);\r",
+                  "    pm.expect(item.sessionDate <= endDate).to.equal(true);\r",
+                  "  });\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"nextToken is omitted or a string\", function () {\r",
+                  "  if (Object.prototype.hasOwnProperty.call(json, \"nextToken\")) {\r",
+                  "    pm.expect(json.nextToken).to.be.a(\"string\");\r",
+                  "  }\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/attendance?startDate=2026-04-10&endDate=2026-04-15&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "attendance"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-04-15"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /teams/{teamId}/attendance - missing team",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"status is 404\", function () {\r",
+                  "  pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"error code is teams.not_found\", function () {\r",
+                  "  pm.expect(json).to.have.property(\"error\");\r",
+                  "  pm.expect(json.error).to.have.property(\"code\", \"teams.not_found\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/00000000-0000-0000-0000-000000000000/attendance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "00000000-0000-0000-0000-000000000000",
+                "attendance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "POST /teams/{teamId}/sessions/{sessionId}/assign",
           "event": [
             {

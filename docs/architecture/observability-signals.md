@@ -46,6 +46,10 @@ Runbooks live under `docs/runbooks/` and should follow `docs/runbooks/runbook-st
 |---|---:|---|---|---|
 | athlete_created | info | athlete created (first write) | filter `eventType="athlete_created"` | TBD |
 | athlete_not_found | warn | requested athlete missing | filter `eventType="athlete_not_found"` | TBD |
+| team_attendance_recorded | info | attendance recorded for `POST /teams/{teamId}/attendance` | filter `eventType="team_attendance_recorded"` | docs/runbooks/attendance-system-v1-failures.md |
+| team_attendance_replayed | info | exact replay accepted for `POST /teams/{teamId}/attendance` | filter `eventType="team_attendance_replayed"` | docs/runbooks/attendance-system-v1-failures.md |
+| team_attendance_listed | info | attendance history listed for `GET /teams/{teamId}/attendance` | filter `eventType="team_attendance_listed"` | docs/runbooks/attendance-system-v1-failures.md |
+| team_weekly_planning_fetched | info | weekly planning fetched for `GET /teams/{teamId}/planning/weekly` | filter `eventType="team_weekly_planning_fetched"` | docs/runbooks/attendance-system-v1-failures.md |
 
 ---
 

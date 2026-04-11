@@ -8,9 +8,17 @@ const {
   validateAssignSession,
 } = require("../src/domains/teams/team-session-assignment-validate");
 const {
+  validateCreateAttendance,
+  validateListAttendanceQuery,
+} = require("../src/domains/teams/team-attendance-validate");
+const {
+  validateWeeklyPlanningQuery,
+} = require("../src/domains/teams/team-weekly-planning-validate");
+const {
   BadRequestError,
   ForbiddenError,
   NotFoundError,
+  ConflictError,
   InternalError,
 } = require("../src/platform/errors/errors");
 
@@ -101,10 +109,28 @@ function isListAssignedSessionsRoute(event) {
   return /^GET \/teams\/[^/]+\/sessions$/.test(rk);
 }
 
+function isListAttendanceRoute(event) {
+  const rk = routeKey(event);
+  if (rk === "GET /teams/{teamId}/attendance") return true;
+  return /^GET \/teams\/[^/]+\/attendance$/.test(rk);
+}
+
+function isGetWeeklyPlanningRoute(event) {
+  const rk = routeKey(event);
+  if (rk === "GET /teams/{teamId}/planning/weekly") return true;
+  return /^GET \/teams\/[^/]+\/planning\/weekly$/.test(rk);
+}
+
 function isAssignSessionRoute(event) {
   const rk = routeKey(event);
   if (rk === "POST /teams/{teamId}/sessions/{sessionId}/assign") return true;
   return /^POST \/teams\/[^/]+\/sessions\/[^/]+\/assign$/.test(rk);
+}
+
+function isCreateAttendanceRoute(event) {
+  const rk = routeKey(event);
+  if (rk === "POST /teams/{teamId}/attendance") return true;
+  return /^POST \/teams\/[^/]+\/attendance$/.test(rk);
 }
 
 function requireAdminRole(tenantCtx) {
@@ -117,10 +143,43 @@ function requireAdminRole(tenantCtx) {
   }
 }
 
+function rethrowTeamDomainError(err) {
+  if (err?.httpStatus) {
+    throw err;
+  }
+
+  if (err?.statusCode === 404) {
+    throw new NotFoundError({
+      code: err.code || "teams.not_found",
+      message: "Not found",
+      details: err.details || { entityType: "TEAM" },
+      cause: err,
+    });
+  }
+
+  if (err?.statusCode === 409) {
+    throw new ConflictError({
+      code: err.code || "teams.attendance_exists",
+      message: "Conflict",
+      details: err.details || { entityType: "TEAM_ATTENDANCE" },
+      cause: err,
+    });
+  }
+
+  if (err?.statusCode === 400) {
+    throw toBadRequest(err);
+  }
+
+  throw err;
+}
+
 function createTeamsInner({
   getTeamRepoFn = getTeamRepo,
   validateCreateTeamFn = validateCreateTeam,
   validateAssignSessionFn = validateAssignSession,
+  validateCreateAttendanceFn = validateCreateAttendance,
+  validateListAttendanceQueryFn = validateListAttendanceQuery,
+  validateWeeklyPlanningQueryFn = validateWeeklyPlanningQuery,
 } = {}) {
   return async function inner({ event, tenantCtx, logger }) {
     assertEnv();
@@ -237,6 +296,162 @@ function createTeamsInner({
       );
 
       return json(statusCode, { assignment: result.assignment });
+    }
+
+    if (isCreateAttendanceRoute(event)) {
+      assertNoClientTenantInputs(event);
+
+      const teamId = event?.pathParameters?.teamId;
+      if (!teamId) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing: ["teamId"] },
+        });
+      }
+
+      let body;
+      try {
+        body = parseJsonBody(event);
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      let attendanceInput;
+      try {
+        attendanceInput = validateCreateAttendanceFn(body);
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      const repo = getTeamRepoFn();
+      const team = await repo.getTeamById(tenantCtx, teamId);
+      if (!team) {
+        throw new NotFoundError({
+          code: "teams.not_found",
+          message: "Not found",
+          details: { entityType: "TEAM", teamId },
+        });
+      }
+
+      const sessionSummary = await repo.getSessionSummaryForAssignment(
+        tenantCtx,
+        attendanceInput.sessionId
+      );
+      if (!sessionSummary) {
+        throw new NotFoundError({
+          code: "sessions.not_found",
+          message: "Not found",
+          details: { entityType: "SESSION", sessionId: attendanceInput.sessionId },
+        });
+      }
+
+      try {
+        const result = await repo.createAttendanceForTeam(tenantCtx, {
+          teamId,
+          ...attendanceInput,
+        });
+
+        const statusCode = result.created ? 201 : 200;
+        logger.info(
+          result.created ? "team_attendance_recorded" : "team_attendance_replayed",
+          result.created ? "team attendance recorded" : "team attendance replayed",
+          {
+            http: { statusCode },
+            resource: {
+              entityType: "TEAM_ATTENDANCE",
+              entityId: `${teamId}:${attendanceInput.sessionDate}:${attendanceInput.sessionId}`,
+            },
+          }
+        );
+
+        return json(statusCode, { attendance: result.attendance });
+      } catch (err) {
+        rethrowTeamDomainError(err);
+      }
+    }
+
+    if (isListAttendanceRoute(event)) {
+      assertNoClientTenantInputs(event);
+
+      const teamId = event?.pathParameters?.teamId;
+      if (!teamId) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing: ["teamId"] },
+        });
+      }
+
+      let query;
+      try {
+        query = validateListAttendanceQueryFn(event?.queryStringParameters || {});
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      const repo = getTeamRepoFn();
+      const team = await repo.getTeamById(tenantCtx, teamId);
+      if (!team) {
+        throw new NotFoundError({
+          code: "teams.not_found",
+          message: "Not found",
+          details: { entityType: "TEAM", teamId },
+        });
+      }
+
+      let result;
+      try {
+        result = await repo.listAttendanceForTeam(tenantCtx, teamId, query);
+      } catch (err) {
+        rethrowTeamDomainError(err);
+      }
+
+      logger.info("team_attendance_listed", "team attendance listed", {
+        http: { statusCode: 200 },
+        resource: { entityType: "TEAM", entityId: teamId },
+      });
+
+      return json(200, result);
+    }
+
+    if (isGetWeeklyPlanningRoute(event)) {
+      assertNoClientTenantInputs(event);
+
+      const teamId = event?.pathParameters?.teamId;
+      if (!teamId) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing: ["teamId"] },
+        });
+      }
+
+      let query;
+      try {
+        query = validateWeeklyPlanningQueryFn(event?.queryStringParameters || {});
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      const repo = getTeamRepoFn();
+      const team = await repo.getTeamById(tenantCtx, teamId);
+      if (!team) {
+        throw new NotFoundError({
+          code: "teams.not_found",
+          message: "Not found",
+          details: { entityType: "TEAM", teamId },
+        });
+      }
+
+      const result = await repo.getWeeklyPlanningForTeam(tenantCtx, teamId, query);
+
+      logger.info("team_weekly_planning_fetched", "team weekly planning fetched", {
+        http: { statusCode: 200 },
+        resource: { entityType: "TEAM", entityId: teamId },
+      });
+
+      return json(200, result);
     }
 
     if (isListAssignedSessionsRoute(event)) {

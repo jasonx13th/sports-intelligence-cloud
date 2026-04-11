@@ -414,3 +414,568 @@ test("listAssignedSessionsForTeam remains query-based and returns tenant-scoped 
     });
   });
 });
+
+test("getAttendanceByKey uses a tenant-scoped exact-key query and returns the attendance item", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+    assert.equal(command instanceof QueryCommand, true);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAMATTENDANCE#team-123#2026-04-15#session-123",
+          type: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+          status: "completed",
+          notes: "Good intensity",
+          recordedAt: "2026-04-15T23:00:00.000Z",
+          recordedBy: "user-123",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getAttendanceByKey(makeTenantContext(), {
+      teamId: "team-123",
+      sessionDate: "2026-04-15",
+      sessionId: "session-123",
+    });
+
+    assert.deepEqual(result, {
+      teamId: "team-123",
+      sessionId: "session-123",
+      sessionDate: "2026-04-15",
+      status: "completed",
+      notes: "Good intensity",
+      recordedAt: "2026-04-15T23:00:00.000Z",
+      recordedBy: "user-123",
+    });
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].input.KeyConditionExpression, "PK = :pk AND SK = :sk");
+  assert.deepEqual(calls[0].input.ExpressionAttributeValues, {
+    ":pk": { S: "TENANT#tenant_authoritative" },
+    ":sk": { S: "TEAMATTENDANCE#team-123#2026-04-15#session-123" },
+  });
+});
+
+test("createAttendanceForTeam writes a TEAM_ATTENDANCE item and returns created=true", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+    assert.equal(command instanceof PutItemCommand, true);
+    return {};
+  }, async () => {
+    const result = await repo.createAttendanceForTeam(makeTenantContext(), {
+      teamId: "team-123",
+      sessionId: "session-123",
+      sessionDate: "2026-04-15",
+      status: "completed",
+      notes: "Good intensity",
+    });
+
+    assert.equal(result.created, true);
+    assert.deepEqual(result.attendance, {
+      teamId: "team-123",
+      sessionId: "session-123",
+      sessionDate: "2026-04-15",
+      status: "completed",
+      notes: "Good intensity",
+      recordedAt: result.attendance.recordedAt,
+      recordedBy: "user-123",
+    });
+  });
+
+  assert.equal(calls.length, 1);
+  const written = unmarshall(calls[0].input.Item);
+  assert.equal(written.PK, "TENANT#tenant_authoritative");
+  assert.equal(written.SK, "TEAMATTENDANCE#team-123#2026-04-15#session-123");
+  assert.equal(written.type, "TEAM_ATTENDANCE");
+  assert.equal(written.status, "completed");
+  assert.equal(written.notes, "Good intensity");
+});
+
+test("createAttendanceForTeam returns the existing attendance on exact replay after conditional failure", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+    if (calls.length === 1) {
+      const err = new Error("duplicate");
+      err.name = "ConditionalCheckFailedException";
+      throw err;
+    }
+
+    assert.equal(command instanceof QueryCommand, true);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAMATTENDANCE#team-123#2026-04-15#session-123",
+          type: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+          status: "completed",
+          notes: "Good intensity",
+          recordedAt: "2026-04-15T23:00:00.000Z",
+          recordedBy: "user-123",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.createAttendanceForTeam(makeTenantContext(), {
+      teamId: "team-123",
+      sessionId: "session-123",
+      sessionDate: "2026-04-15",
+      status: "completed",
+      notes: "Good intensity",
+    });
+
+    assert.deepEqual(result, {
+      created: false,
+      attendance: {
+        teamId: "team-123",
+        sessionId: "session-123",
+        sessionDate: "2026-04-15",
+        status: "completed",
+        notes: "Good intensity",
+        recordedAt: "2026-04-15T23:00:00.000Z",
+        recordedBy: "user-123",
+      },
+    });
+  });
+
+  assert.equal(calls.length, 2);
+});
+
+test("createAttendanceForTeam throws a 409 conflict on conflicting replay after conditional failure", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+    if (calls.length === 1) {
+      const err = new Error("duplicate");
+      err.name = "ConditionalCheckFailedException";
+      throw err;
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAMATTENDANCE#team-123#2026-04-15#session-123",
+          type: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+          status: "planned",
+          recordedAt: "2026-04-15T23:00:00.000Z",
+          recordedBy: "user-123",
+        }),
+      ],
+    };
+  }, async () => {
+    await assert.rejects(
+      () =>
+        repo.createAttendanceForTeam(makeTenantContext(), {
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+          status: "completed",
+        }),
+      (err) => {
+        assert.equal(err.code, "teams.attendance_exists");
+        assert.equal(err.statusCode, 409);
+        assert.deepEqual(err.details, {
+          entityType: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+        });
+        return true;
+      }
+    );
+  });
+
+  assert.equal(calls.length, 2);
+});
+
+test("listAttendanceForTeam uses a history prefix query when no date filters are supplied", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    assert.equal(command.input.KeyConditionExpression, "PK = :pk AND begins_with(SK, :skPrefix)");
+    assert.deepEqual(command.input.ExpressionAttributeValues, {
+      ":pk": { S: "TENANT#tenant_authoritative" },
+      ":skPrefix": { S: "TEAMATTENDANCE#team-123#" },
+    });
+    assert.equal(command.input.ScanIndexForward, false);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAMATTENDANCE#team-123#2026-04-15#session-123",
+          type: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+          status: "completed",
+          recordedAt: "2026-04-15T23:00:00.000Z",
+          recordedBy: "user-123",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.listAttendanceForTeam(makeTenantContext(), "team-123");
+    assert.deepEqual(result, {
+      items: [
+        {
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-15",
+          status: "completed",
+          recordedAt: "2026-04-15T23:00:00.000Z",
+          recordedBy: "user-123",
+        },
+      ],
+      nextToken: undefined,
+    });
+  });
+});
+
+test("listAttendanceForTeam uses a lower-bounded query for startDate-only filters", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    assert.equal(command.input.KeyConditionExpression, "PK = :pk AND SK BETWEEN :from AND :to");
+    assert.deepEqual(command.input.ExpressionAttributeValues, {
+      ":pk": { S: "TENANT#tenant_authoritative" },
+      ":from": { S: "TEAMATTENDANCE#team-123#2026-04-10#" },
+      ":to": { S: "TEAMATTENDANCE#team-123#\uFFFF" },
+    });
+    return { Items: [] };
+  }, async () => {
+    await repo.listAttendanceForTeam(makeTenantContext(), "team-123", {
+      startDate: "2026-04-10",
+    });
+  });
+});
+
+test("listAttendanceForTeam uses an upper-bounded query for endDate-only filters", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    assert.equal(command.input.KeyConditionExpression, "PK = :pk AND SK BETWEEN :from AND :to");
+    assert.deepEqual(command.input.ExpressionAttributeValues, {
+      ":pk": { S: "TENANT#tenant_authoritative" },
+      ":from": { S: "TEAMATTENDANCE#team-123#" },
+      ":to": { S: "TEAMATTENDANCE#team-123#2026-04-15#\uFFFF" },
+    });
+    return { Items: [] };
+  }, async () => {
+    await repo.listAttendanceForTeam(makeTenantContext(), "team-123", {
+      endDate: "2026-04-15",
+    });
+  });
+});
+
+test("listAttendanceForTeam uses a bounded BETWEEN query and nextToken round-trip", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const inputToken = Buffer.from(
+    JSON.stringify({
+      PK: { S: "TENANT#tenant_authoritative" },
+      SK: { S: "TEAMATTENDANCE#team-123#2026-04-09#session-999" },
+    }),
+    "utf8"
+  ).toString("base64");
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    assert.equal(command.input.KeyConditionExpression, "PK = :pk AND SK BETWEEN :from AND :to");
+    assert.deepEqual(command.input.ExpressionAttributeValues, {
+      ":pk": { S: "TENANT#tenant_authoritative" },
+      ":from": { S: "TEAMATTENDANCE#team-123#2026-04-10#" },
+      ":to": { S: "TEAMATTENDANCE#team-123#2026-04-15#\uFFFF" },
+    });
+    assert.deepEqual(command.input.ExclusiveStartKey, {
+      PK: { S: "TENANT#tenant_authoritative" },
+      SK: { S: "TEAMATTENDANCE#team-123#2026-04-09#session-999" },
+    });
+    return {
+      Items: [],
+      LastEvaluatedKey: {
+        PK: { S: "TENANT#tenant_authoritative" },
+        SK: { S: "TEAMATTENDANCE#team-123#2026-04-08#session-888" },
+      },
+    };
+  }, async () => {
+    const result = await repo.listAttendanceForTeam(makeTenantContext(), "team-123", {
+      startDate: "2026-04-10",
+      endDate: "2026-04-15",
+      nextToken: inputToken,
+      limit: 10,
+    });
+
+    assert.deepEqual(result, {
+      items: [],
+      nextToken: Buffer.from(
+        JSON.stringify({
+          PK: { S: "TENANT#tenant_authoritative" },
+          SK: { S: "TEAMATTENDANCE#team-123#2026-04-08#session-888" },
+        }),
+        "utf8"
+      ).toString("base64"),
+      });
+  });
+});
+
+test("getWeeklyPlanningForTeam derives the UTC Monday-through-Sunday week window correctly", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+    assert.equal(command instanceof QueryCommand, true);
+    return { Items: [] };
+  }, async () => {
+    const result = await repo.getWeeklyPlanningForTeam(makeTenantContext(), "team-123", {
+      now: new Date("2026-04-11T12:00:00.000Z"),
+    });
+
+    assert.deepEqual(result, {
+      teamId: "team-123",
+      weekStart: "2026-04-06",
+      weekEnd: "2026-04-12",
+      summary: {
+        attendanceCount: 0,
+        assignmentOnlyCount: 0,
+        completedCount: 0,
+        plannedCount: 0,
+        cancelledCount: 0,
+      },
+      items: [],
+    });
+  });
+
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].input.ExpressionAttributeValues, {
+    ":pk": { S: "TENANT#tenant_authoritative" },
+    ":skPrefix": { S: "TEAMSESSION#team-123#" },
+  });
+  assert.deepEqual(calls[1].input.ExpressionAttributeValues, {
+    ":pk": { S: "TENANT#tenant_authoritative" },
+    ":from": { S: "TEAMATTENDANCE#team-123#2026-04-06#" },
+    ":to": { S: "TEAMATTENDANCE#team-123#2026-04-12#\uFFFF" },
+  });
+});
+
+test("getWeeklyPlanningForTeam merges attendance and assignment-only items correctly and computes summary", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  let callCount = 0;
+
+  await withMockedSend(async (command) => {
+    callCount += 1;
+    assert.equal(command instanceof QueryCommand, true);
+
+    if (callCount === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "TEAMSESSION#team-123#session-123",
+            type: "TEAM_SESSION_ASSIGNMENT",
+            teamId: "team-123",
+            sessionId: "session-123",
+            assignedAt: "2026-04-05T18:00:00.000Z",
+            assignedBy: "user-123",
+            sport: "soccer",
+            ageBand: "U14",
+            durationMin: 45,
+            objectiveTags: ["pressing"],
+          }),
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "TEAMSESSION#team-123#session-456",
+            type: "TEAM_SESSION_ASSIGNMENT",
+            teamId: "team-123",
+            sessionId: "session-456",
+            assignedAt: "2026-04-05T19:00:00.000Z",
+            assignedBy: "user-123",
+            sport: "soccer",
+            ageBand: "U14",
+            durationMin: 60,
+            objectiveTags: ["finishing"],
+          }),
+        ],
+      };
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAMATTENDANCE#team-123#2026-04-08#session-123",
+          type: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-08",
+          status: "completed",
+          notes: "Good intensity",
+          recordedAt: "2026-04-08T22:15:00.000Z",
+          recordedBy: "user-123",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getWeeklyPlanningForTeam(makeTenantContext(), "team-123", {
+      now: new Date("2026-04-11T12:00:00.000Z"),
+    });
+
+    assert.deepEqual(result, {
+      teamId: "team-123",
+      weekStart: "2026-04-06",
+      weekEnd: "2026-04-12",
+      summary: {
+        attendanceCount: 1,
+        assignmentOnlyCount: 1,
+        completedCount: 1,
+        plannedCount: 0,
+        cancelledCount: 0,
+      },
+      items: [
+        {
+          sessionId: "session-123",
+          source: "attendance",
+          sessionDate: "2026-04-08",
+          status: "completed",
+          notes: "Good intensity",
+          recordedAt: "2026-04-08T22:15:00.000Z",
+          recordedBy: "user-123",
+          sessionSummary: {
+            sport: "soccer",
+            ageBand: "U14",
+            durationMin: 45,
+            objectiveTags: ["pressing"],
+          },
+        },
+        {
+          sessionId: "session-456",
+          source: "assignment",
+          assignedAt: "2026-04-05T19:00:00.000Z",
+          assignedBy: "user-123",
+          sessionSummary: {
+            sport: "soccer",
+            ageBand: "U14",
+            durationMin: 60,
+            objectiveTags: ["finishing"],
+          },
+        },
+      ],
+    });
+  });
+});
+
+test("getWeeklyPlanningForTeam preserves multiple attendance items for the same sessionId on different dates", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  let callCount = 0;
+
+  await withMockedSend(async () => {
+    callCount += 1;
+
+    if (callCount === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "TEAMSESSION#team-123#session-123",
+            type: "TEAM_SESSION_ASSIGNMENT",
+            teamId: "team-123",
+            sessionId: "session-123",
+            assignedAt: "2026-04-05T18:00:00.000Z",
+            assignedBy: "user-123",
+            sessionCreatedAt: "2026-04-01T00:00:00.000Z",
+            sport: "soccer",
+            ageBand: "U14",
+            durationMin: 45,
+            objectiveTags: ["pressing"],
+          }),
+        ],
+      };
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAMATTENDANCE#team-123#2026-04-08#session-123",
+          type: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-08",
+          status: "planned",
+          recordedAt: "2026-04-08T18:00:00.000Z",
+          recordedBy: "user-123",
+        }),
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAMATTENDANCE#team-123#2026-04-10#session-123",
+          type: "TEAM_ATTENDANCE",
+          teamId: "team-123",
+          sessionId: "session-123",
+          sessionDate: "2026-04-10",
+          status: "completed",
+          recordedAt: "2026-04-10T20:00:00.000Z",
+          recordedBy: "user-123",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getWeeklyPlanningForTeam(makeTenantContext(), "team-123", {
+      now: new Date("2026-04-11T12:00:00.000Z"),
+    });
+
+    assert.equal(result.items.length, 2);
+    assert.deepEqual(result.summary, {
+      attendanceCount: 2,
+      assignmentOnlyCount: 0,
+      completedCount: 1,
+      plannedCount: 1,
+      cancelledCount: 0,
+    });
+    assert.deepEqual(
+      result.items.map((item) => ({
+        sessionId: item.sessionId,
+        source: item.source,
+        sessionDate: item.sessionDate,
+        status: item.status,
+      })),
+      [
+        {
+          sessionId: "session-123",
+          source: "attendance",
+          sessionDate: "2026-04-08",
+          status: "planned",
+        },
+        {
+          sessionId: "session-123",
+          source: "attendance",
+          sessionDate: "2026-04-10",
+          status: "completed",
+        },
+      ]
+    );
+  });
+});

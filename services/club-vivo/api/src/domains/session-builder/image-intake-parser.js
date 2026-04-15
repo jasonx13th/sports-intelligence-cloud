@@ -221,6 +221,7 @@ function normalizeSetupProfile(parsed) {
       ? { layoutType: normalizeLayoutType(parsed.layoutType) }
       : {}),
     constraints: normalizeStringArray(parsed.constraints),
+    assumptions: normalizeStringArray(parsed.assumptions),
   };
 }
 

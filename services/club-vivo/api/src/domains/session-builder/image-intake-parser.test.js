@@ -517,3 +517,66 @@ test("parseImageAnalysisText normalizes invalid setup constraints shapes to an e
   assert.deepEqual(nonArrayProfile.constraints, []);
   assert.deepEqual(mixedArrayProfile.constraints, []);
 });
+
+test("parseImageAnalysisText keeps valid setup assumptions arrays", () => {
+  const profile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1018",
+    sourceImageId: "image-1018",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Box setup with partially obscured finishing gate.",
+      layoutType: "box",
+      spaceSize: "small",
+      playerOrganization: "two-lines",
+      visibleEquipment: ["cones"],
+      focusTags: ["finishing"],
+      constraints: [],
+      assumptions: ["gate spacing estimated", "player count partially obscured"],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.deepEqual(profile.assumptions, ["gate spacing estimated", "player count partially obscured"]);
+});
+
+test("parseImageAnalysisText normalizes invalid setup assumptions shapes to an empty array", () => {
+  const nonArrayProfile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1019",
+    sourceImageId: "image-1019",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Grid setup with incomplete visibility.",
+      layoutType: "grid",
+      spaceSize: "small",
+      playerOrganization: "pairs",
+      visibleEquipment: ["cones"],
+      focusTags: ["passing"],
+      constraints: [],
+      assumptions: "spacing estimated",
+      analysisConfidence: "low",
+    }),
+  });
+
+  const mixedArrayProfile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1020",
+    sourceImageId: "image-1020",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Lane setup with one hidden cone marker.",
+      layoutType: "lane",
+      spaceSize: "medium",
+      playerOrganization: "small-groups",
+      visibleEquipment: ["cones"],
+      focusTags: ["dribbling"],
+      constraints: [],
+      assumptions: ["marker spacing estimated", 2],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.deepEqual(nonArrayProfile.assumptions, []);
+  assert.deepEqual(mixedArrayProfile.assumptions, []);
+});

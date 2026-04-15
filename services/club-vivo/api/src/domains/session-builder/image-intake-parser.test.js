@@ -297,3 +297,66 @@ test("parseImageAnalysisText normalizes invalid environment safety note shapes t
   assert.deepEqual(nonArrayProfile.safetyNotes, []);
   assert.deepEqual(mixedArrayProfile.safetyNotes, []);
 });
+
+test("parseImageAnalysisText keeps valid environment assumptions arrays", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1008",
+    sourceImageId: "image-1008",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Outdoor turf area with one partially visible goal.",
+      surfaceType: "turf",
+      spaceSize: "medium",
+      boundaryType: "mixed",
+      visibleEquipment: ["cones"],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: ["ball count not visible", "sideline width estimated"],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.deepEqual(profile.assumptions, ["ball count not visible", "sideline width estimated"]);
+});
+
+test("parseImageAnalysisText normalizes invalid environment assumption shapes to an empty array", () => {
+  const nonArrayProfile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1009",
+    sourceImageId: "image-1009",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Indoor area with incomplete visibility.",
+      surfaceType: "indoor",
+      spaceSize: "small",
+      boundaryType: "indoor-court",
+      visibleEquipment: [],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: "player count estimated",
+      analysisConfidence: "low",
+    }),
+  });
+
+  const mixedArrayProfile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1010",
+    sourceImageId: "image-1010",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Shared field with partially blocked sight lines.",
+      surfaceType: "grass",
+      spaceSize: "large",
+      boundaryType: "full-field",
+      visibleEquipment: [],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: ["goal depth estimated", 2],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.deepEqual(nonArrayProfile.assumptions, []);
+  assert.deepEqual(mixedArrayProfile.assumptions, []);
+});

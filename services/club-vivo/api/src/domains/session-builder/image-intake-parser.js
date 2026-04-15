@@ -164,6 +164,7 @@ function normalizeParsedProfile(mode, parsed) {
       : {}),
     constraints: normalizeStringArray(parsed.constraints),
     safetyNotes: normalizeStringArray(parsed.safetyNotes),
+    assumptions: normalizeStringArray(parsed.assumptions),
   };
 }
 

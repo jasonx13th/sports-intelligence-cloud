@@ -197,80 +197,176 @@ Provide operational workflow for weekly team training.
 
 ---
 
-# Week 17 — AI Integration v1
+## Week 17 — Fut-Soccer Merge v1
 
-## Goal
-Introduce AI capabilities in a controlled, low-cost way.
+### Goal
+Merge Fut-Soccer into SIC as a first-class coaching flow on top of Session Builder, using the same tenant-safe architecture and the same coach-facing web app.
 
 ### Tasks
 
-**Day 1**
-- Implement AI adapter layer:
-  - prompt builder
+#### Day 1
+- Define Fut-Soccer as a SIC sport pack / product flavor
+- Lock v1 intake differences for:
+  - fut-soccer
+  - soccer
+  - futsal
+- Define sport-pack defaults for:
+  - smaller spaces
+  - indoor sessions
+  - faster rotations
+  - ball mastery
+  - passing and pressing patterns
+- Document what changes in generation logic vs what stays shared
+
+#### Day 2
+- Extend Session Builder pipeline to accept sport-pack bias
+- Add Fut-Soccer selection in Club Vivo session flow
+- Add first Fut-Soccer session templates and example outputs
+- Keep the same save, list, detail, and export path
+
+#### Day 3
+- Document Fut-Soccer architecture and product scope
+- Add validation for Fut-Soccer-specific assumptions
+- Record demo showing:
+  - soccer flow
+  - fut-soccer flow
+  - shared Session Builder foundation
+
+---
+
+## Week 18 — GenAI Space & Setup Intake v1
+
+### Goal
+Add the first practical GenAI layer to Session Builder so coaches can use images in two ways:
+
+1. Generate an environment profile for better session creation
+2. Generate a drill from a coach-confirmed setup image
+
+### Tasks
+
+#### Day 1
+- Add image upload flow for session creation
+- Define two analysis modes:
+  - `environment_profile`
+  - `setup_to_drill`
+- Define structured output contracts for:
+  - `EnvironmentProfile`
+  - `SetupProfile`
+- Store uploaded images in tenant-scoped S3 prefixes
+
+#### Day 2
+- Implement GenAI adapter layer:
+  - multimodal prompt builder
   - response parser
   - validator
+- Integrate Bedrock for image-assisted analysis
+- Add coach confirmation and edit step before generation
+- Feed confirmed profile into Session Builder normalization and generation
 
-**Day 2**
-- Integrate Bedrock (optional)
-- Generate session suggestions
-
-**Day 3**
+#### Day 3
 - Document AI architecture
 - Add logging and cost tracking
+- Add metrics for:
+  - image analysis success
+  - image analysis failure
+  - profile confirmed
+  - session generated from environment
+  - drill generated from setup
+- Record a demo for both image modes
 
 ---
 
-# Week 18 — AI Evaluation Harness
+## Week 19 — AI Evaluation Harness
 
-## Goal
-Create a lightweight evaluation framework.
+### Goal
+Create a lightweight evaluation framework focused on real coaching usefulness, not just generic model output quality.
 
 ### Tasks
 
-**Day 1**
-- Build evaluation dataset
+#### Day 1
+- Build evaluation dataset with:
+  - environment profile examples
+  - setup-to-drill examples
+  - Fut-Soccer examples
+  - KSC-like coaching scenarios
 
-**Day 2**
-- Implement evaluation runner
+#### Day 2
+- Implement evaluation runner for:
+  - JSON contract validity
+  - equipment compatibility
+  - age-band safety
+  - session structure quality
+  - setup faithfulness
+- Add simple rubric scoring for coach usefulness
 
-**Day 3**
+#### Day 3
 - Document AI evaluation process
 - Track generation quality metrics
+- Define pass and fail thresholds for pilot readiness
+- Capture 5 to 10 golden examples for repeat testing
 
 ---
 
-# Week 19 — Pilot Readiness
+## Week 20 — KSC Pilot Readiness
 
-## Goal
-Prepare system for real coach pilots.
+### Goal
+Prepare SIC for a real Kensington Soccer Club coach pilot with Fut-Soccer and GenAI image-assisted session creation.
 
 ### Tasks
 
-**Day 1**
+#### Day 1
 - Implement pilot tenant setup scripts
+- Create KSC tenant config
+- Set up pilot users with organization email sign-in
+- Add website login entry path for coaches
 
-**Day 2**
+#### Day 2
 - Improve support logging
+- Add pilot feedback capture for:
+  - session quality
+  - drill usefulness
+  - image analysis accuracy
+  - missing features
+- Tighten support and debug visibility for pilot issues
 
-**Day 3**
+#### Day 3
 - Create pilot onboarding documentation
+- Create coach quick-start guide
+- Create internal operator checklist
+- Record KSC pilot walkthrough:
+  - sign in
+  - create session
+  - upload environment photos
+  - generate drill from setup
+  - save and export
 
 ---
 
-# Week 20 — Production Lite Release
+## Week 21 — Production Lite Release
 
-## Goal
-Ship the first stable version of SIC.
+### Goal
+Ship the first stable version of SIC with Session Builder, Fut-Soccer support, and GenAI image-assisted intake.
 
 ### Tasks
 
-**Day 1**
+#### Day 1
 - End-to-end smoke testing
+- Validate:
+  - auth
+  - session generation
+  - Fut-Soccer flow
+  - image upload flow
+  - export flow
+  - team assignment path if included
 
-**Day 2**
+#### Day 2
 - Review AWS costs
 - Implement budget alarms
+- Review Bedrock usage and guardrails
+- Confirm logging and latency signals are usable
 
-**Day 3**
+#### Day 3
 - Publish release notes
-- Record product demo
+- Record final product demo
+- Capture portfolio screenshots and architecture evidence
+- Write launch-ready summary of what SIC now does

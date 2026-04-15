@@ -120,6 +120,32 @@ function normalizeBoundaryType(value) {
   return "unknown";
 }
 
+function normalizeStringArray(value) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const normalized = [];
+  for (const item of value) {
+    if (typeof item !== "string") {
+      return [];
+    }
+
+    const trimmed = item.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    normalized.push(trimmed);
+  }
+
+  return normalized;
+}
+
 function normalizeParsedProfile(mode, parsed) {
   if (mode !== "environment_profile" || !parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return parsed;
@@ -136,6 +162,7 @@ function normalizeParsedProfile(mode, parsed) {
     ...(Object.prototype.hasOwnProperty.call(parsed, "boundaryType")
       ? { boundaryType: normalizeBoundaryType(parsed.boundaryType) }
       : {}),
+    constraints: normalizeStringArray(parsed.constraints),
   };
 }
 

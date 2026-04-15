@@ -171,3 +171,66 @@ test("parseImageAnalysisText maps unsupported environment boundary values to unk
 
   assert.equal(profile.boundaryType, "unknown");
 });
+
+test("parseImageAnalysisText keeps valid environment constraints arrays", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1002",
+    sourceImageId: "image-1002",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Tight indoor space with limited width.",
+      surfaceType: "indoor",
+      spaceSize: "small",
+      boundaryType: "indoor-court",
+      visibleEquipment: ["cones"],
+      constraints: ["limited-width", "shared-space"],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.deepEqual(profile.constraints, ["limited-width", "shared-space"]);
+});
+
+test("parseImageAnalysisText normalizes invalid environment constraints shapes to an empty array", () => {
+  const nonArrayProfile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1003",
+    sourceImageId: "image-1003",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Open area with unclear constraints.",
+      surfaceType: "turf",
+      spaceSize: "medium",
+      boundaryType: "mixed",
+      visibleEquipment: [],
+      constraints: "limited-width",
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  const mixedArrayProfile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1004",
+    sourceImageId: "image-1004",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Shared field with partially visible setup.",
+      surfaceType: "grass",
+      spaceSize: "large",
+      boundaryType: "full-field",
+      visibleEquipment: [],
+      constraints: ["shared-space", 3],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.deepEqual(nonArrayProfile.constraints, []);
+  assert.deepEqual(mixedArrayProfile.constraints, []);
+});

@@ -120,6 +120,24 @@ function normalizeBoundaryType(value) {
   return "unknown";
 }
 
+function normalizeAnalysisConfidence(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+
+  const normalized = trimmed.toLowerCase();
+  if (["low", "medium", "high"].includes(normalized)) {
+    return normalized;
+  }
+
+  return trimmed;
+}
+
 function normalizeStringArray(value) {
   if (value === undefined || value === null) {
     return [];
@@ -161,6 +179,9 @@ function normalizeParsedProfile(mode, parsed) {
       : {}),
     ...(Object.prototype.hasOwnProperty.call(parsed, "boundaryType")
       ? { boundaryType: normalizeBoundaryType(parsed.boundaryType) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(parsed, "analysisConfidence")
+      ? { analysisConfidence: normalizeAnalysisConfidence(parsed.analysisConfidence) }
       : {}),
     constraints: normalizeStringArray(parsed.constraints),
     safetyNotes: normalizeStringArray(parsed.safetyNotes),

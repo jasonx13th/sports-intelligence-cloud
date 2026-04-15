@@ -360,3 +360,53 @@ test("parseImageAnalysisText normalizes invalid environment assumption shapes to
   assert.deepEqual(nonArrayProfile.assumptions, []);
   assert.deepEqual(mixedArrayProfile.assumptions, []);
 });
+
+test("parseImageAnalysisText normalizes environment analysis confidence casing before validation", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1011",
+    sourceImageId: "image-1011",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Indoor space with clearly visible setup markers.",
+      surfaceType: "indoor",
+      spaceSize: "small",
+      boundaryType: "indoor-court",
+      visibleEquipment: ["cones"],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "High",
+    }),
+  });
+
+  assert.equal(profile.analysisConfidence, "high");
+});
+
+test("parseImageAnalysisText keeps unsupported environment analysis confidence values fail-closed", () => {
+  assert.throws(
+    () =>
+      parseImageAnalysisText({
+        mode: "environment_profile",
+        analysisId: "analysis-1012",
+        sourceImageId: "image-1012",
+        sourceImageMimeType: "image/png",
+        text: JSON.stringify({
+          summary: "Outdoor area with partially visible details.",
+          surfaceType: "grass",
+          spaceSize: "medium",
+          boundaryType: "mixed",
+          visibleEquipment: [],
+          constraints: [],
+          safetyNotes: [],
+          assumptions: [],
+          analysisConfidence: "Very High",
+        }),
+      }),
+    (error) => {
+      assert.equal(error.code, "invalid_field");
+      assert.equal(error.details.field, "profile.analysisConfidence");
+      return true;
+    }
+  );
+});

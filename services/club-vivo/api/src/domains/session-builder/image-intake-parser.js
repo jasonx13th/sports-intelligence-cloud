@@ -87,6 +87,39 @@ function normalizeSpaceSize(value) {
   return "unknown";
 }
 
+function normalizeBoundaryType(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return value;
+  }
+
+  if (["small-grid", "half-field", "full-field", "indoor-court", "mixed", "unknown"].includes(normalized)) {
+    return normalized;
+  }
+
+  if (normalized === "small grid") {
+    return "small-grid";
+  }
+
+  if (normalized === "half field") {
+    return "half-field";
+  }
+
+  if (normalized === "full field") {
+    return "full-field";
+  }
+
+  if (normalized === "indoor court") {
+    return "indoor-court";
+  }
+
+  return "unknown";
+}
+
 function normalizeParsedProfile(mode, parsed) {
   if (mode !== "environment_profile" || !parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return parsed;
@@ -99,6 +132,9 @@ function normalizeParsedProfile(mode, parsed) {
       : {}),
     ...(Object.prototype.hasOwnProperty.call(parsed, "spaceSize")
       ? { spaceSize: normalizeSpaceSize(parsed.spaceSize) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(parsed, "boundaryType")
+      ? { boundaryType: normalizeBoundaryType(parsed.boundaryType) }
       : {}),
   };
 }

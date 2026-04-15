@@ -127,3 +127,47 @@ test("parseImageAnalysisText normalizes environment space size casing before val
 
   assert.equal(profile.spaceSize, "unknown");
 });
+
+test("parseImageAnalysisText normalizes environment boundary type casing before validation", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1000",
+    sourceImageId: "image-1000",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Indoor area with visible court markings.",
+      surfaceType: "indoor",
+      spaceSize: "medium",
+      boundaryType: "Indoor Court",
+      visibleEquipment: ["cones"],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.equal(profile.boundaryType, "indoor-court");
+});
+
+test("parseImageAnalysisText maps unsupported environment boundary values to unknown", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1001",
+    sourceImageId: "image-1001",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Covered structure with unclear boundaries.",
+      surfaceType: "turf",
+      spaceSize: "unknown",
+      boundaryType: "Metal Trusses",
+      visibleEquipment: [],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.equal(profile.boundaryType, "unknown");
+});

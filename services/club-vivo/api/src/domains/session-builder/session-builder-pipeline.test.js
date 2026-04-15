@@ -17,6 +17,7 @@ const {
 test("normalizeSessionPackInput returns canonical request shape", () => {
   const normalizedInput = normalizeSessionPackInput({
     sport: "soccer",
+    sportPackId: "fut-soccer",
     ageBand: "U14",
     durationMin: 60,
     theme: "Finishing",
@@ -26,12 +27,29 @@ test("normalizeSessionPackInput returns canonical request shape", () => {
 
   assert.deepEqual(normalizedInput, {
     sport: "soccer",
+    sportPackId: "fut-soccer",
     ageBand: "u14",
     durationMin: 60,
     theme: "Finishing",
     sessionsCount: 2,
     equipment: ["cones", "goals"],
   });
+});
+
+test("processSessionPackRequest keeps sportPackId in normalized input while preserving the public pack shape", () => {
+  const result = processSessionPackRequest({
+    sport: "soccer",
+    sportPackId: "fut-soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  assert.equal(result.normalizedInput.sportPackId, "fut-soccer");
+  assert.equal(Object.hasOwn(result.validatedPack, "sportPackId"), false);
+  assert.equal(result.validatedPack.sport, "soccer");
 });
 
 test("generateSessionPack produces deterministic pack content from canonical input", () => {

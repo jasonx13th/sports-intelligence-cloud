@@ -122,6 +122,64 @@ test("generatePack carries equipment to the pack and generated sessions when pro
   }
 });
 
+test("generatePack applies a deterministic fut-soccer passing bias without changing canonical sport", () => {
+  const soccerPack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "Passing shape",
+    sessionsCount: 1,
+  });
+
+  const futSoccerPack = generatePack({
+    sport: "soccer",
+    sportPackId: "fut-soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "Passing shape",
+    sessionsCount: 1,
+  });
+
+  assert.equal(futSoccerPack.sport, "soccer");
+  assert.equal(futSoccerPack.sessions[0].sport, "soccer");
+  assert.notDeepEqual(futSoccerPack.sessions[0].activities, soccerPack.sessions[0].activities);
+  assert.deepEqual(futSoccerPack.sessions[0].objectiveTags, [
+    "passing",
+    "build-up-under-pressure",
+    "reduced-space",
+  ]);
+});
+
+test("generatePack applies a deterministic fut-soccer pressing bias without changing canonical sport", () => {
+  const soccerPack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  const futSoccerPack = generatePack({
+    sport: "soccer",
+    sportPackId: "fut-soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  assert.equal(futSoccerPack.sport, "soccer");
+  assert.equal(futSoccerPack.sessions[0].sport, "soccer");
+  assert.notDeepEqual(futSoccerPack.sessions[0].activities, soccerPack.sessions[0].activities);
+  assert.deepEqual(futSoccerPack.sessions[0].objectiveTags, [
+    "pressing",
+    "pressure-cover",
+    "reduced-space",
+  ]);
+});
+
 test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {
   const pack = generatePack({
     sport: "soccer",

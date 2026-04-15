@@ -14,6 +14,7 @@ const {
 } = require("./diagram-spec-validate");
 
 const GOALS_REQUIRED_THEME_KEYWORDS = ["goal", "goals", "finish", "finishing"];
+const SUPPORTED_SPORT_PACK_IDS = ["fut-soccer"];
 
 // Keep bounds tight; expand later with product evidence.
 const LIMITS = {
@@ -261,12 +262,13 @@ function getMissingEquipmentForTheme(theme, equipment) {
 }
 
 function validateCreateSessionPack(body) {
-  const allowed = ["sport", "ageBand", "durationMin", "theme", "sessionsCount", "equipment"];
+  const allowed = ["sport", "sportPackId", "ageBand", "durationMin", "theme", "sessionsCount", "equipment"];
   rejectUnknownFields(body, allowed);
 
   requireFields(body, ["sport", "ageBand", "durationMin", "theme"]);
 
   const sport = requireString(body, "sport", { max: LIMITS.sportMax });
+  const sportPackId = optionalString(body, "sportPackId", { max: LIMITS.sportMax });
   const ageBand = requireSupportedAgeBand(body, "ageBand");
   const durationMin = requireInt(body, "durationMin", {
     min: LIMITS.durationMinMin,
@@ -297,8 +299,28 @@ function validateCreateSessionPack(body) {
     );
   }
 
+  if (sportPackId !== undefined && !SUPPORTED_SPORT_PACK_IDS.includes(sportPackId)) {
+    throw validationError("invalid_field", "sportPackId is not supported", {
+      reason: "unsupported_sport_pack",
+      field: "sportPackId",
+      value: sportPackId,
+      allowed: SUPPORTED_SPORT_PACK_IDS,
+    });
+  }
+
+  if (sportPackId === "fut-soccer" && sport !== "soccer") {
+    throw validationError("invalid_field", "sportPackId is not supported for the provided sport", {
+      reason: "sport_pack_sport_mismatch",
+      field: "sportPackId",
+      sport,
+      sportPackId,
+      allowedSport: "soccer",
+    });
+  }
+
   return {
     sport,
+    ...(sportPackId !== undefined ? { sportPackId } : {}),
     ageBand,
     durationMin,
     theme,
@@ -523,4 +545,5 @@ module.exports = {
   validateSessionPackV2Draft,
   LIMITS,
   getMissingEquipmentForTheme,
+  SUPPORTED_SPORT_PACK_IDS,
 };

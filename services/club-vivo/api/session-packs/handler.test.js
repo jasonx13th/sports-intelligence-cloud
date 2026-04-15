@@ -83,6 +83,49 @@ test("POST /session-packs returns validatedPack from the internal pipeline and k
   assert.equal(loggerEvents[0].eventType, "pack_generated_success");
 });
 
+test("POST /session-packs accepts fut-soccer sportPackId while keeping the public response shape unchanged", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+
+  const expectedPack = {
+    packId: "pack-123",
+    createdAt: "2026-04-01T00:00:00.000Z",
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    sessions: [],
+  };
+
+  const inner = createSessionPacksInner({
+    processSessionPackFn: (body) => {
+      assert.equal(body.sport, "soccer");
+      assert.equal(body.sportPackId, "fut-soccer");
+
+      return {
+        normalizedInput: body,
+        generatedPack: expectedPack,
+        validatedPack: expectedPack,
+      };
+    },
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      sport: "soccer",
+      sportPackId: "fut-soccer",
+      ageBand: "u14",
+      durationMin: 60,
+      theme: "pressing",
+    }),
+    tenantCtx: makeTenantCtx(),
+    logger: makeLogger([]),
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(JSON.parse(response.body), { pack: expectedPack });
+});
+
 test("POST /session-packs maps pipeline validation errors to platform bad request", async () => {
   process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
 

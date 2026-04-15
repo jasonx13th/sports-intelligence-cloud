@@ -140,6 +140,7 @@ Used by `POST /session-packs`.
 ```json
 {
   "sport": "soccer",
+  "sportPackId": "fut-soccer",
   "ageBand": "u14",
   "durationMin": 60,
   "theme": "pressing",
@@ -305,6 +306,7 @@ List responses are summary-only and do not include `activities`.
 - Content type: JSON
 - Body fields:
   - `sport` required string
+  - `sportPackId` optional string
   - `ageBand` required string
   - `durationMin` required integer
   - `theme` required string
@@ -312,6 +314,16 @@ List responses are summary-only and do not include `activities`.
   - `equipment` optional array of strings
 
 Unknown fields are rejected.
+
+Week 17 Day 2 narrow addition:
+
+- `sportPackId` is accepted only on `POST /session-packs`
+- omitted `sportPackId` remains valid
+- the only allowed v1 pack combination is:
+  - `sport = "soccer"`
+  - `sportPackId = "fut-soccer"`
+- save, list, detail, and export routes remain unchanged
+- generated and saved sessions remain canonically `sport = "soccer"` in v1
 
 ### Response
 

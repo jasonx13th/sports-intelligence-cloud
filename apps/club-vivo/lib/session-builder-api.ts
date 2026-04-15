@@ -37,6 +37,7 @@ export type SessionDetail = {
 
 export type GenerateSessionPackInput = {
   sport: string;
+  sportPackId?: "fut-soccer";
   ageBand: string;
   durationMin: number;
   theme: string;

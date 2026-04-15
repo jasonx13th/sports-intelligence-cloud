@@ -160,13 +160,19 @@ export function NewSessionFlow({
 
         <div className="mt-6 grid gap-4">
           <label className="grid gap-2 text-sm text-slate-700">
-            <span className="font-medium">Sport</span>
-            <input
+            <span className="font-medium">Flow</span>
+            <select
               name="sport"
               defaultValue={generateState.values.sport}
               className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
               required
-            />
+            >
+              <option value="soccer">Soccer</option>
+              <option value="fut-soccer">Fut-Soccer</option>
+            </select>
+            <span className="text-xs leading-5 text-slate-500">
+              Fut-Soccer uses the shared soccer generation path with a reduced-space coaching bias.
+            </span>
           </label>
 
           <label className="grid gap-2 text-sm text-slate-700">

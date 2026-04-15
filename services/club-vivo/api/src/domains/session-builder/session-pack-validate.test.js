@@ -6,6 +6,7 @@ const assert = require("node:assert/strict");
 const {
   validateCreateSessionPack,
   validateSessionPackV2Draft,
+  SUPPORTED_SPORT_PACK_IDS,
 } = require("./session-pack-validate");
 const { DRILL_DIAGRAM_SPEC_VERSION } = require("./diagram-spec-validate");
 
@@ -79,6 +80,17 @@ test("validateCreateSessionPack accepts supported ageBand and optional equipment
   assert.deepEqual(result.equipment, ["cones", "balls"]);
 });
 
+test("validateCreateSessionPack accepts soccer with fut-soccer sportPackId", () => {
+  const result = validateCreateSessionPack(
+    makeValidPackRequest({
+      sportPackId: "fut-soccer",
+    })
+  );
+
+  assert.equal(result.sport, "soccer");
+  assert.equal(result.sportPackId, "fut-soccer");
+});
+
 test("validateCreateSessionPack rejects unsupported ageBand with stable reason", () => {
   assert.throws(
     () => validateCreateSessionPack(makeValidPackRequest({ ageBand: "u7" })),
@@ -120,6 +132,46 @@ test("validateCreateSessionPack does not fail equipment compatibility when equip
 
   assert.equal(result.theme, "Finishing");
   assert.equal(Object.hasOwn(result, "equipment"), false);
+});
+
+test("validateCreateSessionPack rejects unsupported sportPackId with stable reason", () => {
+  assert.throws(
+    () =>
+      validateCreateSessionPack(
+        makeValidPackRequest({
+          sportPackId: "indoor-soccer",
+        })
+      ),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.reason, "unsupported_sport_pack");
+      assert.equal(err.details.field, "sportPackId");
+      assert.equal(err.details.value, "indoor-soccer");
+      assert.deepEqual(err.details.allowed, SUPPORTED_SPORT_PACK_IDS);
+      return true;
+    }
+  );
+});
+
+test("validateCreateSessionPack rejects sportPackId when sport does not match", () => {
+  assert.throws(
+    () =>
+      validateCreateSessionPack(
+        makeValidPackRequest({
+          sport: "basketball",
+          sportPackId: "fut-soccer",
+        })
+      ),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.reason, "sport_pack_sport_mismatch");
+      assert.equal(err.details.field, "sportPackId");
+      assert.equal(err.details.sport, "basketball");
+      assert.equal(err.details.sportPackId, "fut-soccer");
+      assert.equal(err.details.allowedSport, "soccer");
+      return true;
+    }
+  );
 });
 
 test("validateSessionPackV2Draft accepts a minimal valid soccer Session Pack v2 draft", () => {

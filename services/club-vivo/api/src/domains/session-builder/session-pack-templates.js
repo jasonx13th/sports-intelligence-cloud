@@ -105,6 +105,35 @@ function templatePassingShape({ sport, ageBand, durationMin, equipment }) {
   });
 }
 
+function templateFutSoccerPassing({ sport, ageBand, durationMin, equipment }) {
+  const activities = [
+    {
+      name: "Reduced-space ball mastery warmup",
+      minutes: 10,
+      description: "Fast feet, close control, and quick turns in a tight area.",
+    },
+    {
+      name: "Tight-space rondo waves",
+      minutes: 15,
+      description: "Short passing, scanning, and quick support angles under immediate pressure.",
+    },
+    {
+      name: "Build-up under pressure lanes",
+      minutes: 20,
+      description: "Play out through narrow lanes with quick rotations and limited equipment.",
+    },
+  ];
+
+  return baseSession({
+    sport,
+    ageBand,
+    durationMin,
+    objectiveTags: ["passing", "build-up-under-pressure", "reduced-space"],
+    equipment,
+    activities,
+  });
+}
+
 function templateFinishing({ sport, ageBand, durationMin, equipment }) {
   const activities = [
     { name: "Warmup: finishing technique", minutes: 10, description: "Inside foot, laces, both feet." },
@@ -139,6 +168,35 @@ function templatePressingTransition({ sport, ageBand, durationMin, equipment }) 
   });
 }
 
+function templateFutSoccerPressing({ sport, ageBand, durationMin, equipment }) {
+  const activities = [
+    {
+      name: "Quick-feet pressure warmup",
+      minutes: 10,
+      description: "Short accelerations, recoveries, and quick reactions in reduced space.",
+    },
+    {
+      name: "2v2+1 pressure-cover rotations",
+      minutes: 20,
+      description: "Press together, cover quickly, and rotate fast after each regain or escape.",
+    },
+    {
+      name: "Reduced-space pressing game",
+      minutes: 20,
+      description: "Immediate pressure-and-cover cues in a tight game with fast restarts.",
+    },
+  ];
+
+  return baseSession({
+    sport,
+    ageBand,
+    durationMin,
+    objectiveTags: ["pressing", "pressure-cover", "reduced-space"],
+    equipment,
+    activities,
+  });
+}
+
 function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
   const activities = [
     { name: "Warmup", minutes: 10, description: "Dynamic movement + ball touches." },
@@ -166,13 +224,26 @@ function pickTemplate(themeKey) {
   return "fallback";
 }
 
-function generateSessionFromTheme({ sport, ageBand, durationMin, theme, equipment }) {
+function pickSportPackTemplate({ sportPackId, themeKey }) {
+  const baseTemplate = pickTemplate(themeKey);
+
+  if (sportPackId === "fut-soccer") {
+    if (baseTemplate === "passing") return "fut-soccer-passing";
+    if (baseTemplate === "pressing") return "fut-soccer-pressing";
+  }
+
+  return baseTemplate;
+}
+
+function generateSessionFromTheme({ sport, sportPackId, ageBand, durationMin, theme, equipment }) {
   const themeKey = normalizeTheme(theme);
-  const t = pickTemplate(themeKey);
+  const t = pickSportPackTemplate({ sportPackId, themeKey });
 
   if (t === "passing") return templatePassingShape({ sport, ageBand, durationMin, equipment });
+  if (t === "fut-soccer-passing") return templateFutSoccerPassing({ sport, ageBand, durationMin, equipment });
   if (t === "finishing") return templateFinishing({ sport, ageBand, durationMin, equipment });
   if (t === "pressing") return templatePressingTransition({ sport, ageBand, durationMin, equipment });
+  if (t === "fut-soccer-pressing") return templateFutSoccerPressing({ sport, ageBand, durationMin, equipment });
 
   return templateFallback({ sport, ageBand, durationMin, theme: themeKey || "general", equipment });
 }
@@ -250,14 +321,14 @@ function buildCoachLiteDraftFromPack(pack) {
   return validateSessionPackV2Draft(draft);
 }
 
-function generatePack({ sport, ageBand, durationMin, theme, sessionsCount, equipment }) {
+function generatePack({ sport, sportPackId, ageBand, durationMin, theme, sessionsCount, equipment }) {
   const packId = require("crypto").randomUUID();
   const createdAt = new Date().toISOString();
 
   const sessions = [];
   for (let i = 0; i < sessionsCount; i++) {
     // Slight variation hook for later (today deterministic)
-    sessions.push(generateSessionFromTheme({ sport, ageBand, durationMin, theme, equipment }));
+    sessions.push(generateSessionFromTheme({ sport, sportPackId, ageBand, durationMin, theme, equipment }));
   }
 
   return {

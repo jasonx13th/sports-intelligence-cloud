@@ -51,14 +51,17 @@ export async function generateSessionPackAction(
 ): Promise<GenerateFormState> {
   "use server";
 
-  const sport = String(formData.get("sport") || "").trim();
+  const selectedSport = String(formData.get("sport") || "").trim();
   const ageBand = String(formData.get("ageBand") || "").trim();
   const durationMin = String(formData.get("durationMin") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
 
+  const sport = selectedSport === "fut-soccer" ? "soccer" : selectedSport;
+  const sportPackId = selectedSport === "fut-soccer" ? "fut-soccer" : undefined;
+
   const values = {
-    sport,
+    sport: selectedSport,
     ageBand,
     durationMin,
     theme,
@@ -83,6 +86,7 @@ export async function generateSessionPackAction(
   try {
     const pack = await generateSessionPack({
       sport,
+      ...(sportPackId ? { sportPackId } : {}),
       ageBand,
       durationMin: durationValue,
       theme,

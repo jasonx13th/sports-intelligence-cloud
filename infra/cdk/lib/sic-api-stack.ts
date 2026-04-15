@@ -53,7 +53,7 @@ export class SicApiStack extends Stack {
       removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDev,
     });
-    const sessionImageAnalysisModelId = "amazon.nova-2-lite-v1:0";
+    const sessionImageAnalysisModelId = "amazon.nova-lite-v1:0";
     const sessionImageAnalysisModelArn = `arn:${Stack.of(this).partition}:bedrock:${Stack.of(this).region}::foundation-model/${sessionImageAnalysisModelId}`;
 
     // Lambda: /me

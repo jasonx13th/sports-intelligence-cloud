@@ -1,5 +1,7 @@
 "use strict";
 
+const crypto = require("crypto");
+
 const {
   validateCreateSessionPack,
   validateSessionPackV2Draft,
@@ -7,6 +9,8 @@ const {
 const { generatePack, buildCoachLiteDraftFromPack, minutesSum } = require("./session-pack-templates");
 const { validateCreateSession } = require("./session-validate");
 const { validationError } = require("../../platform/validation/validate");
+const { validateImageAnalysisRequest } = require("./image-intake-validate");
+const { parseImageAnalysisText } = require("./image-intake-parser");
 
 function normalizeSessionPackInput(rawInput) {
   return validateCreateSessionPack(rawInput);
@@ -71,6 +75,55 @@ function processSessionPackRequest(rawInput) {
   };
 }
 
+async function processSessionImageAnalysisRequest({
+  rawInput,
+  tenantCtx,
+  imageStorage,
+  imageAnalysis,
+} = {}) {
+  const normalizedInput = validateImageAnalysisRequest(rawInput);
+  const analysisId = crypto.randomUUID();
+  const sourceImageId = crypto.randomUUID();
+  const imageBuffer = Buffer.from(normalizedInput.sourceImage.bytesBase64, "base64");
+  const contentSha256 = crypto.createHash("sha256").update(imageBuffer).digest("hex");
+
+  const { key: storageKey } = await imageStorage.putSourceImage({
+    tenantId: tenantCtx.tenantId,
+    mode: normalizedInput.mode,
+    analysisId,
+    sourceImageId,
+    mimeType: normalizedInput.sourceImage.mimeType,
+    imageBuffer,
+    contentSha256,
+  });
+
+  const analysisResult = await imageAnalysis.analyzeImage({
+    mode: normalizedInput.mode,
+    mimeType: normalizedInput.sourceImage.mimeType,
+    imageBase64: normalizedInput.sourceImage.bytesBase64,
+  });
+
+  const profile = parseImageAnalysisText({
+    mode: normalizedInput.mode,
+    text: analysisResult.text,
+    analysisId,
+    sourceImageId,
+    sourceImageMimeType: normalizedInput.sourceImage.mimeType,
+  });
+
+  return {
+    normalizedInput,
+    analysisId,
+    sourceImageId,
+    contentSha256,
+    storageKey,
+    profile,
+    usage: analysisResult.usage,
+    metrics: analysisResult.metrics,
+    stopReason: analysisResult.stopReason,
+  };
+}
+
 async function persistSession({
   tenantCtx,
   normalizedInput,
@@ -124,6 +177,7 @@ module.exports = {
   validateCoachLiteDraft,
   validateGeneratedPack,
   processSessionPackRequest,
+  processSessionImageAnalysisRequest,
   persistSession,
   exportPersistedSession,
 };

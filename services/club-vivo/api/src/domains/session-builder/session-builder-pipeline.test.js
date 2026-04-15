@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 
 const {
   processSessionPackRequest,
+  processSessionImageAnalysisRequest,
   normalizeSessionPackInput,
   generateSessionPack,
   generateCoachLiteDraft,
@@ -115,6 +116,93 @@ test("processSessionPackRequest returns explicit pipeline stages", () => {
   assert.equal(result.coachLiteDraft.specVersion, "session-pack.v2");
   assert.equal(result.validatedCoachLiteDraft.specVersion, "session-pack.v2");
   assert.deepEqual(result.validatedPack.sessions[0].equipment, ["cones", "balls"]);
+});
+
+test("processSessionPackRequest uses confirmed setup profile only after confirmation and keeps pack shape unchanged", () => {
+  const confirmedProfile = {
+    mode: "setup_to_drill",
+    schemaVersion: 1,
+    analysisId: "analysis-123",
+    status: "confirmed",
+    sourceImageId: "image-123",
+    sourceImageMimeType: "image/png",
+    summary: "Cone box with two end lines.",
+    layoutType: "box",
+    spaceSize: "small",
+    playerOrganization: "two-lines",
+    visibleEquipment: ["cones", "mini-goals"],
+    focusTags: ["passing", "support"],
+    constraints: ["tight-space"],
+    assumptions: [],
+    analysisConfidence: "medium",
+  };
+
+  const result = processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    confirmedProfile,
+  });
+
+  assert.deepEqual(result.normalizedInput.confirmedProfile, confirmedProfile);
+  assert.equal(result.validatedPack.sessions[0].activities[0].name, "Passing Support");
+  assert.match(result.validatedPack.sessions[0].activities[0].description, /Layout: box\./);
+  assert.deepEqual(result.validatedPack.sessions[0].equipment, ["cones", "mini-goals"]);
+  assert.equal(Object.hasOwn(result.validatedPack, "confirmedProfile"), false);
+});
+
+test("processSessionImageAnalysisRequest stores one tenant-scoped image and returns a draft profile", async () => {
+  const storageCalls = [];
+  const analysisCalls = [];
+
+  const result = await processSessionImageAnalysisRequest({
+    rawInput: {
+      requestType: "image-analysis",
+      mode: "environment_profile",
+      sourceImage: {
+        filename: "field.jpg",
+        mimeType: "image/jpeg",
+        bytesBase64: Buffer.from("fake-image").toString("base64"),
+      },
+    },
+    tenantCtx: { tenantId: "tenant_authoritative" },
+    imageStorage: {
+      putSourceImage: async (args) => {
+        storageCalls.push(args);
+        return { key: "tenant/tenant_authoritative/session-builder/image-intake/v1/environment_profile/analysis/source/image.jpg" };
+      },
+    },
+    imageAnalysis: {
+      analyzeImage: async (args) => {
+        analysisCalls.push(args);
+        return {
+          text: JSON.stringify({
+            summary: "Small turf space with one goal.",
+            surfaceType: "turf",
+            spaceSize: "small",
+            boundaryType: "small-grid",
+            visibleEquipment: ["cones", "goal"],
+            constraints: ["limited-width"],
+            safetyNotes: [],
+            assumptions: [],
+            analysisConfidence: "medium",
+          }),
+          usage: { inputTokens: 1, outputTokens: 1 },
+          metrics: {},
+          stopReason: "end_turn",
+        };
+      },
+    },
+  });
+
+  assert.equal(storageCalls[0].tenantId, "tenant_authoritative");
+  assert.equal(storageCalls[0].mode, "environment_profile");
+  assert.equal(analysisCalls[0].mode, "environment_profile");
+  assert.equal(result.profile.status, "draft");
+  assert.equal(result.profile.mode, "environment_profile");
+  assert.equal(result.storageKey.includes("tenant/tenant_authoritative/"), true);
 });
 
 test("generateCoachLiteDraft derives an internal Coach Lite draft without changing pack shape", () => {

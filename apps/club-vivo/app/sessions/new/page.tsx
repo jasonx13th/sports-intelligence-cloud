@@ -2,13 +2,27 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
+  analyzeSessionImage,
+  type ConfirmedImageAnalysisProfile,
+  type ImageAnalysisMode,
   SessionBuilderApiError,
   createSession,
   generateSessionPack,
   type GeneratedSession,
-  type SessionPack
 } from "../../../lib/session-builder-api";
-import { NewSessionFlow, type GenerateFormState, type SaveFormState } from "./session-new-flow";
+import {
+  NewSessionFlow,
+  type AnalyzeFormState,
+  type GenerateFormState,
+  type SaveFormState
+} from "./session-new-flow";
+
+const SUPPORTED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const INITIAL_ANALYZE_STATE: AnalyzeFormState = {
+  values: {
+    mode: "environment_profile"
+  }
+};
 
 const INITIAL_GENERATE_STATE: GenerateFormState = {
   values: {
@@ -45,6 +59,70 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function parseConfirmedProfile(rawValue: string) {
+  if (!rawValue) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(rawValue) as ConfirmedImageAnalysisProfile;
+  return parsed;
+}
+
+export async function analyzeSessionImageAction(
+  _previousState: AnalyzeFormState,
+  formData: FormData
+): Promise<AnalyzeFormState> {
+  "use server";
+
+  const mode = String(formData.get("mode") || "").trim() as ImageAnalysisMode;
+  const sourceImage = formData.get("sourceImage");
+
+  const values = { mode: mode || "environment_profile" };
+
+  if (mode !== "environment_profile" && mode !== "setup_to_drill") {
+    return {
+      values,
+      error: "Choose a supported image analysis mode before uploading."
+    };
+  }
+
+  if (!(sourceImage instanceof File) || sourceImage.size < 1) {
+    return {
+      values,
+      error: "Upload one image before running image analysis."
+    };
+  }
+
+  if (!SUPPORTED_IMAGE_MIME_TYPES.has(sourceImage.type)) {
+    return {
+      values,
+      error: "Use a JPG, PNG, or WebP image for Week 18 intake."
+    };
+  }
+
+  try {
+    const imageBuffer = Buffer.from(await sourceImage.arrayBuffer());
+    const analysis = await analyzeSessionImage({
+      mode,
+      sourceImage: {
+        filename: sourceImage.name,
+        mimeType: sourceImage.type as "image/jpeg" | "image/png" | "image/webp",
+        bytesBase64: imageBuffer.toString("base64")
+      }
+    });
+
+    return {
+      values,
+      analysis
+    };
+  } catch (error) {
+    return {
+      values,
+      error: getErrorMessage(error, "Image analysis failed. Try a different image or review the mode.")
+    };
+  }
+}
+
 export async function generateSessionPackAction(
   _previousState: GenerateFormState,
   formData: FormData
@@ -56,6 +134,7 @@ export async function generateSessionPackAction(
   const durationMin = String(formData.get("durationMin") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
+  const confirmedProfileJson = String(formData.get("confirmedProfileJson") || "").trim();
 
   const sport = selectedSport === "fut-soccer" ? "soccer" : selectedSport;
   const sportPackId = selectedSport === "fut-soccer" ? "fut-soccer" : undefined;
@@ -84,13 +163,15 @@ export async function generateSessionPackAction(
   }
 
   try {
+    const confirmedProfile = confirmedProfileJson ? parseConfirmedProfile(confirmedProfileJson) : undefined;
     const pack = await generateSessionPack({
       sport,
       ...(sportPackId ? { sportPackId } : {}),
       ageBand,
       durationMin: durationValue,
       theme,
-      ...(equipment ? { equipment: parseEquipment(equipment) } : {})
+      ...(equipment ? { equipment: parseEquipment(equipment) } : {}),
+      ...(confirmedProfile ? { confirmedProfile } : {})
     });
 
     return {
@@ -167,8 +248,10 @@ export default function NewSessionPage() {
         </div>
 
         <NewSessionFlow
+          initialAnalyzeState={INITIAL_ANALYZE_STATE}
           initialGenerateState={INITIAL_GENERATE_STATE}
           initialSaveState={INITIAL_SAVE_STATE}
+          analyzeAction={analyzeSessionImageAction}
           generateAction={generateSessionPackAction}
           saveAction={saveGeneratedSessionAction}
         />

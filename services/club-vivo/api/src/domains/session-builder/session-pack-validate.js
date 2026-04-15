@@ -12,6 +12,7 @@ const {
   DRILL_DIAGRAM_TYPES,
   validateDiagramSpecV1,
 } = require("./diagram-spec-validate");
+const { validateConfirmedProfile } = require("./image-intake-validate");
 
 const GOALS_REQUIRED_THEME_KEYWORDS = ["goal", "goals", "finish", "finishing"];
 const SUPPORTED_SPORT_PACK_IDS = ["fut-soccer"];
@@ -262,7 +263,7 @@ function getMissingEquipmentForTheme(theme, equipment) {
 }
 
 function validateCreateSessionPack(body) {
-  const allowed = ["sport", "sportPackId", "ageBand", "durationMin", "theme", "sessionsCount", "equipment"];
+  const allowed = ["sport", "sportPackId", "ageBand", "durationMin", "theme", "sessionsCount", "equipment", "confirmedProfile"];
   rejectUnknownFields(body, allowed);
 
   requireFields(body, ["sport", "ageBand", "durationMin", "theme"]);
@@ -326,6 +327,7 @@ function validateCreateSessionPack(body) {
     theme,
     sessionsCount,
     ...(equipment.length ? { equipment } : {}),
+    ...(body?.confirmedProfile ? { confirmedProfile: validateConfirmedProfile(body.confirmedProfile) } : {}),
   };
 }
 

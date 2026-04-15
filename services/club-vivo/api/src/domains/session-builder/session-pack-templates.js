@@ -20,6 +20,22 @@ function titleCase(value) {
     .join(" ");
 }
 
+function mergeUniqueStrings(...groups) {
+  const seen = new Set();
+  const result = [];
+
+  for (const group of groups) {
+    for (const item of Array.isArray(group) ? group : []) {
+      const normalized = normalizeTheme(item);
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      result.push(normalized);
+    }
+  }
+
+  return result;
+}
+
 function displayAgeGroup(ageBand) {
   const normalized = String(ageBand || "").trim().toLowerCase();
   if (normalized.startsWith("u")) {
@@ -248,6 +264,49 @@ function generateSessionFromTheme({ sport, sportPackId, ageBand, durationMin, th
   return templateFallback({ sport, ageBand, durationMin, theme: themeKey || "general", equipment });
 }
 
+function applyEnvironmentProfileToSession(session, confirmedProfile) {
+  return {
+    ...session,
+    equipment: mergeUniqueStrings(session.equipment, confirmedProfile?.visibleEquipment),
+  };
+}
+
+function buildSetupSeedDescription(confirmedProfile, fallbackDescription) {
+  const parts = [
+    confirmedProfile.summary,
+    `Layout: ${confirmedProfile.layoutType}.`,
+    `Organization: ${confirmedProfile.playerOrganization}.`,
+  ];
+
+  if (Array.isArray(confirmedProfile.focusTags) && confirmedProfile.focusTags.length > 0) {
+    parts.push(`Focus: ${confirmedProfile.focusTags.join(", ")}.`);
+  }
+
+  if (Array.isArray(confirmedProfile.constraints) && confirmedProfile.constraints.length > 0) {
+    parts.push(`Constraints: ${confirmedProfile.constraints.join(", ")}.`);
+  }
+
+  return parts.filter(Boolean).join(" ") || fallbackDescription;
+}
+
+function applySetupProfileToSession(session, confirmedProfile) {
+  const activities = Array.isArray(session.activities) ? session.activities.slice() : [];
+  if (activities.length > 0) {
+    activities[0] = {
+      ...activities[0],
+      name: titleCase(confirmedProfile.focusTags?.join(" ") || confirmedProfile.summary || activities[0].name),
+      description: buildSetupSeedDescription(confirmedProfile, activities[0].description),
+    };
+  }
+
+  return {
+    ...session,
+    objectiveTags: mergeUniqueStrings(session.objectiveTags, confirmedProfile.focusTags),
+    equipment: mergeUniqueStrings(session.equipment, confirmedProfile.visibleEquipment),
+    activities,
+  };
+}
+
 function inferActivityPhase(activityName, index, activitiesLength) {
   const normalizedName = normalizeTheme(activityName);
 
@@ -321,14 +380,32 @@ function buildCoachLiteDraftFromPack(pack) {
   return validateSessionPackV2Draft(draft);
 }
 
-function generatePack({ sport, sportPackId, ageBand, durationMin, theme, sessionsCount, equipment }) {
+function generatePack({ sport, sportPackId, ageBand, durationMin, theme, sessionsCount, equipment, confirmedProfile }) {
   const packId = require("crypto").randomUUID();
   const createdAt = new Date().toISOString();
+  const mergedEquipment = mergeUniqueStrings(equipment, confirmedProfile?.visibleEquipment);
 
   const sessions = [];
   for (let i = 0; i < sessionsCount; i++) {
     // Slight variation hook for later (today deterministic)
-    sessions.push(generateSessionFromTheme({ sport, sportPackId, ageBand, durationMin, theme, equipment }));
+    let session = generateSessionFromTheme({
+      sport,
+      sportPackId,
+      ageBand,
+      durationMin,
+      theme,
+      equipment: mergedEquipment,
+    });
+
+    if (confirmedProfile?.mode === "environment_profile") {
+      session = applyEnvironmentProfileToSession(session, confirmedProfile);
+    }
+
+    if (confirmedProfile?.mode === "setup_to_drill") {
+      session = applySetupProfileToSession(session, confirmedProfile);
+    }
+
+    sessions.push(session);
   }
 
   return {
@@ -339,7 +416,7 @@ function generatePack({ sport, sportPackId, ageBand, durationMin, theme, session
     durationMin,
     theme,
     sessionsCount,
-    ...(Array.isArray(equipment) && equipment.length ? { equipment } : {}),
+    ...(mergedEquipment.length ? { equipment: mergedEquipment } : {}),
     sessions,
   };
 }

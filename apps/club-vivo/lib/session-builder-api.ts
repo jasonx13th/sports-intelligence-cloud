@@ -43,6 +43,68 @@ export type GenerateSessionPackInput = {
   theme: string;
   sessionsCount?: number;
   equipment?: string[];
+  confirmedProfile?: ConfirmedImageAnalysisProfile;
+};
+
+export type ImageAnalysisMode = "environment_profile" | "setup_to_drill";
+export type SourceImageMimeType = "image/jpeg" | "image/png" | "image/webp";
+export type AnalysisStatus = "draft" | "confirmed";
+export type AnalysisConfidence = "low" | "medium" | "high";
+export type SpaceSize = "small" | "medium" | "large" | "full" | "unknown";
+
+export type EnvironmentProfile = {
+  mode: "environment_profile";
+  schemaVersion: 1;
+  analysisId: string;
+  status: AnalysisStatus;
+  sourceImageId: string;
+  sourceImageMimeType: SourceImageMimeType;
+  summary: string;
+  surfaceType: "grass" | "turf" | "indoor" | "hardcourt" | "unknown";
+  spaceSize: SpaceSize;
+  boundaryType: "small-grid" | "half-field" | "full-field" | "indoor-court" | "mixed" | "unknown";
+  visibleEquipment: string[];
+  constraints: string[];
+  safetyNotes: string[];
+  assumptions: string[];
+  analysisConfidence: AnalysisConfidence;
+};
+
+export type SetupProfile = {
+  mode: "setup_to_drill";
+  schemaVersion: 1;
+  analysisId: string;
+  status: AnalysisStatus;
+  sourceImageId: string;
+  sourceImageMimeType: SourceImageMimeType;
+  summary: string;
+  layoutType: "box" | "lane" | "channel" | "grid" | "half-pitch" | "unknown";
+  spaceSize: SpaceSize;
+  playerOrganization: "individual" | "pairs" | "small-groups" | "two-lines" | "two-teams" | "unknown";
+  visibleEquipment: string[];
+  focusTags: string[];
+  constraints: string[];
+  assumptions: string[];
+  analysisConfidence: AnalysisConfidence;
+};
+
+export type ImageAnalysisProfile = EnvironmentProfile | SetupProfile;
+export type ConfirmedImageAnalysisProfile =
+  | (Omit<EnvironmentProfile, "status"> & { status: "confirmed" })
+  | (Omit<SetupProfile, "status"> & { status: "confirmed" });
+
+export type AnalyzeSessionImageInput = {
+  mode: ImageAnalysisMode;
+  sourceImage: {
+    filename?: string;
+    mimeType: SourceImageMimeType;
+    bytesBase64: string;
+  };
+};
+
+export type ImageAnalysisResult = {
+  analysisId: string;
+  profile: ImageAnalysisProfile;
 };
 
 export type GeneratedSession = {
@@ -152,6 +214,21 @@ export async function generateSessionPack(input: GenerateSessionPackInput) {
   });
 
   return result.pack;
+}
+
+export async function analyzeSessionImage(input: AnalyzeSessionImageInput) {
+  const result = await requestJson<{
+    analysis: ImageAnalysisResult;
+  }>("/session-packs", {
+    method: "POST",
+    body: JSON.stringify({
+      requestType: "image-analysis",
+      mode: input.mode,
+      sourceImage: input.sourceImage
+    })
+  });
+
+  return result.analysis;
 }
 
 export async function createSession(session: GeneratedSession) {

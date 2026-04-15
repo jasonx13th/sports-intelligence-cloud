@@ -3,12 +3,31 @@
 
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
-const { processSessionPackRequest } = require("../src/domains/session-builder/session-builder-pipeline");
+const {
+  processSessionPackRequest,
+  processSessionImageAnalysisRequest,
+} = require("../src/domains/session-builder/session-builder-pipeline");
+const { createSessionBuilderImageAnalysis } = require("../src/platform/bedrock/session-builder-image-analysis");
+const { createSessionBuilderImageStorage } = require("../src/platform/storage/session-builder-image-storage");
 const { BadRequestError, NotFoundError, InternalError } = require("../src/platform/errors/errors");
 
 function assertEnv() {
   const missing = [];
   if (!process.env.TENANT_ENTITLEMENTS_TABLE) missing.push("TENANT_ENTITLEMENTS_TABLE");
+  if (missing.length) {
+    throw new InternalError({
+      code: "platform.misconfig.missing_env",
+      message: "Internal server error",
+      details: { missing },
+      retryable: false,
+    });
+  }
+}
+
+function assertImageAnalysisEnv() {
+  const missing = [];
+  if (!process.env.SESSION_IMAGE_BUCKET_NAME) missing.push("SESSION_IMAGE_BUCKET_NAME");
+  if (!process.env.SESSION_IMAGE_ANALYSIS_MODEL_ID) missing.push("SESSION_IMAGE_ANALYSIS_MODEL_ID");
   if (missing.length) {
     throw new InternalError({
       code: "platform.misconfig.missing_env",
@@ -36,6 +55,7 @@ function routeKey(event) {
 
 function createSessionPacksInner({
   processSessionPackFn = processSessionPackRequest,
+  processSessionImageAnalysisFn = processSessionImageAnalysisRequest,
 } = {}) {
   return async function inner({ event, tenantCtx, logger }) {
     assertEnv();
@@ -58,9 +78,60 @@ function createSessionPacksInner({
         });
       }
 
+      if (body?.requestType === "image-analysis") {
+        assertImageAnalysisEnv();
+
+        try {
+          const imageStorage = createSessionBuilderImageStorage({
+            bucketName: process.env.SESSION_IMAGE_BUCKET_NAME,
+          });
+          const imageAnalysis = createSessionBuilderImageAnalysis();
+          const analysisResult = await processSessionImageAnalysisFn({
+            rawInput: body,
+            tenantCtx,
+            imageStorage,
+            imageAnalysis,
+          });
+
+          logger.info("session_image_analysis_success", "session image analysis completed", {
+            tenant: { tenantId: tenantCtx?.tenantId, role: tenantCtx?.role, tier: tenantCtx?.tier },
+            analysis: {
+              analysisId: analysisResult.analysisId,
+              mode: analysisResult.profile.mode,
+              stopReason: analysisResult.stopReason,
+            },
+          });
+
+          return json(201, {
+            analysis: {
+              analysisId: analysisResult.analysisId,
+              profile: analysisResult.profile,
+            },
+          });
+        } catch (e) {
+          logger.warn("session_image_analysis_failure", "session image analysis failed", {
+            tenant: { tenantId: tenantCtx?.tenantId, role: tenantCtx?.role, tier: tenantCtx?.tier },
+            error: {
+              code: e?.code,
+              details: e?.details,
+            },
+          });
+
+          if (e?.statusCode === 400 || e?.httpStatus === 400) {
+            throw new BadRequestError({
+              code: "platform.bad_request",
+              message: "Bad request",
+              details: e?.details || {},
+              cause: e,
+            });
+          }
+          throw e;
+        }
+      }
+
       let pipelineResult;
       try {
-        pipelineResult = processSessionPackFn(body);
+        pipelineResult = await processSessionPackFn(body);
       } catch (e) {
         if (e?.statusCode === 400) {
           throw new BadRequestError({
@@ -74,6 +145,16 @@ function createSessionPacksInner({
       }
 
       const pack = pipelineResult.validatedPack;
+
+      if (pipelineResult.normalizedInput?.confirmedProfile) {
+        logger.info("session_image_profile_confirmed", "confirmed image profile used for generation", {
+          tenant: { tenantId: tenantCtx?.tenantId, role: tenantCtx?.role, tier: tenantCtx?.tier },
+          analysis: {
+            analysisId: pipelineResult.normalizedInput.confirmedProfile.analysisId,
+            mode: pipelineResult.normalizedInput.confirmedProfile.mode,
+          },
+        });
+      }
 
       logger.info("pack_generated_success", "session pack generated", {
         http: { statusCode: 201 },

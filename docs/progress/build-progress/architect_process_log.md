@@ -21,6 +21,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 14](#week-14)
 - [Week 15](#week-15)
 - [Week 16](#week-16)
+- [Week 17](#week-17)
 
 ## Week 0
 
@@ -698,3 +699,65 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 ### Next steps
 - Run and capture the Week 16 demo in the target environment.
 - Move into Week 17 with a plan-only pass first so the next slice stays thin and explicit.
+
+
+## Week 17 - Fut-Soccer Merge v1
+
+### Goals
+- Merge Fut-Soccer into SIC as a first-class coaching flow on top of the shared Session Builder foundation.
+- Keep canonical `sport = "soccer"` while introducing a narrow sport-pack bias path for Fut-Soccer generation.
+- Preserve the existing save, list, detail, and export path without widening the downstream session model.
+- Document the Week 17 architecture, product scope, demo flow, and explicit v1 limitations.
+
+### Work completed
+- Day 1 froze the Week 17 merge shape and documented Fut-Soccer as:
+  - a backend and domain sport pack
+  - a Club Vivo product flavor
+- Day 1 also froze the canonical internal representation:
+  - `sport = "soccer"`
+  - `sportPackId = "fut-soccer"`
+- Day 2 widened only the generation request surface:
+  - optional `sportPackId` on `POST /session-packs`
+- Day 2 kept the only supported v1 sport-pack combination intentionally narrow:
+  - `sport = "soccer"`
+  - `sportPackId = "fut-soccer"`
+- Day 2 kept the shared Session Builder downstream path unchanged:
+  - `POST /sessions`
+  - `GET /sessions`
+  - `GET /sessions/{sessionId}`
+  - `GET /sessions/{sessionId}/pdf`
+- Day 2 added the current Club Vivo `Soccer` / `Fut-Soccer` selector as a visible bridge slice for the merge, without treating it as the final coach UX boundary.
+- Day 2 kept futsal out of scope in both UI and runtime behavior.
+- Day 3 added the supporting Week 17 docs and demo evidence:
+  - `docs/architecture/fut-soccer-merge-v1.md`
+  - `docs/product/sic-coach-lite/fut-soccer-scope-v1.md`
+  - `docs/progress/week_17/demo-script.md`
+  - `docs/progress/week_17/closeout-summary.md`
+
+### Tenancy/security checks
+- Tenant scope remained server-derived from verified auth plus authoritative entitlements.
+- No `tenant_id`, `tenantId`, or `x-tenant-id` was introduced into the Week 17 runtime surface.
+- No auth-boundary, tenancy-boundary, or entitlements-model change was introduced.
+- No separate Fut-Soccer app, auth path, tenancy path, or persistence path was introduced.
+- No scan-then-filter pattern was introduced.
+- Save, list, detail, and export remained on the existing tenant-safe Session Builder path.
+
+### Observability notes
+- Week 17 stayed intentionally minimal and real on observability.
+- Existing route-level logging remained the primary runtime evidence surface.
+- Focused validator, template, pipeline, and handler tests remained the main verification surface for the Day 2 runtime slice.
+- Day 3 added documentation and demo evidence, not a new observability subsystem.
+- No new dashboards, alarms, or metric filters were added in this slice.
+
+### Evidence
+- `docs/progress/week_17/week17-day1-scope-lock.md`
+- `docs/architecture/fut-soccer-merge-v1.md`
+- `docs/product/sic-coach-lite/fut-soccer-scope-v1.md`
+- `docs/progress/week_17/demo-script.md`
+- `docs/progress/week_17/closeout-summary.md`
+
+### Next steps
+- Keep the current Week 17 selector understood as a bridge slice, not the final intended coach UX.
+- Move toward one soccer-first assistant and one shared soccer workflow over time, with Fut-Soccer absorbed more as internal coaching methodology and generation bias rather than a permanent visible product fork.
+- Keep futsal out of scope until explicit evidence and a separate approved slice exist.
+- Continue future Coach Lite direction without implying that chatbot or RAG-based workflow is already shipped in the current product.

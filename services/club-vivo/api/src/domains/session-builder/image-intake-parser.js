@@ -138,6 +138,27 @@ function normalizeAnalysisConfidence(value) {
   return trimmed;
 }
 
+function normalizeLayoutType(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return value;
+  }
+
+  if (["box", "lane", "channel", "grid", "half-pitch", "unknown"].includes(normalized)) {
+    return normalized;
+  }
+
+  if (normalized === "half pitch") {
+    return "half-pitch";
+  }
+
+  return "unknown";
+}
+
 function normalizeStringArray(value) {
   if (value === undefined || value === null) {
     return [];
@@ -189,8 +210,23 @@ function normalizeParsedProfile(mode, parsed) {
   };
 }
 
+function normalizeSetupProfile(parsed) {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return parsed;
+  }
+
+  return {
+    ...parsed,
+    ...(Object.prototype.hasOwnProperty.call(parsed, "layoutType")
+      ? { layoutType: normalizeLayoutType(parsed.layoutType) }
+      : {}),
+  };
+}
+
 function parseImageAnalysisText({ mode, text, analysisId, sourceImageId, sourceImageMimeType }) {
-  const parsed = normalizeParsedProfile(mode, parseModelJson(text));
+  const modelJson = parseModelJson(text);
+  const parsed =
+    mode === "environment_profile" ? normalizeParsedProfile(mode, modelJson) : normalizeSetupProfile(modelJson);
 
   const withEnvelope = {
     ...parsed,

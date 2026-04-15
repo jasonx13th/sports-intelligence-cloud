@@ -410,3 +410,47 @@ test("parseImageAnalysisText keeps unsupported environment analysis confidence v
     }
   );
 });
+
+test("parseImageAnalysisText preserves valid setup layout types", () => {
+  const profile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1013",
+    sourceImageId: "image-1013",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Cone box with two lines and one finish gate.",
+      layoutType: "box",
+      spaceSize: "small",
+      playerOrganization: "two-lines",
+      visibleEquipment: ["cones"],
+      focusTags: ["passing"],
+      constraints: [],
+      assumptions: [],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.equal(profile.layoutType, "box");
+});
+
+test("parseImageAnalysisText maps unsupported setup layout types to unknown", () => {
+  const profile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1014",
+    sourceImageId: "image-1014",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Indoor layout with unclear drill lanes.",
+      layoutType: "indoor",
+      spaceSize: "small",
+      playerOrganization: "small-groups",
+      visibleEquipment: ["cones"],
+      focusTags: ["passing"],
+      constraints: [],
+      assumptions: [],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.equal(profile.layoutType, "unknown");
+});

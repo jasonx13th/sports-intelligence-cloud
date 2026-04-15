@@ -220,6 +220,7 @@ function normalizeSetupProfile(parsed) {
     ...(Object.prototype.hasOwnProperty.call(parsed, "layoutType")
       ? { layoutType: normalizeLayoutType(parsed.layoutType) }
       : {}),
+    constraints: normalizeStringArray(parsed.constraints),
   };
 }
 

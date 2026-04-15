@@ -454,3 +454,66 @@ test("parseImageAnalysisText maps unsupported setup layout types to unknown", ()
 
   assert.equal(profile.layoutType, "unknown");
 });
+
+test("parseImageAnalysisText keeps valid setup constraints arrays", () => {
+  const profile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1015",
+    sourceImageId: "image-1015",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Grid setup with one blocked passing lane.",
+      layoutType: "grid",
+      spaceSize: "small",
+      playerOrganization: "pairs",
+      visibleEquipment: ["cones"],
+      focusTags: ["passing"],
+      constraints: ["tight-space", "one-touch"],
+      assumptions: [],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.deepEqual(profile.constraints, ["tight-space", "one-touch"]);
+});
+
+test("parseImageAnalysisText normalizes invalid setup constraints shapes to an empty array", () => {
+  const nonArrayProfile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1016",
+    sourceImageId: "image-1016",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Cone channel with unclear restrictions.",
+      layoutType: "channel",
+      spaceSize: "medium",
+      playerOrganization: "small-groups",
+      visibleEquipment: ["cones"],
+      focusTags: ["dribbling"],
+      constraints: "tight-space",
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  const mixedArrayProfile = parseImageAnalysisText({
+    mode: "setup_to_drill",
+    analysisId: "analysis-1017",
+    sourceImageId: "image-1017",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Lane setup with partially visible constraints.",
+      layoutType: "lane",
+      spaceSize: "medium",
+      playerOrganization: "two-lines",
+      visibleEquipment: ["cones"],
+      focusTags: ["finishing"],
+      constraints: ["tight-space", 2],
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.deepEqual(nonArrayProfile.constraints, []);
+  assert.deepEqual(mixedArrayProfile.constraints, []);
+});

@@ -41,8 +41,50 @@ function parseModelJson(text) {
   }
 }
 
+function normalizeSurfaceType(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return value;
+  }
+
+  if (["grass", "turf", "indoor", "hardcourt", "unknown"].includes(normalized)) {
+    return normalized;
+  }
+
+  if (normalized === "synthetic turf" || normalized === "artificial turf") {
+    return "turf";
+  }
+
+  if (normalized === "indoor court") {
+    return "indoor";
+  }
+
+  if (normalized === "hard court") {
+    return "hardcourt";
+  }
+
+  return "unknown";
+}
+
+function normalizeParsedProfile(mode, parsed) {
+  if (mode !== "environment_profile" || !parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return parsed;
+  }
+
+  return {
+    ...parsed,
+    ...(Object.prototype.hasOwnProperty.call(parsed, "surfaceType")
+      ? { surfaceType: normalizeSurfaceType(parsed.surfaceType) }
+      : {}),
+  };
+}
+
 function parseImageAnalysisText({ mode, text, analysisId, sourceImageId, sourceImageMimeType }) {
-  const parsed = parseModelJson(text);
+  const parsed = normalizeParsedProfile(mode, parseModelJson(text));
 
   const withEnvelope = {
     ...parsed,

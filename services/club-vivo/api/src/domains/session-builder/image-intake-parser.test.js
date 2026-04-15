@@ -61,3 +61,47 @@ test("parseImageAnalysisText rejects unsupported fields from model output", () =
     }
   );
 });
+
+test("parseImageAnalysisText normalizes common environment surface synonyms before validation", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-456",
+    sourceImageId: "image-456",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Synthetic turf area with one goal.",
+      surfaceType: "Synthetic Turf",
+      spaceSize: "small",
+      boundaryType: "small-grid",
+      visibleEquipment: ["cones"],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.equal(profile.surfaceType, "turf");
+});
+
+test("parseImageAnalysisText maps unsupported environment surface values to unknown", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-789",
+    sourceImageId: "image-789",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Unclear surface markings.",
+      surfaceType: "sand pit",
+      spaceSize: "small",
+      boundaryType: "mixed",
+      visibleEquipment: [],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.equal(profile.surfaceType, "unknown");
+});

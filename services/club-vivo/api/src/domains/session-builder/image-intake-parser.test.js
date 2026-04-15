@@ -234,3 +234,66 @@ test("parseImageAnalysisText normalizes invalid environment constraints shapes t
   assert.deepEqual(nonArrayProfile.constraints, []);
   assert.deepEqual(mixedArrayProfile.constraints, []);
 });
+
+test("parseImageAnalysisText keeps valid environment safety notes arrays", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1005",
+    sourceImageId: "image-1005",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Indoor area with a slick sideline.",
+      surfaceType: "indoor",
+      spaceSize: "small",
+      boundaryType: "indoor-court",
+      visibleEquipment: ["cones"],
+      constraints: [],
+      safetyNotes: ["wet-surface", "low-ceiling"],
+      assumptions: [],
+      analysisConfidence: "medium",
+    }),
+  });
+
+  assert.deepEqual(profile.safetyNotes, ["wet-surface", "low-ceiling"]);
+});
+
+test("parseImageAnalysisText normalizes invalid environment safety note shapes to an empty array", () => {
+  const nonArrayProfile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1006",
+    sourceImageId: "image-1006",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Open turf field with unclear hazards.",
+      surfaceType: "turf",
+      spaceSize: "medium",
+      boundaryType: "mixed",
+      visibleEquipment: [],
+      constraints: [],
+      safetyNotes: "wet-surface",
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  const mixedArrayProfile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-1007",
+    sourceImageId: "image-1007",
+    sourceImageMimeType: "image/png",
+    text: JSON.stringify({
+      summary: "Shared space with partially visible hazards.",
+      surfaceType: "grass",
+      spaceSize: "large",
+      boundaryType: "full-field",
+      visibleEquipment: [],
+      constraints: [],
+      safetyNotes: ["slippery", false],
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.deepEqual(nonArrayProfile.safetyNotes, []);
+  assert.deepEqual(mixedArrayProfile.safetyNotes, []);
+});

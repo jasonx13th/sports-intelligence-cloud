@@ -163,6 +163,7 @@ function normalizeParsedProfile(mode, parsed) {
       ? { boundaryType: normalizeBoundaryType(parsed.boundaryType) }
       : {}),
     constraints: normalizeStringArray(parsed.constraints),
+    safetyNotes: normalizeStringArray(parsed.safetyNotes),
   };
 }
 

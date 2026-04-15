@@ -117,6 +117,7 @@ export class SicApiStack extends Stack {
       timeout: Duration.seconds(15),
       environment: {
         TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+        SESSION_IMAGE_BUCKET_NAME: sessionPdfBucket.bucketName,
       },
     });
 
@@ -175,6 +176,13 @@ export class SicApiStack extends Stack {
       new iam.PolicyStatement({
         actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:DescribeTable", "dynamodb:BatchGetItem"],
         resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
+    sessionPacksFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject"],
+        resources: [sessionPdfBucket.arnForObjects("tenant/*/session-builder/image-intake/v1/*")],
       })
     );
 

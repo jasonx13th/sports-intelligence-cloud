@@ -53,6 +53,8 @@ export class SicApiStack extends Stack {
       removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDev,
     });
+    const sessionImageAnalysisModelId = "amazon.nova-2-lite-v1:0";
+    const sessionImageAnalysisModelArn = `arn:${Stack.of(this).partition}:bedrock:${Stack.of(this).region}::foundation-model/${sessionImageAnalysisModelId}`;
 
     // Lambda: /me
     const meFn = new lambda.Function(this, "MeFn", {
@@ -118,6 +120,7 @@ export class SicApiStack extends Stack {
       environment: {
         TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
         SESSION_IMAGE_BUCKET_NAME: sessionPdfBucket.bucketName,
+        SESSION_IMAGE_ANALYSIS_MODEL_ID: sessionImageAnalysisModelId,
       },
     });
 
@@ -183,6 +186,13 @@ export class SicApiStack extends Stack {
       new iam.PolicyStatement({
         actions: ["s3:PutObject"],
         resources: [sessionPdfBucket.arnForObjects("tenant/*/session-builder/image-intake/v1/*")],
+      })
+    );
+
+    sessionPacksFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["bedrock:InvokeModel"],
+        resources: [sessionImageAnalysisModelArn],
       })
     );
 

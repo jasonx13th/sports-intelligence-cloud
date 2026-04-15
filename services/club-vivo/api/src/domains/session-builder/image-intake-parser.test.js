@@ -105,3 +105,25 @@ test("parseImageAnalysisText maps unsupported environment surface values to unkn
 
   assert.equal(profile.surfaceType, "unknown");
 });
+
+test("parseImageAnalysisText normalizes environment space size casing before validation", () => {
+  const profile = parseImageAnalysisText({
+    mode: "environment_profile",
+    analysisId: "analysis-999",
+    sourceImageId: "image-999",
+    sourceImageMimeType: "image/jpeg",
+    text: JSON.stringify({
+      summary: "Size could not be determined from the photo.",
+      surfaceType: "turf",
+      spaceSize: "Unknown",
+      boundaryType: "mixed",
+      visibleEquipment: ["cones"],
+      constraints: [],
+      safetyNotes: [],
+      assumptions: [],
+      analysisConfidence: "low",
+    }),
+  });
+
+  assert.equal(profile.spaceSize, "unknown");
+});

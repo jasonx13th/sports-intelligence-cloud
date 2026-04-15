@@ -70,6 +70,23 @@ function normalizeSurfaceType(value) {
   return "unknown";
 }
 
+function normalizeSpaceSize(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return value;
+  }
+
+  if (["small", "medium", "large", "full", "unknown"].includes(normalized)) {
+    return normalized;
+  }
+
+  return "unknown";
+}
+
 function normalizeParsedProfile(mode, parsed) {
   if (mode !== "environment_profile" || !parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return parsed;
@@ -79,6 +96,9 @@ function normalizeParsedProfile(mode, parsed) {
     ...parsed,
     ...(Object.prototype.hasOwnProperty.call(parsed, "surfaceType")
       ? { surfaceType: normalizeSurfaceType(parsed.surfaceType) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(parsed, "spaceSize")
+      ? { spaceSize: normalizeSpaceSize(parsed.spaceSize) }
       : {}),
   };
 }

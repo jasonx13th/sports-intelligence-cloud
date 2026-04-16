@@ -1,6 +1,6 @@
 # Architect Process Log
 
-Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_15/` notes.
+Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_18/` notes.
 
 ## Running index
 
@@ -22,6 +22,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 15](#week-15)
 - [Week 16](#week-16)
 - [Week 17](#week-17)
+- [Week 18](#week-18)
 
 ## Week 0
 
@@ -761,3 +762,70 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Move toward one soccer-first assistant and one shared soccer workflow over time, with Fut-Soccer absorbed more as internal coaching methodology and generation bias rather than a permanent visible product fork.
 - Keep futsal out of scope until explicit evidence and a separate approved slice exist.
 - Continue future Coach Lite direction without implying that chatbot or RAG-based workflow is already shipped in the current product.
+
+
+## Week 18 - Image-Assisted Intake v1
+
+### Goals
+- Add image-assisted intake inside the existing shared Session Builder workflow.
+- Support two narrow modes:
+  - `environment_profile`
+  - `setup_to_drill`
+- Keep coach confirmation required before generation.
+- Preserve the existing save, list, detail, and export path without widening the downstream session model.
+- Document the Week 18 architecture, product scope, failure behavior, demo flow, and explicit v1 limitations.
+
+### Work completed
+- Day 1 froze the Week 18 v1 slice and contracts in the scope-lock note.
+- Narrow infra and runtime enablement was added only on the existing `SessionPacksFn` path:
+  - tenant-scoped image storage env and prefix-scoped write access
+  - fixed Bedrock model env
+  - exact-model `bedrock:InvokeModel`
+  - corrected swap to a vision-capable in-region model
+- Day 2 shipped the implementation inside the shared Session Builder flow:
+  - one upload entry path in `/sessions/new`
+  - one image-analysis branch on the existing `POST /session-packs` route
+  - one narrow Bedrock adapter boundary
+  - deterministic parser and validator behavior
+  - draft profile -> coach edit/confirm -> confirmed profile -> shared generation
+- Live verification, including iterative Postman checks against the shipped flow, confirmed the non-image regression path, `environment_profile`, `setup_to_drill`, and tenant spoof rejection.
+- Those live checks also exposed bounded parser normalization gaps, which were corrected as parser-local, deterministic, fail-closed hardening without widening the frozen Week 18 contracts.
+- Day 3 added the supporting Week 18 docs and evidence:
+  - `docs/architecture/session-builder-image-assisted-intake-v1.md`
+  - `docs/product/sic-coach-lite/image-assisted-intake-v1-scope.md`
+  - `docs/runbooks/session-builder-image-assisted-intake-v1-failures.md`
+  - `docs/progress/week_18/demo-script.md`
+  - `docs/progress/week_18/closeout-summary.md`
+
+### Tenancy/security checks
+- Tenant scope remained server-derived from verified auth plus authoritative entitlements.
+- No `tenant_id`, `tenantId`, or `x-tenant-id` was introduced into the Week 18 runtime surface.
+- Tenant spoof rejection was validated live.
+- Image storage remained tenant-scoped by server-built key derivation.
+- No auth-boundary, tenancy-boundary, or entitlements-model change was introduced.
+- No separate AI app, auth path, tenancy path, or persistence path was introduced.
+- No scan-then-filter pattern was introduced.
+- Save, list, detail, and export remained on the existing tenant-safe Session Builder path.
+
+### Observability notes
+- Week 18 stayed intentionally narrow and route-level on observability.
+- Current image-intake events are:
+  - `session_image_analysis_success`
+  - `session_image_analysis_failure`
+  - `session_image_profile_confirmed`
+- Focused tests, route-level logs, and the Day 3 docs/runbook/demo/closeout set remained the primary evidence surface for this slice.
+- No broader observability subsystem, dashboard, or alarm expansion was introduced.
+
+### Evidence
+- `docs/progress/week_18/week18-day1-scope-lock.md`
+- `docs/architecture/session-builder-image-assisted-intake-v1.md`
+- `docs/product/sic-coach-lite/image-assisted-intake-v1-scope.md`
+- `docs/runbooks/session-builder-image-assisted-intake-v1-failures.md`
+- `docs/progress/week_18/demo-script.md`
+- `docs/progress/week_18/closeout-summary.md`
+
+### Next steps
+- Start Week 19 with a plan-only pass and keep the next slice as disciplined as Week 18.
+- Build on the shipped Week 18 shared Session Builder foundation rather than widen it abruptly.
+- Focus next on confirmed-profile UX, validation clarity, or narrow observability around the shipped image-intake slice.
+- Do not imply broader AI-platform, chatbot, auth, tenancy, or entitlements expansion from the current Week 18 delivery.

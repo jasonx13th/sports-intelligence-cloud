@@ -23,7 +23,7 @@ This is a focused pilot workflow, not a full club platform.
 
 Make sure you have:
 
-- the approved KSC pilot login entry path
+- the approved KSC pilot login entry path: `/login`
 - your approved coach access
 - a clear idea of your session needs, such as:
   - age group or level
@@ -38,10 +38,10 @@ If you expected access and cannot sign in, contact the pilot operator.
 
 ## Step 1 — Sign in
 
-1. Open the approved KSC pilot sign-in page.
+1. Open `/login`.
 2. Select **Sign in**.
 3. Complete the existing approved sign-in flow.
-4. Continue into the SIC coach app.
+4. Continue into the SIC coach app at `/sessions/new`.
 
 You do not need to:
 
@@ -52,7 +52,7 @@ You do not need to:
 
 ## Step 2 — Start a session
 
-After sign-in, go to the main coach session flow.
+After sign-in, you should land on `/sessions/new`.
 
 Start a new session using the current Session Builder path.
 

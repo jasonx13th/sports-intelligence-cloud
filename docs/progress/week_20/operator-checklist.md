@@ -79,11 +79,11 @@ Confirm pilot-user assumptions are explicit and supportable:
 Confirm coaches can be sent to one clear entry path:
 
 - [ ] `login-entry-path.md` exists
-- [ ] there is one approved coach-facing entry path for the pilot
+- [ ] there is one approved coach-facing entry path for the pilot: `/login`
 - [ ] the entry path uses the existing approved sign-in flow
 - [ ] the entry path does not ask coaches to choose a tenant
 - [ ] the entry path does not expose a second login model
-- [ ] post-login landing expectations are clear
+- [ ] post-login landing expectations are clear: `/sessions/new`
 - [ ] support fallback wording exists for blocked coaches
 - [ ] operator guidance matches the actual coach path being used
 

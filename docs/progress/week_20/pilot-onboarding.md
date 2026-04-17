@@ -95,15 +95,15 @@ This pilot is not a public signup or open beta.
 
 ## How coaches access SIC
 
-Coaches should use the approved KSC pilot login entry path provided by the operator.
+Coaches should use `/login` as the approved KSC pilot login entry path provided by the operator.
 
 The intended access flow is:
 
-1. open the KSC pilot sign-in page
+1. open `/login`
 2. select the sign-in action
 3. complete the existing approved sign-in flow
 4. enter the protected SIC coach app
-5. continue into session work
+5. continue into `/sessions/new`
 
 Coaches do not need to choose a tenant, enter a tenant identifier, or provide technical access information manually.
 

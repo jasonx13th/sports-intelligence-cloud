@@ -75,7 +75,7 @@ The safest Week 20 pattern is:
 
 ### Entry point
 
-A single pilot-safe website path that tells coaches how to enter SIC for the KSC pilot.
+Use `/login` as the single pilot-safe website path that tells coaches how to enter SIC for the KSC pilot.
 
 This entry point should:
 
@@ -99,7 +99,7 @@ It should not:
 
 ### Post-login landing path
 
-After successful sign-in, the coach should land in the current protected app area that best supports the pilot.
+After successful sign-in, the coach should land on `/sessions/new` inside the current protected coach-facing SIC app.
 
 Recommended landing characteristics:
 
@@ -172,11 +172,9 @@ The following is a narrow Week 20 draft, not final product copy.
 
 The post-login landing point should stay inside the current coach-facing SIC web app.
 
-The best Week 20 landing path is whichever current protected page most quickly supports the pilot coach flow, such as:
+The best Week 20 landing path for the current pilot is:
 
-- dashboard
-- sessions
-- sessions/new
+- `/sessions/new`
 
 Selection criteria:
 
@@ -189,7 +187,7 @@ Selection criteria:
 
 The operator should be able to explain the coach access path in one sentence:
 
-`Go to the KSC coach pilot sign-in page, sign in through the approved access flow, and continue into the SIC coach app.`
+`Go to /login, sign in through the approved access flow, and continue into the SIC coach app at /sessions/new.`
 
 The operator should also be ready to confirm:
 

@@ -1,6 +1,6 @@
 # Architect Process Log
 
-Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_19/` notes.
+Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_20/` notes.
 
 ## Running index
 
@@ -24,6 +24,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 17](#week-17)
 - [Week 18](#week-18)
 - [Week 19](#week-19)
+- [Week 20](#week-20)
 
 ## Week 0
 
@@ -890,3 +891,60 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Run the frozen harness and golden examples against the current AI-assisted Session Builder slice to support the Week 20 KSC pilot-readiness decision.
 - Use the failure-classification rules and pass/hold/fail thresholds to identify only bounded fixes inside the current shared Session Builder flow if hard gates fail.
 - Carry the frozen golden examples, deterministic checks, and review criteria into Week 20 pilot-readiness work without widening the AI slice into a broader platform narrative.
+
+
+## Week 20 - KSC Pilot Readiness Implementation and Runtime Evidence
+
+### Goals
+- Complete the KSC pilot-readiness documentation pack and operator guidance.
+- Implement the narrow coach-facing login entry path in `apps/club-vivo`.
+- Implement the Week 20 pilot feedback contract on the existing feedback route and wire the saved-session feedback panel.
+- Attach runtime evidence without widening scope into auth, tenancy, entitlements, infra, or broader observability work.
+
+### Work completed
+- Completed the Week 20 KSC pilot-readiness documentation pack and simplified filenames under `docs/progress/week_20/`.
+- Implemented the coach-facing login entry path in `apps/club-vivo`:
+  - `/login` is now the KSC pilot entry page
+  - `/login/start` still launches the existing Cognito flow
+  - successful auth now lands on `/sessions/new`
+- Implemented the Week 20 pilot feedback contract on the existing `POST /sessions/{sessionId}/feedback` route:
+  - replaced the old request shape with the Week 20 pilot fields
+  - persisted `schemaVersion: 2`
+  - kept single-submit behavior with existing `404` / `409` semantics
+  - removed `session_run_confirmed` from feedback submission
+  - added only small structured feedback log enrichment
+- Implemented the saved-session feedback panel on `apps/club-vivo/app/sessions/[sessionId]/page.tsx` with a compact client panel and page-level server action, reusing the existing feedback route and keeping feedback tied to saved sessions only.
+
+### Tenancy/security checks
+- No auth-boundary changes were introduced.
+- No tenancy-boundary changes were introduced.
+- No entitlements-model changes were introduced.
+- No client-trusted tenant identity was introduced.
+- Tenant scope remains server-derived from verified auth plus authoritative entitlements.
+- No `tenant_id`, `tenantId`, or `x-tenant-id` was accepted from client input in the shipped Week 20 slices.
+- Protected-route behavior remained fail closed.
+
+### Observability notes
+- Week 20 stayed intentionally narrow and route-level on observability.
+- Existing platform/request logging remained in place.
+- Feedback submission added only small structured feedback log enrichment.
+- No broader observability subsystem or dashboard rollout was introduced.
+
+### Evidence
+- Runtime validation completed:
+  - `/login -> Cognito -> /sessions/new` runtime-validated in dev
+  - unauthenticated `/sessions/new` fail-closed check passed
+  - saved-session feedback first submit succeeded
+  - duplicate feedback protection returned the expected message on second submit
+- Focused backend feedback tests passed via direct `node` execution.
+- `apps/club-vivo` passed `tsc --noEmit`.
+- Deployment note:
+  - repo does not auto-deploy the Club Vivo API on push
+  - `cdk diff` with real Cognito env values showed code-only Lambda asset updates
+  - manually deployed `SicApiStack-Dev`
+  - feedback runtime validation passed after deploy
+
+### Next steps
+- Keep the shipped login-entry and saved-session feedback flows narrow and stable for pilot use.
+- Run the walkthrough and capture separate evidence rather than implying it from the current runtime checks.
+- Continue holding the line on auth, tenancy, entitlements, and infra boundaries as pilot feedback comes in.

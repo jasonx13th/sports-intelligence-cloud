@@ -11,6 +11,7 @@ Week 20 closeout now includes:
 - completed pilot-readiness documentation
 - implemented and runtime-validated login-entry-path evidence in dev
 - implemented and runtime-validated saved-session feedback evidence in dev
+- architect process log updated to record the Week 20 shipped slices, validation, deploy note, and boundary confirmation
 
 This closeout does not claim pilot walkthrough completion or broader observability work beyond the narrow shipped slice.
 
@@ -61,12 +62,13 @@ That Week 20 work:
 - created coach-facing onboarding and quick-start guidance
 - created an internal operator checklist
 - created a walkthrough script for pilot validation and evidence capture
+- updated `docs/progress/build-progress/architect_process_log.md` with a Week 20 entry capturing shipped scope, validation, manual deploy evidence, and boundary confirmation
 
 ## Why it changed
 
-These docs were created to bridge SIC from internal product progress into a real coach-facing pilot without drifting into broader platform work.
+These docs and shipped slices bridge SIC from internal product progress into a real coach-facing pilot without drifting into broader platform work.
 
-The documentation pack exists to reduce ambiguity in four areas:
+The Week 20 package exists to reduce ambiguity in four areas:
 
 1. pilot setup
 2. coach access

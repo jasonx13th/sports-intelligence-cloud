@@ -133,6 +133,32 @@ export type SessionPdfResult = {
   expiresInSeconds: number;
 };
 
+export type SessionFeedbackImageAnalysisAccuracy = "not_used" | "low" | "medium" | "high";
+export type SessionFeedbackFlowMode =
+  | "session_builder"
+  | "environment_profile"
+  | "setup_to_drill";
+
+export type SubmitSessionFeedbackInput = {
+  sessionQuality: number;
+  drillUsefulness: number;
+  imageAnalysisAccuracy: SessionFeedbackImageAnalysisAccuracy;
+  missingFeatures: string;
+  flowMode?: SessionFeedbackFlowMode;
+};
+
+export type SessionFeedback = {
+  sessionId: string;
+  submittedAt: string;
+  submittedBy: string | null;
+  sessionQuality: number;
+  drillUsefulness: number;
+  imageAnalysisAccuracy: SessionFeedbackImageAnalysisAccuracy;
+  missingFeatures: string;
+  flowMode?: SessionFeedbackFlowMode;
+  schemaVersion: number;
+};
+
 export class SessionBuilderApiError extends Error {
   status: number;
 
@@ -244,4 +270,18 @@ export async function createSession(session: GeneratedSession) {
 
 export async function getSessionPdf(sessionId: string) {
   return requestJson<SessionPdfResult>(`/sessions/${encodeURIComponent(sessionId)}/pdf`);
+}
+
+export async function submitSessionFeedback(
+  sessionId: string,
+  input: SubmitSessionFeedbackInput
+) {
+  const result = await requestJson<{
+    feedback: SessionFeedback;
+  }>(`/sessions/${encodeURIComponent(sessionId)}/feedback`, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+
+  return result.feedback;
 }

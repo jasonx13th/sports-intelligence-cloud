@@ -1,12 +1,64 @@
 import Link from "next/link";
 
-import { getSession } from "../../../lib/session-builder-api";
+import {
+  getSession,
+  SessionBuilderApiError,
+  submitSessionFeedback,
+  type SessionFeedbackFlowMode,
+  type SessionFeedbackImageAnalysisAccuracy,
+} from "../../../lib/session-builder-api";
+import {
+  SessionFeedbackPanel,
+  type FeedbackPanelState,
+} from "./session-feedback-panel";
 
 function formatCreatedAt(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value));
+}
+
+const IMAGE_ANALYSIS_ACCURACY_VALUES = new Set<SessionFeedbackImageAnalysisAccuracy>([
+  "not_used",
+  "low",
+  "medium",
+  "high",
+]);
+
+const FLOW_MODE_VALUES = new Set<SessionFeedbackFlowMode>([
+  "session_builder",
+  "environment_profile",
+  "setup_to_drill",
+]);
+
+const INITIAL_FEEDBACK_PANEL_STATE: FeedbackPanelState = {
+  status: "idle",
+  values: {
+    sessionQuality: "",
+    drillUsefulness: "",
+    imageAnalysisAccuracy: "not_used",
+    missingFeatures: "",
+    flowMode: "",
+  },
+};
+
+function getTrimmedValue(formData: FormData, field: string) {
+  return String(formData.get(field) || "").trim();
+}
+
+function parseImageAnalysisAccuracy(
+  value: string
+): SessionFeedbackImageAnalysisAccuracy | undefined {
+  return IMAGE_ANALYSIS_ACCURACY_VALUES.has(value as SessionFeedbackImageAnalysisAccuracy)
+    ? (value as SessionFeedbackImageAnalysisAccuracy)
+    : undefined;
+}
+
+function parseFlowMode(value: string): SessionFeedbackFlowMode | undefined {
+  return FLOW_MODE_VALUES.has(value as SessionFeedbackFlowMode)
+    ? (value as SessionFeedbackFlowMode)
+    : undefined;
 }
 
 export default async function SessionDetailPage({
@@ -16,6 +68,98 @@ export default async function SessionDetailPage({
 }) {
   const { sessionId } = await params;
   const session = await getSession(sessionId);
+
+  async function submitFeedbackAction(
+    _previousState: FeedbackPanelState,
+    formData: FormData
+  ): Promise<FeedbackPanelState> {
+    "use server";
+
+    const sessionQualityValue = getTrimmedValue(formData, "sessionQuality");
+    const drillUsefulnessValue = getTrimmedValue(formData, "drillUsefulness");
+    const imageAnalysisAccuracyValue = getTrimmedValue(formData, "imageAnalysisAccuracy");
+    const missingFeaturesValue = getTrimmedValue(formData, "missingFeatures");
+    const flowModeValue = getTrimmedValue(formData, "flowMode");
+    const imageAnalysisAccuracy = parseImageAnalysisAccuracy(imageAnalysisAccuracyValue);
+    const flowMode = parseFlowMode(flowModeValue);
+
+    const values: FeedbackPanelState["values"] = {
+      sessionQuality: sessionQualityValue,
+      drillUsefulness: drillUsefulnessValue,
+      imageAnalysisAccuracy:
+        imageAnalysisAccuracy || INITIAL_FEEDBACK_PANEL_STATE.values.imageAnalysisAccuracy,
+      missingFeatures: missingFeaturesValue,
+      flowMode: flowMode || "",
+    };
+
+    const sessionQuality = Number.parseInt(sessionQualityValue, 10);
+    const drillUsefulness = Number.parseInt(drillUsefulnessValue, 10);
+
+    if (
+      !Number.isInteger(sessionQuality) ||
+      sessionQuality < 1 ||
+      sessionQuality > 5 ||
+      !Number.isInteger(drillUsefulness) ||
+      drillUsefulness < 1 ||
+      drillUsefulness > 5 ||
+      !imageAnalysisAccuracy ||
+      !missingFeaturesValue ||
+      missingFeaturesValue.length > 280 ||
+      (flowModeValue !== "" && !flowMode)
+    ) {
+      return {
+        status: "error",
+        message: "Review the feedback fields and try again.",
+        values,
+      };
+    }
+
+    try {
+      await submitSessionFeedback(sessionId, {
+        sessionQuality,
+        drillUsefulness,
+        imageAnalysisAccuracy,
+        missingFeatures: missingFeaturesValue,
+        ...(flowMode ? { flowMode } : {}),
+      });
+
+      return {
+        status: "success",
+        message: "Feedback submitted. Thank you for the pilot feedback.",
+        values,
+      };
+    } catch (error) {
+      if (error instanceof SessionBuilderApiError) {
+        if (error.status === 409) {
+          return {
+            status: "already-submitted",
+            message: "Feedback has already been submitted for this session.",
+            values,
+          };
+        }
+
+        if (error.status === 400) {
+          return {
+            status: "error",
+            message: "Review the feedback fields and try again.",
+            values,
+          };
+        }
+
+        return {
+          status: "error",
+          message: `Request failed with status ${error.status}.`,
+          values,
+        };
+      }
+
+      return {
+        status: "error",
+        message: "Feedback could not be submitted right now. Try again shortly.",
+        values,
+      };
+    }
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
@@ -137,6 +281,11 @@ export default async function SessionDetailPage({
             ))}
           </div>
         </article>
+
+        <SessionFeedbackPanel
+          initialState={INITIAL_FEEDBACK_PANEL_STATE}
+          submitAction={submitFeedbackAction}
+        />
       </section>
     </main>
   );

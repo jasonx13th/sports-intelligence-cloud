@@ -180,26 +180,22 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
     sessionId: "session-123",
     submittedAt: "2026-04-10T00:00:00.000Z",
     submittedBy: "user-123",
-    rating: 4,
-    runStatus: "ran_with_changes",
-    objectiveMet: true,
-    difficulty: "about_right",
-    wouldReuse: true,
-    notes: "Useful session.",
-    changesNextTime: "Add more finishing.",
-    schemaVersion: 1,
+    sessionQuality: 4,
+    drillUsefulness: 5,
+    imageAnalysisAccuracy: "high",
+    missingFeatures: "Wanted easier drill editing.",
+    flowMode: "setup_to_drill",
+    schemaVersion: 2,
   };
 
   const inner = createSessionsInner({
     validateSessionFeedbackFn: (body) => {
       assert.deepEqual(body, {
-        rating: 4,
-        runStatus: "ran_with_changes",
-        objectiveMet: true,
-        difficulty: "about_right",
-        wouldReuse: true,
-        notes: "Useful session.",
-        changesNextTime: "Add more finishing.",
+        sessionQuality: 4,
+        drillUsefulness: 5,
+        imageAnalysisAccuracy: "high",
+        missingFeatures: "Wanted easier drill editing.",
+        flowMode: "setup_to_drill",
       });
 
       return body;
@@ -209,7 +205,7 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
       assert.equal(sessionId, "session-123");
       assert.equal(typeof deps.sessionRepository.getSessionById, "function");
       assert.equal(typeof deps.sessionRepository.createSessionFeedback, "function");
-      assert.equal(input.rating, 4);
+      assert.equal(input.sessionQuality, 4);
       return { feedback: expectedFeedback };
     },
   });
@@ -224,13 +220,11 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
       },
       pathParameters: { sessionId: "session-123" },
       body: JSON.stringify({
-        rating: 4,
-        runStatus: "ran_with_changes",
-        objectiveMet: true,
-        difficulty: "about_right",
-        wouldReuse: true,
-        notes: "Useful session.",
-        changesNextTime: "Add more finishing.",
+        sessionQuality: 4,
+        drillUsefulness: 5,
+        imageAnalysisAccuracy: "high",
+        missingFeatures: "Wanted easier drill editing.",
+        flowMode: "setup_to_drill",
       }),
     },
     tenantCtx: makeTenantCtx(),
@@ -240,6 +234,10 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
   assert.equal(response.statusCode, 201);
   assert.deepEqual(JSON.parse(response.body), { feedback: expectedFeedback });
   assert.equal(loggerEvents[0].eventType, "session_feedback_created");
+  assert.deepEqual(loggerEvents[0].feedback, {
+    flowMode: "setup_to_drill",
+    imageAnalysisAccuracy: "high",
+  });
 });
 
 test("POST /sessions/{sessionId}/feedback rejects client-supplied tenant scope in headers and query", async () => {
@@ -266,8 +264,10 @@ test("POST /sessions/{sessionId}/feedback rejects client-supplied tenant scope i
           headers: { "x-tenant-id": "spoofed" },
           queryStringParameters: { tenantId: "spoofed" },
           body: JSON.stringify({
-            rating: 4,
-            runStatus: "ran_as_planned",
+            sessionQuality: 4,
+            drillUsefulness: 5,
+            imageAnalysisAccuracy: "not_used",
+            missingFeatures: "Wanted easier drill editing.",
           }),
         },
         tenantCtx: makeTenantCtx(),
@@ -308,8 +308,10 @@ test("POST /sessions/{sessionId}/feedback returns 404 when session is not found"
           },
           pathParameters: { sessionId: "session-404" },
           body: JSON.stringify({
-            rating: 3,
-            runStatus: "not_run",
+            sessionQuality: 3,
+            drillUsefulness: 3,
+            imageAnalysisAccuracy: "not_used",
+            missingFeatures: "Wanted clearer setup prompts.",
           }),
         },
         tenantCtx: makeTenantCtx(),
@@ -349,8 +351,10 @@ test("POST /sessions/{sessionId}/feedback returns 409 on duplicate feedback", as
           },
           pathParameters: { sessionId: "session-123" },
           body: JSON.stringify({
-            rating: 5,
-            runStatus: "ran_as_planned",
+            sessionQuality: 5,
+            drillUsefulness: 4,
+            imageAnalysisAccuracy: "medium",
+            missingFeatures: "Wanted easier export controls.",
           }),
         },
         tenantCtx: makeTenantCtx(),

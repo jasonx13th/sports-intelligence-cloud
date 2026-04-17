@@ -5,25 +5,21 @@ const assert = require("node:assert/strict");
 
 const { validateSessionFeedback } = require("./session-feedback-validate");
 
-test("validateSessionFeedback accepts valid input and trims note fields", () => {
+test("validateSessionFeedback accepts valid input and trims missingFeatures", () => {
   const result = validateSessionFeedback({
-    rating: 4,
-    runStatus: "ran_with_changes",
-    objectiveMet: true,
-    difficulty: "about_right",
-    wouldReuse: true,
-    notes: "  Useful session with good flow.  ",
-    changesNextTime: "  Add one more finishing block. ",
+    sessionQuality: 4,
+    drillUsefulness: 5,
+    imageAnalysisAccuracy: "medium",
+    missingFeatures: "  Wanted easier drill editing.  ",
+    flowMode: "setup_to_drill",
   });
 
   assert.deepEqual(result, {
-    rating: 4,
-    runStatus: "ran_with_changes",
-    objectiveMet: true,
-    difficulty: "about_right",
-    wouldReuse: true,
-    notes: "Useful session with good flow.",
-    changesNextTime: "Add one more finishing block.",
+    sessionQuality: 4,
+    drillUsefulness: 5,
+    imageAnalysisAccuracy: "medium",
+    missingFeatures: "Wanted easier drill editing.",
+    flowMode: "setup_to_drill",
   });
 });
 
@@ -31,8 +27,10 @@ test("validateSessionFeedback rejects unknown fields", () => {
   assert.throws(
     () =>
       validateSessionFeedback({
-        rating: 5,
-        runStatus: "ran_as_planned",
+        sessionQuality: 5,
+        drillUsefulness: 4,
+        imageAnalysisAccuracy: "high",
+        missingFeatures: "Wanted more export options.",
         tenantId: "spoofed",
       }),
     (err) => {
@@ -43,33 +41,52 @@ test("validateSessionFeedback rejects unknown fields", () => {
   );
 });
 
-test("validateSessionFeedback rejects invalid rating", () => {
+test("validateSessionFeedback rejects invalid sessionQuality", () => {
   assert.throws(
     () =>
       validateSessionFeedback({
-        rating: 6,
-        runStatus: "ran_as_planned",
+        sessionQuality: 6,
+        drillUsefulness: 4,
+        imageAnalysisAccuracy: "high",
+        missingFeatures: "Wanted more export options.",
       }),
     (err) => {
       assert.equal(err.code, "invalid_field");
-      assert.equal(err.details.field, "rating");
+      assert.equal(err.details.field, "sessionQuality");
       return true;
     }
   );
 });
 
-test("validateSessionFeedback rejects inconsistent not_run fields", () => {
+test("validateSessionFeedback rejects invalid imageAnalysisAccuracy", () => {
   assert.throws(
     () =>
       validateSessionFeedback({
-        rating: 3,
-        runStatus: "not_run",
-        objectiveMet: false,
+        sessionQuality: 3,
+        drillUsefulness: 4,
+        imageAnalysisAccuracy: "wrong",
+        missingFeatures: "Wanted more export options.",
       }),
     (err) => {
       assert.equal(err.code, "invalid_field");
-      assert.equal(err.details.reason, "inconsistent_feedback_fields");
-      assert.deepEqual(err.details.inconsistent, ["objectiveMet"]);
+      assert.equal(err.details.field, "imageAnalysisAccuracy");
+      return true;
+    }
+  );
+});
+
+test("validateSessionFeedback rejects empty missingFeatures after trim", () => {
+  assert.throws(
+    () =>
+      validateSessionFeedback({
+        sessionQuality: 3,
+        drillUsefulness: 4,
+        imageAnalysisAccuracy: "not_used",
+        missingFeatures: "   ",
+      }),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.field, "missingFeatures");
       return true;
     }
   );

@@ -2,9 +2,9 @@
 
 const { requireFields, validationError } = require("../../platform/validation/validate");
 
-const RUN_STATUS_VALUES = ["ran_as_planned", "ran_with_changes", "not_run"];
-const DIFFICULTY_VALUES = ["too_easy", "about_right", "too_hard"];
-const NOTES_MAX = 1000;
+const IMAGE_ANALYSIS_ACCURACY_VALUES = ["not_used", "low", "medium", "high"];
+const FLOW_MODE_VALUES = ["session_builder", "environment_profile", "setup_to_drill"];
+const MISSING_FEATURES_MAX = 280;
 
 function rejectUnknownFields(body, allowed) {
   const unknown = Object.keys(body || {}).filter((key) => !allowed.includes(key));
@@ -54,22 +54,8 @@ function requireEnum(body, field, allowed) {
   return value;
 }
 
-function optionalBoolean(body, field) {
+function requireTrimmedString(body, field, { max }) {
   const value = body?.[field];
-  if (value === undefined) return undefined;
-
-  if (typeof value !== "boolean") {
-    throw validationError("invalid_field", `${field} must be a boolean`, {
-      field,
-    });
-  }
-
-  return value;
-}
-
-function optionalTrimmedString(body, field, { max }) {
-  const value = body?.[field];
-  if (value === undefined || value === null || value === "") return undefined;
 
   if (typeof value !== "string") {
     throw validationError("invalid_field", `${field} must be a string`, {
@@ -78,7 +64,11 @@ function optionalTrimmedString(body, field, { max }) {
   }
 
   const trimmed = value.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    throw validationError("invalid_field", `${field} must not be empty`, {
+      field,
+    });
+  }
 
   if (max && trimmed.length > max) {
     throw validationError("invalid_field", `${field} is too long`, {
@@ -93,50 +83,42 @@ function optionalTrimmedString(body, field, { max }) {
 function validateSessionFeedback(body) {
   const safeBody = body || {};
   const allowed = [
-    "rating",
-    "runStatus",
-    "objectiveMet",
-    "difficulty",
-    "wouldReuse",
-    "notes",
-    "changesNextTime",
+    "sessionQuality",
+    "drillUsefulness",
+    "imageAnalysisAccuracy",
+    "missingFeatures",
+    "flowMode",
   ];
 
   rejectUnknownFields(safeBody, allowed);
-  requireFields(safeBody, ["rating", "runStatus"]);
+  requireFields(safeBody, [
+    "sessionQuality",
+    "drillUsefulness",
+    "imageAnalysisAccuracy",
+    "missingFeatures",
+  ]);
 
-  const rating = requireInteger(safeBody, "rating", { min: 1, max: 5 });
-  const runStatus = requireEnum(safeBody, "runStatus", RUN_STATUS_VALUES);
-  const objectiveMet = optionalBoolean(safeBody, "objectiveMet");
-  const difficulty = safeBody?.difficulty === undefined
-    ? undefined
-    : requireEnum(safeBody, "difficulty", DIFFICULTY_VALUES);
-  const wouldReuse = optionalBoolean(safeBody, "wouldReuse");
-  const notes = optionalTrimmedString(safeBody, "notes", { max: NOTES_MAX });
-  const changesNextTime = optionalTrimmedString(safeBody, "changesNextTime", { max: NOTES_MAX });
-
-  if (runStatus === "not_run") {
-    const inconsistent = [];
-    if (objectiveMet !== undefined) inconsistent.push("objectiveMet");
-    if (difficulty !== undefined) inconsistent.push("difficulty");
-
-    if (inconsistent.length) {
-      throw validationError("invalid_field", "runStatus is inconsistent with one or more fields", {
-        field: "runStatus",
-        reason: "inconsistent_feedback_fields",
-        inconsistent,
-      });
-    }
-  }
+  const sessionQuality = requireInteger(safeBody, "sessionQuality", { min: 1, max: 5 });
+  const drillUsefulness = requireInteger(safeBody, "drillUsefulness", { min: 1, max: 5 });
+  const imageAnalysisAccuracy = requireEnum(
+    safeBody,
+    "imageAnalysisAccuracy",
+    IMAGE_ANALYSIS_ACCURACY_VALUES
+  );
+  const missingFeatures = requireTrimmedString(safeBody, "missingFeatures", {
+    max: MISSING_FEATURES_MAX,
+  });
+  const flowMode =
+    safeBody?.flowMode === undefined
+      ? undefined
+      : requireEnum(safeBody, "flowMode", FLOW_MODE_VALUES);
 
   return {
-    rating,
-    runStatus,
-    ...(objectiveMet !== undefined ? { objectiveMet } : {}),
-    ...(difficulty !== undefined ? { difficulty } : {}),
-    ...(wouldReuse !== undefined ? { wouldReuse } : {}),
-    ...(notes !== undefined ? { notes } : {}),
-    ...(changesNextTime !== undefined ? { changesNextTime } : {}),
+    sessionQuality,
+    drillUsefulness,
+    imageAnalysisAccuracy,
+    missingFeatures,
+    ...(flowMode !== undefined ? { flowMode } : {}),
   };
 }
 

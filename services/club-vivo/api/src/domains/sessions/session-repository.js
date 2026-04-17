@@ -112,13 +112,11 @@ function normalizeSessionFeedback(obj) {
     sessionId: obj.sessionId,
     submittedAt: obj.submittedAt,
     submittedBy: obj.submittedBy,
-    rating: obj.rating,
-    runStatus: obj.runStatus,
-    ...(obj.objectiveMet !== undefined ? { objectiveMet: obj.objectiveMet } : {}),
-    ...(obj.difficulty !== undefined ? { difficulty: obj.difficulty } : {}),
-    ...(obj.wouldReuse !== undefined ? { wouldReuse: obj.wouldReuse } : {}),
-    ...(obj.notes !== undefined ? { notes: obj.notes } : {}),
-    ...(obj.changesNextTime !== undefined ? { changesNextTime: obj.changesNextTime } : {}),
+    sessionQuality: obj.sessionQuality,
+    drillUsefulness: obj.drillUsefulness,
+    imageAnalysisAccuracy: obj.imageAnalysisAccuracy,
+    missingFeatures: obj.missingFeatures,
+    ...(obj.flowMode !== undefined ? { flowMode: obj.flowMode } : {}),
     schemaVersion: obj.schemaVersion,
   };
 }
@@ -127,7 +125,6 @@ const SESSION_EVENT_TYPES = new Set([
   "session_generated",
   "session_exported",
   "feedback_submitted",
-  "session_run_confirmed",
 ]);
 
 function validateSessionEventType(eventType) {
@@ -411,10 +408,10 @@ class SessionRepository {
 
   buildFeedbackEventTransactItems(
     tenantContext,
-    { sessionId, runStatus, occurredAt, actorUserId, feedbackMetadata, runConfirmedMetadata } = {}
+    { sessionId, occurredAt, actorUserId, feedbackMetadata } = {}
   ) {
     const effectiveOccurredAt = occurredAt || new Date().toISOString();
-    const transactItems = [
+    return [
       this.buildSessionEventTransactItem(tenantContext, {
         sessionId,
         eventType: "feedback_submitted",
@@ -423,20 +420,6 @@ class SessionRepository {
         metadata: feedbackMetadata,
       }),
     ];
-
-    if (runStatus && runStatus !== "not_run") {
-      transactItems.push(
-        this.buildSessionEventTransactItem(tenantContext, {
-          sessionId,
-          eventType: "session_run_confirmed",
-          occurredAt: effectiveOccurredAt,
-          actorUserId,
-          metadata: runConfirmedMetadata,
-        })
-      );
-    }
-
-    return transactItems;
   }
 
   async writeSessionExportedEvent(
@@ -481,24 +464,18 @@ class SessionRepository {
       sessionId,
       submittedAt: now,
       submittedBy: tenantContext?.userId || null,
-      schemaVersion: 1,
-      rating: feedbackInput.rating,
-      runStatus: feedbackInput.runStatus,
-      ...(feedbackInput.objectiveMet !== undefined ? { objectiveMet: feedbackInput.objectiveMet } : {}),
-      ...(feedbackInput.difficulty !== undefined ? { difficulty: feedbackInput.difficulty } : {}),
-      ...(feedbackInput.wouldReuse !== undefined ? { wouldReuse: feedbackInput.wouldReuse } : {}),
-      ...(feedbackInput.notes !== undefined ? { notes: feedbackInput.notes } : {}),
-      ...(feedbackInput.changesNextTime !== undefined
-        ? { changesNextTime: feedbackInput.changesNextTime }
-        : {}),
+      schemaVersion: 2,
+      sessionQuality: feedbackInput.sessionQuality,
+      drillUsefulness: feedbackInput.drillUsefulness,
+      imageAnalysisAccuracy: feedbackInput.imageAnalysisAccuracy,
+      missingFeatures: feedbackInput.missingFeatures,
+      ...(feedbackInput.flowMode !== undefined ? { flowMode: feedbackInput.flowMode } : {}),
     };
 
     const eventTransactItems = this.buildFeedbackEventTransactItems(tenantContext, {
       sessionId,
-      runStatus: feedbackInput.runStatus,
       occurredAt: now,
       feedbackMetadata: options.feedbackEventMetadata,
-      runConfirmedMetadata: options.runConfirmedEventMetadata,
     });
 
     try {

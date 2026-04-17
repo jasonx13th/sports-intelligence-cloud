@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document defines the Week 14 Day 1 API contract for:
+This document defines the Week 20 backend-first API contract for:
 
 - `POST /sessions/{sessionId}/feedback`
 
-This is a narrow, product-first feedback loop slice for the coach workflow.
+This is a narrow, product-first pilot feedback slice for the coach workflow.
 
 It documents the current implementation only. It does not introduce infra, IAM, auth-boundary, tenancy-boundary, entitlements-model, or event-timeline changes.
 
@@ -16,7 +16,7 @@ It documents the current implementation only. It does not introduce infra, IAM, 
 - Tenant scope is server-derived only.
 - Tenant identity is never accepted from client input.
 - Requests must not include `tenant_id`, `tenantId`, or `x-tenant-id`.
-- Feedback is single-submit in v1: one feedback record per session.
+- Feedback is single-submit in this route: one feedback record per session.
 - Second submission for the same session returns `409`.
 - Session existence must be verified in the same tenant scope before feedback is written.
 
@@ -29,7 +29,7 @@ It documents the current implementation only. It does not introduce infra, IAM, 
 
 ### Purpose
 
-Capture structured coach feedback for an existing saved session.
+Capture bounded Week 20 pilot feedback for an existing saved session.
 
 ### Auth requirement
 
@@ -59,13 +59,11 @@ The implementation rejects client-supplied tenant-like fields and uses tenant-sc
 
 Allowed body fields only:
 
-- `rating` required integer
-- `runStatus` required string enum
-- `objectiveMet` optional boolean
-- `difficulty` optional string enum
-- `wouldReuse` optional boolean
-- `notes` optional string
-- `changesNextTime` optional string
+- `sessionQuality` required integer
+- `drillUsefulness` required integer
+- `imageAnalysisAccuracy` required string enum
+- `missingFeatures` required string
+- `flowMode` optional string enum
 
 Unknown fields are rejected.
 
@@ -73,13 +71,11 @@ Unknown fields are rejected.
 
 ```json
 {
-  "rating": 4,
-  "runStatus": "ran_with_changes",
-  "objectiveMet": true,
-  "difficulty": "about_right",
-  "wouldReuse": true,
-  "notes": "Useful session.",
-  "changesNextTime": "Add more finishing."
+  "sessionQuality": 4,
+  "drillUsefulness": 5,
+  "imageAnalysisAccuracy": "high",
+  "missingFeatures": "Wanted easier drill editing.",
+  "flowMode": "setup_to_drill"
 }
 ```
 
@@ -87,22 +83,22 @@ Unknown fields are rejected.
 
 ## 3. Validation Rules
 
-- `rating` must be an integer from `1` to `5`
-- `runStatus` must be one of:
-  - `ran_as_planned`
-  - `ran_with_changes`
-  - `not_run`
-- `objectiveMet` must be boolean when present
-- `difficulty` must be one of:
-  - `too_easy`
-  - `about_right`
-  - `too_hard`
-- `wouldReuse` must be boolean when present
-- `notes` is trimmed when present and must be at most `1000` characters
-- `changesNextTime` is trimmed when present and must be at most `1000` characters
-- If `runStatus = not_run`, `objectiveMet` and `difficulty` are rejected as inconsistent
+- `sessionQuality` must be an integer from `1` to `5`
+- `drillUsefulness` must be an integer from `1` to `5`
+- `imageAnalysisAccuracy` must be one of:
+  - `not_used`
+  - `low`
+  - `medium`
+  - `high`
+- `missingFeatures` must be a string, is trimmed, and must be `1..280` chars after trim
+- `flowMode` when present must be one of:
+  - `session_builder`
+  - `environment_profile`
+  - `setup_to_drill`
 - Unknown body fields are rejected
 - `tenant_id`, `tenantId`, and `x-tenant-id` are rejected from request input
+
+`imageAnalysisAccuracy = not_used` is valid for non-image flow.
 
 ---
 
@@ -118,14 +114,12 @@ Unknown fields are rejected.
     "sessionId": "session-123",
     "submittedAt": "2026-04-10T00:00:00.000Z",
     "submittedBy": "user-123",
-    "rating": 4,
-    "runStatus": "ran_with_changes",
-    "objectiveMet": true,
-    "difficulty": "about_right",
-    "wouldReuse": true,
-    "notes": "Useful session.",
-    "changesNextTime": "Add more finishing.",
-    "schemaVersion": 1
+    "sessionQuality": 4,
+    "drillUsefulness": 5,
+    "imageAnalysisAccuracy": "high",
+    "missingFeatures": "Wanted easier drill editing.",
+    "flowMode": "setup_to_drill",
+    "schemaVersion": 2
   }
 }
 ```
@@ -134,7 +128,7 @@ Optional fields are omitted when not supplied.
 
 ### 4.2 Persistence rule
 
-The v1 persistence model is intentionally small:
+The persistence model remains intentionally small:
 
 - one feedback record per session
 - one tenant-scoped feedback record key per session
@@ -154,7 +148,6 @@ Used for:
 - invalid JSON
 - unknown fields
 - invalid field types or values
-- inconsistent combinations such as `runStatus = not_run` with `objectiveMet`
 - client-supplied tenant-like inputs
 
 Example:
@@ -214,8 +207,10 @@ An intentional rejection test may include `tenantId` only to verify that rejecti
 
 ```json
 {
-  "rating": 4,
-  "runStatus": "ran_as_planned",
+  "sessionQuality": 4,
+  "drillUsefulness": 5,
+  "imageAnalysisAccuracy": "not_used",
+  "missingFeatures": "Wanted easier drill editing.",
   "tenantId": "should-not-be-here"
 }
 ```
@@ -229,13 +224,14 @@ This is negative-test coverage only, not valid request shape.
 
 ---
 
-## 7. Out of Scope for Week 14 Day 1
+## 7. Out of Scope for Week 20
 
 The following are intentionally out of scope for this contract:
 
-- feedback timeline or event-stream work
+- feedback timeline or event-stream read work
 - feedback read/list endpoints
 - feedback update/delete behavior
+- app UI for feedback capture
 - dashboards or alarms for feedback
 - Postman workflow details
 - broader learning/review workflow documentation
@@ -250,4 +246,3 @@ This contract does not change the SIC tenancy model:
 - entitlements establish tenant scope
 - repositories enforce tenant-scoped access by construction
 - no scan-then-filter pattern is used for this endpoint
-

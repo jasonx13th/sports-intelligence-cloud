@@ -255,6 +255,10 @@ function createSessionsInner({
         logger.info("session_feedback_created", "session feedback created", {
           http: { statusCode: 201 },
           resource: { entityType: "SESSION", entityId: sessionId },
+          feedback: {
+            ...(feedbackInput.flowMode ? { flowMode: feedbackInput.flowMode } : {}),
+            imageAnalysisAccuracy: feedbackInput.imageAnalysisAccuracy,
+          },
         });
 
         return json(201, result);

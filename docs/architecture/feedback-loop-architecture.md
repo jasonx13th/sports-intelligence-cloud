@@ -2,7 +2,7 @@
 
 ## Purpose and Scope
 
-This document describes the current Week 14 feedback-loop architecture for Sports Intelligence Cloud (SIC).
+This document describes the current Week 20 feedback-loop architecture for Sports Intelligence Cloud (SIC).
 
 It documents the narrow product slice that exists today:
 
@@ -11,7 +11,6 @@ It documents the narrow product slice that exists today:
 - tenant-scoped session event persistence for:
   - `session_generated`
   - `session_exported`
-  - `session_run_confirmed`
   - `feedback_submitted`
 
 This document is intentionally limited to the current implementation. It does not introduce new infrastructure, dashboards, read endpoints, IAM changes, auth-boundary changes, tenancy-boundary changes, or entitlements-model changes.
@@ -22,9 +21,9 @@ For the request/response contract of the feedback endpoint, see:
 
 ---
 
-## Current Week 14 Surface Area
+## Current Week 20 Surface Area
 
-Week 14 currently adds a small coach feedback loop on top of the existing Session Builder and Templates flows.
+Week 20 adds a small backend-first pilot feedback refinement on top of the existing Session Builder and Templates flows.
 
 The active backend surface is:
 
@@ -32,10 +31,10 @@ The active backend surface is:
 - `GET /sessions/{sessionId}/pdf`
 - `POST /templates/{templateId}/generate`
 
-The current Week 14 storage additions are:
+The current storage additions are:
 
 - one tenant-scoped feedback record per session
-- tenant-scoped session event items for the four supported product events
+- tenant-scoped session event items for the three supported product events above
 
 There is no dedicated timeline read endpoint yet.
 There is no dashboard yet.
@@ -45,9 +44,9 @@ There is no scheduled aggregation yet.
 
 ## Feedback Endpoint Summary
 
-The feedback endpoint allows a coach to submit structured outcome data for an existing saved session.
+The feedback endpoint allows a coach workflow to submit bounded pilot feedback for an existing saved session.
 
-Current v1 behavior:
+Current behavior:
 
 - route: `POST /sessions/{sessionId}/feedback`
 - auth required through the existing JWT authorizer
@@ -74,10 +73,12 @@ Feedback persistence is intentionally small and tenant-scoped by construction.
 - `sessionId`
 - `submittedAt`
 - `submittedBy`
-- `rating`
-- `runStatus`
-- optional v1 feedback fields when present
-- `schemaVersion = 1`
+- `sessionQuality`
+- `drillUsefulness`
+- `imageAnalysisAccuracy`
+- `missingFeatures`
+- optional `flowMode`
+- `schemaVersion = 2`
 
 ### Persistence rule
 
@@ -86,12 +87,12 @@ Feedback persistence is intentionally small and tenant-scoped by construction.
 
 ### Consistency rule
 
-Feedback and feedback-related session events are written in the same DynamoDB transaction.
+Feedback and its feedback-related session event are written in the same DynamoDB transaction.
 
 That means:
 
-- successful feedback submission writes feedback plus its associated event items together
-- duplicate feedback conflict prevents both the feedback write and the feedback event writes
+- successful feedback submission writes feedback plus `feedback_submitted` together
+- duplicate feedback conflict prevents both the feedback write and the feedback event write
 
 ---
 
@@ -116,7 +117,6 @@ Session events are stored in the existing domain table.
 
 - `session_generated`
 - `session_exported`
-- `session_run_confirmed`
 - `feedback_submitted`
 
 ### Metadata rule
@@ -126,8 +126,9 @@ Metadata stays small and non-sensitive.
 Current examples:
 
 - `templateId`
-- `runStatus`
 - `exportFormat: "pdf"`
+- `flowMode`
+- `imageAnalysisAccuracy`
 
 Current implementation does not store:
 
@@ -135,6 +136,7 @@ Current implementation does not store:
 - PDF payloads
 - copied request headers
 - tenant identifiers from the request
+- verbose coach free text in event metadata
 
 ---
 
@@ -150,22 +152,11 @@ Behavior:
 
 - written in the same tenant-scoped transaction as the `SESSION_FEEDBACK` item
 - written for every successful feedback submission
+- current metadata may include:
+  - `flowMode`
+  - `imageAnalysisAccuracy`
 
-### 2. `session_run_confirmed`
-
-Write point:
-
-- successful `POST /sessions/{sessionId}/feedback`
-
-Behavior:
-
-- written in the same tenant-scoped transaction as the `SESSION_FEEDBACK` item
-- written only when `runStatus` is:
-  - `ran_as_planned`
-  - `ran_with_changes`
-- not written when `runStatus = not_run`
-
-### 3. `session_exported`
+### 2. `session_exported`
 
 Write point:
 
@@ -178,7 +169,7 @@ Behavior:
 - current metadata is minimal:
   - `exportFormat: "pdf"`
 
-### 4. `session_generated`
+### 3. `session_generated`
 
 Write point:
 
@@ -201,7 +192,7 @@ Behavior:
 - invalid request returns `400 platform.bad_request`
 - missing target session in the resolved tenant scope returns `404 sessions.not_found`
 - duplicate feedback returns `409 sessions.feedback_exists`
-- feedback and feedback-related events succeed or fail together inside one transaction
+- feedback and `feedback_submitted` succeed or fail together inside one transaction
 
 ### PDF export
 
@@ -229,6 +220,9 @@ Current signals include:
   - `session_feedback_created`
   - `session_pdf_exported`
   - `template_generated`
+- small feedback-specific metadata on `session_feedback_created`:
+  - `feedback.flowMode`
+  - `feedback.imageAnalysisAccuracy`
 - existing platform error logging paths for request failures
 - durable `SESSION_EVENT` items in the domain table
 
@@ -243,7 +237,7 @@ Current observability does not include:
 
 ## Tenancy and Security Rules
 
-These rules are non-negotiable and unchanged by Week 14.
+These rules are non-negotiable and unchanged by Week 20.
 
 - tenant scope comes only from verified auth plus authoritative entitlements
 - no request-derived tenant identifier is trusted
@@ -270,7 +264,7 @@ sequenceDiagram
         C->>H: POST /sessions/{sessionId}/feedback
         H->>T: resolve verified auth + entitlements
         H->>R: tenant-scoped session lookup
-        H->>R: transact write SESSION_FEEDBACK + feedback_submitted (+ session_run_confirmed when applicable)
+        H->>R: transact write SESSION_FEEDBACK + feedback_submitted
         R-->>H: success
         H-->>C: 201 { feedback }
     end
@@ -306,6 +300,7 @@ Current limitations:
 - no session-event timeline read endpoint
 - no coach-facing timeline UI
 - no dashboard for feedback/event activity
+- no app UI for Week 20 pilot feedback capture yet
 - weekly review remains manual-first
 
 Explicitly deferred:

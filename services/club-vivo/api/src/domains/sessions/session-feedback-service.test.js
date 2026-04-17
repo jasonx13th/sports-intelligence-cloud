@@ -20,7 +20,12 @@ test("submitSessionFeedback returns 404 when the tenant-scoped session does not 
       submitSessionFeedback(
         makeTenantContext(),
         "session-404",
-        { rating: 3, runStatus: "not_run" },
+        {
+          sessionQuality: 3,
+          drillUsefulness: 3,
+          imageAnalysisAccuracy: "not_used",
+          missingFeatures: "Wanted easier edit flow.",
+        },
         {
           sessionRepository: {
             getSessionById: async (tenantCtx, sessionId) => {
@@ -55,26 +60,43 @@ test("submitSessionFeedback passes minimal event metadata into the repository wr
       sessionId: "session-123",
       submittedAt: "2026-04-10T00:00:00.000Z",
       submittedBy: "user-123",
-      rating: 4,
-      runStatus: "ran_with_changes",
-      schemaVersion: 1,
+      sessionQuality: 4,
+      drillUsefulness: 5,
+      imageAnalysisAccuracy: "high",
+      missingFeatures: "Wanted easier drill editing.",
+      flowMode: "setup_to_drill",
+      schemaVersion: 2,
     },
   };
 
   const result = await submitSessionFeedback(
     makeTenantContext(),
     "session-123",
-    { rating: 4, runStatus: "ran_with_changes" },
+    {
+      sessionQuality: 4,
+      drillUsefulness: 5,
+      imageAnalysisAccuracy: "high",
+      missingFeatures: "Wanted easier drill editing.",
+      flowMode: "setup_to_drill",
+    },
     {
       sessionRepository: {
         getSessionById: async () => ({ sessionId: "session-123" }),
         createSessionFeedback: async (tenantCtx, sessionId, input, options) => {
           assert.equal(tenantCtx.tenantId, "tenant_authoritative");
           assert.equal(sessionId, "session-123");
-          assert.deepEqual(input, { rating: 4, runStatus: "ran_with_changes" });
+          assert.deepEqual(input, {
+            sessionQuality: 4,
+            drillUsefulness: 5,
+            imageAnalysisAccuracy: "high",
+            missingFeatures: "Wanted easier drill editing.",
+            flowMode: "setup_to_drill",
+          });
           assert.deepEqual(options, {
-            feedbackEventMetadata: { runStatus: "ran_with_changes" },
-            runConfirmedEventMetadata: { runStatus: "ran_with_changes" },
+            feedbackEventMetadata: {
+              flowMode: "setup_to_drill",
+              imageAnalysisAccuracy: "high",
+            },
           });
           return expectedResult;
         },

@@ -29,12 +29,12 @@ async function submitSessionFeedback(tenantCtx, sessionId, input, deps = {}) {
   }
 
   const eventMetadata = {
-    runStatus: input?.runStatus,
+    ...(input?.flowMode ? { flowMode: input.flowMode } : {}),
+    imageAnalysisAccuracy: input?.imageAnalysisAccuracy,
   };
 
   return repo.createSessionFeedback(tenantCtx, sessionId, input, {
     feedbackEventMetadata: eventMetadata,
-    runConfirmedEventMetadata: eventMetadata,
   });
 }
 

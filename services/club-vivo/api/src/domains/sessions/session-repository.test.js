@@ -259,49 +259,57 @@ test("createSessionFeedback persists one tenant-scoped feedback record per sessi
         makeTenantContext(),
         "session-123",
         {
-          rating: 4,
-          runStatus: "ran_with_changes",
-          objectiveMet: true,
-          difficulty: "about_right",
-          wouldReuse: true,
-          notes: "Useful session.",
-          changesNextTime: "Add more finishing.",
+          sessionQuality: 4,
+          drillUsefulness: 5,
+          imageAnalysisAccuracy: "high",
+          missingFeatures: "Wanted easier drill editing.",
+          flowMode: "setup_to_drill",
         },
         {
-          feedbackEventMetadata: { runStatus: "ran_with_changes" },
-          runConfirmedEventMetadata: { runStatus: "ran_with_changes" },
+          feedbackEventMetadata: {
+            flowMode: "setup_to_drill",
+            imageAnalysisAccuracy: "high",
+          },
         }
       );
 
       assert.equal(result.feedback.sessionId, "session-123");
-      assert.equal(result.feedback.rating, 4);
-      assert.equal(result.feedback.runStatus, "ran_with_changes");
-      assert.equal(result.feedback.schemaVersion, 1);
+      assert.equal(result.feedback.sessionQuality, 4);
+      assert.equal(result.feedback.drillUsefulness, 5);
+      assert.equal(result.feedback.imageAnalysisAccuracy, "high");
+      assert.equal(result.feedback.flowMode, "setup_to_drill");
+      assert.equal(result.feedback.schemaVersion, 2);
     });
   });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].input.TransactItems.length, 3);
+  assert.equal(calls[0].input.TransactItems.length, 2);
 
   const feedbackWrite = unmarshall(calls[0].input.TransactItems[0].Put.Item);
   const feedbackSubmittedEvent = unmarshall(calls[0].input.TransactItems[1].Put.Item);
-  const sessionRunConfirmedEvent = unmarshall(calls[0].input.TransactItems[2].Put.Item);
 
   assert.equal(feedbackWrite.PK, "TENANT#tenant_authoritative");
   assert.equal(feedbackWrite.SK, "SESSIONFEEDBACK#session-123");
   assert.equal(feedbackWrite.type, "SESSION_FEEDBACK");
   assert.equal(feedbackWrite.submittedBy, "user-123");
+  assert.equal(feedbackWrite.sessionQuality, 4);
+  assert.equal(feedbackWrite.drillUsefulness, 5);
+  assert.equal(feedbackWrite.imageAnalysisAccuracy, "high");
+  assert.equal(feedbackWrite.missingFeatures, "Wanted easier drill editing.");
+  assert.equal(feedbackWrite.flowMode, "setup_to_drill");
+  assert.equal(feedbackWrite.schemaVersion, 2);
   assert.equal(
     calls[0].input.TransactItems[0].Put.ConditionExpression,
     "attribute_not_exists(PK) AND attribute_not_exists(SK)"
   );
   assert.equal(feedbackSubmittedEvent.eventType, "feedback_submitted");
-  assert.deepEqual(feedbackSubmittedEvent.metadata, { runStatus: "ran_with_changes" });
-  assert.equal(sessionRunConfirmedEvent.eventType, "session_run_confirmed");
-  assert.deepEqual(sessionRunConfirmedEvent.metadata, { runStatus: "ran_with_changes" });
+  assert.deepEqual(feedbackSubmittedEvent.metadata, {
+    flowMode: "setup_to_drill",
+    imageAnalysisAccuracy: "high",
+  });
 });
 
-test("createSessionFeedback writes only feedback_submitted when runStatus is not_run", async () => {
+test("createSessionFeedback writes only feedback_submitted metadata for non-image flow", async () => {
   const repo = new SessionRepository({ tableName: "domain-table" });
   const calls = [];
 
@@ -315,16 +323,17 @@ test("createSessionFeedback writes only feedback_submitted when runStatus is not
         makeTenantContext(),
         "session-123",
         {
-          rating: 5,
-          runStatus: "not_run",
+          sessionQuality: 5,
+          drillUsefulness: 4,
+          imageAnalysisAccuracy: "not_used",
+          missingFeatures: "Wanted easier export controls.",
         },
         {
-          feedbackEventMetadata: { runStatus: "not_run" },
-          runConfirmedEventMetadata: { runStatus: "not_run" },
+          feedbackEventMetadata: { imageAnalysisAccuracy: "not_used" },
         }
       );
 
-      assert.equal(result.feedback.runStatus, "not_run");
+      assert.equal(result.feedback.imageAnalysisAccuracy, "not_used");
     });
   });
 
@@ -332,7 +341,7 @@ test("createSessionFeedback writes only feedback_submitted when runStatus is not
   assert.equal(calls[0].input.TransactItems.length, 2);
   const feedbackSubmittedEvent = unmarshall(calls[0].input.TransactItems[1].Put.Item);
   assert.equal(feedbackSubmittedEvent.eventType, "feedback_submitted");
-  assert.deepEqual(feedbackSubmittedEvent.metadata, { runStatus: "not_run" });
+  assert.deepEqual(feedbackSubmittedEvent.metadata, { imageAnalysisAccuracy: "not_used" });
 });
 
 test("createSessionFeedback maps duplicate submission to 409 conflict", async () => {
@@ -348,8 +357,10 @@ test("createSessionFeedback maps duplicate submission to 409 conflict", async ()
         throw err;
       }, async () =>
         repo.createSessionFeedback(makeTenantContext(), "session-123", {
-          rating: 5,
-          runStatus: "ran_as_planned",
+          sessionQuality: 5,
+          drillUsefulness: 4,
+          imageAnalysisAccuracy: "medium",
+          missingFeatures: "Wanted easier export controls.",
         })
       ),
     (err) => {
@@ -415,15 +426,14 @@ test("buildSessionEventItem rejects unsupported event types", async () => {
   );
 });
 
-test("buildFeedbackEventTransactItems always includes feedback_submitted and only includes session_run_confirmed when runStatus is not not_run", async () => {
+test("buildFeedbackEventTransactItems always includes a single feedback_submitted event", async () => {
   const repo = new SessionRepository({ tableName: "domain-table" });
 
   await withMockedUuid("event-feedback", async () => {
     const feedbackOnly = repo.buildFeedbackEventTransactItems(makeTenantContext(), {
       sessionId: "session-123",
-      runStatus: "not_run",
       occurredAt: "2026-04-10T12:00:00.000Z",
-      feedbackMetadata: { runStatus: "not_run" },
+      feedbackMetadata: { imageAnalysisAccuracy: "not_used" },
     });
 
     assert.equal(feedbackOnly.length, 1);
@@ -434,30 +444,7 @@ test("buildFeedbackEventTransactItems always includes feedback_submitted and onl
       "SESSIONEVENT#session-123#2026-04-10T12:00:00.000Z#feedback_submitted"
     );
     assert.equal(feedbackOnlyItem.eventType, "feedback_submitted");
-    assert.deepEqual(feedbackOnlyItem.metadata, { runStatus: "not_run" });
-  });
-
-  await withMockedUuid("event-run-confirmed", async () => {
-    const feedbackAndRunConfirmed = repo.buildFeedbackEventTransactItems(makeTenantContext(), {
-      sessionId: "session-123",
-      runStatus: "ran_with_changes",
-      occurredAt: "2026-04-10T12:05:00.000Z",
-      feedbackMetadata: { runStatus: "ran_with_changes" },
-      runConfirmedMetadata: { runStatus: "ran_with_changes" },
-    });
-
-    assert.equal(feedbackAndRunConfirmed.length, 2);
-
-    const feedbackItem = unmarshall(feedbackAndRunConfirmed[0].Put.Item);
-    const runConfirmedItem = unmarshall(feedbackAndRunConfirmed[1].Put.Item);
-
-    assert.equal(feedbackItem.eventType, "feedback_submitted");
-    assert.equal(runConfirmedItem.eventType, "session_run_confirmed");
-    assert.equal(
-      runConfirmedItem.SK,
-      "SESSIONEVENT#session-123#2026-04-10T12:05:00.000Z#session_run_confirmed"
-    );
-    assert.deepEqual(runConfirmedItem.metadata, { runStatus: "ran_with_changes" });
+    assert.deepEqual(feedbackOnlyItem.metadata, { imageAnalysisAccuracy: "not_used" });
   });
 });
 

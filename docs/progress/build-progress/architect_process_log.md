@@ -876,13 +876,13 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - No dashboarding expansion, analytics subsystem, or broader AI ops layer was introduced in this slice.
 
 ### Evidence
-- `docs/progress/week_19/week19-day1-scope-lock.md`
-- `docs/progress/week_19/week19-day1-review-and-freeze.md`
-- `docs/progress/week_19/week19-day2-runner-boundary.md`
-- `docs/progress/week_19/week19-day2-runner-result-shape.md`
-- `docs/progress/week_19/week19-day3-failure-classification.md`
-- `docs/progress/week_19/week19-day3-pilot-readiness-thresholds.md`
-- `docs/progress/week_19/week19-day3-golden-examples-selection.md`
+- `docs/progress/week_19/day1-scope-lock.md`
+- `docs/progress/week_19/day1-review-and-freeze.md`
+- `docs/progress/week_19/day2-runner-boundary.md`
+- `docs/progress/week_19/day2-runner-result-shape.md`
+- `docs/progress/week_19/day3-failure-classification.md`
+- `docs/progress/week_19/day3-pilot-readiness-thresholds.md`
+- `docs/progress/week_19/day3-golden-examples-selection.md`
 - `docs/progress/week_19/closeout-summary.md`
 - `docs/architecture/ai-evaluation-harness.md`
 

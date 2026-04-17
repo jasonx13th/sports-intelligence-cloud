@@ -6,26 +6,25 @@ KSC Pilot Readiness
 
 ## Purpose
 
-Define the smallest safe backend-first supportability and feedback-capture slice needed for the KSC pilot.
+Define the smallest safe supportability and feedback-capture slice needed for the KSC pilot.
 
 This note keeps Week 20 aligned to the roadmap goal of improving support logging and capturing real coach feedback without expanding into a larger observability, analytics, or platform program.
 
 ## What ships in this slice
 
-This Day 2 slice ships only:
+This Day 2 slice now ships:
 
-- the existing `POST /sessions/{sessionId}/feedback` route
-- a replaced request contract for bounded Week 20 pilot fields
+- the existing `POST /sessions/{sessionId}/feedback` route with the Week 20 pilot contract
 - tenant-safe persistence of those new fields in `SESSION_FEEDBACK`
 - a `schemaVersion` bump from `1` to `2`
 - continued `feedback_submitted` event writes
 - small `session_feedback_created` log enrichment for pilot triage:
   - `feedback.flowMode`
   - `feedback.imageAnalysisAccuracy`
+- a saved-session feedback panel on `/sessions/{sessionId}` that reuses the existing feedback route
 
 This slice does not ship:
 
-- app UI for feedback capture
 - a new feedback route
 - dashboards
 - BI or analytics expansion
@@ -38,7 +37,7 @@ A real coach pilot needs two things beyond the happy path:
 1. enough support visibility to triage common failures quickly
 2. enough structured feedback to learn from real coach usage
 
-Week 20 should add both in a bounded, backend-first way.
+Week 20 should add both in a bounded way.
 
 ## Scope boundary
 
@@ -49,6 +48,7 @@ This note covers only:
 - bounded feedback capture on the current feedback route
 - strict validation expectations
 - tenant-safe persistence and event behavior
+- the compact saved-session feedback placement that now uses the shipped route
 
 This note does not cover:
 
@@ -250,9 +250,30 @@ It changes only the feedback record shape and the feedback event metadata.
 
 ## Placement decision for Week 20
 
-This backend-first slice does not add app UI yet.
+Feedback is now placed on the saved session detail page only.
 
-Feedback remains available only through the existing backend route so the contract, persistence, and supportability boundary can be shipped safely before a coach-facing prompt is added.
+The coach-facing placement remains narrow:
+
+- tied to saved sessions only
+- one compact feedback panel on `/sessions/{sessionId}`
+- no new feedback route
+- no feedback read/preflight endpoint
+- no broader page redesign
+
+## Implementation evidence
+
+The following feedback behaviors were runtime-validated in dev:
+
+- the Week 20 backend feedback contract on `POST /sessions/{sessionId}/feedback` is implemented
+- the saved-session feedback panel exists on `/sessions/{sessionId}`
+- the first valid feedback submit succeeded in dev
+- the second valid feedback submit returned the duplicate message
+
+The following implementation note is also important:
+
+- a manual `SicApiStack-Dev` deploy was required before feedback runtime validation passed because the repo does not auto-deploy the API on push
+
+This evidence is limited to the shipped feedback flow in dev.
 
 ## Validation plan
 
@@ -264,6 +285,7 @@ Feedback remains available only through the existing backend route so the contra
 - successful feedback submission logs `session_feedback_created` with:
   - `feedback.flowMode` when present
   - `feedback.imageAnalysisAccuracy`
+- the saved-session feedback panel submits successfully end to end in dev
 
 ### Failure-path checks
 
@@ -273,6 +295,7 @@ Feedback remains available only through the existing backend route so the contra
 - blank or oversized `missingFeatures` is rejected
 - missing target session returns `404 sessions.not_found`
 - duplicate submission returns `409 sessions.feedback_exists`
+- the saved-session feedback panel shows the duplicate message on second submit
 
 ### Protected-route checks
 
@@ -294,6 +317,17 @@ Week 20 Day 2 does not include:
 - auth-boundary changes
 - tenancy-boundary changes
 - entitlements-model changes
+
+## Observability note
+
+The shipped supportability claim remains narrow:
+
+- existing platform/request logging
+- existing route-level logging
+- minimal feedback log enrichment
+- runtime evidence after deploy
+
+This note does not claim broader observability work or dashboard rollout.
 
 ## Stop rules
 

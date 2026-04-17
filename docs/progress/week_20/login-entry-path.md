@@ -1,4 +1,4 @@
-# Week 20 Day 1 — Login Entry Path
+# Week 20 Day 1 - Login Entry Path
 
 ## Theme
 
@@ -8,7 +8,7 @@ KSC Pilot Readiness
 
 Define the narrowest safe website login entry path for KSC pilot coaches.
 
-This note exists to make the coach access path clear without creating a second auth surface, a second coach app surface, or any drift in SIC’s current auth, tenancy, or entitlements model.
+This note exists to make the coach access path clear without creating a second auth surface, a second coach app surface, or any drift in SIC's current auth, tenancy, or entitlements model.
 
 ## Why this note exists
 
@@ -71,43 +71,42 @@ This note does not cover:
 
 ## Recommended pilot login path
 
-The safest Week 20 pattern is:
+The shipped Week 20 pattern is:
 
 ### Entry point
 
-Use `/login` as the single pilot-safe website path that tells coaches how to enter SIC for the KSC pilot.
+`/login` is implemented as the single coach-facing pilot entry path for the KSC pilot.
 
-This entry point should:
+This entry point:
 
-- clearly name the pilot
-- explain that coaches sign in through the existing approved access path
-- avoid exposing technical auth details
-- avoid asking coaches to provide tenant information
-- direct coaches into the current auth flow with one clear call to action
+- clearly names the pilot
+- explains that coaches sign in through the existing approved access path
+- avoids exposing technical auth details
+- avoids asking coaches to provide tenant information
+- directs coaches into the current auth flow with one clear call to action
 
 ### Sign-in action
 
-The sign-in action should reuse the current approved auth flow only.
+The sign-in action reuses the current approved auth flow only.
 
-It should not:
+In the shipped flow:
 
-- fork users into multiple login choices
-- ask for tenant selection
-- ask for role selection
-- expose a hidden operator path on the coach-facing page
-- imply that email alone determines authorization
+- `/login/start` still launches the existing auth flow
+- the coach-facing page does not ask for tenant selection
+- the coach-facing page does not ask for role selection
+- the coach-facing page does not imply that email alone determines authorization
 
 ### Post-login landing path
 
-After successful sign-in, the coach should land on `/sessions/new` inside the current protected coach-facing SIC app.
+After successful sign-in, the coach lands on `/sessions/new` inside the current protected coach-facing SIC app.
 
-Recommended landing characteristics:
+Landing characteristics remain:
 
 - simple
 - coach-facing
 - aligned to Session Builder
 - minimal ambiguity about next action
-- close to session creation, session review, or the primary coach dashboard
+- close to session creation and session review work
 
 ### Support fallback path
 
@@ -116,6 +115,8 @@ If login fails or access is denied, the coach should see clear guidance on:
 - whether they should retry sign-in
 - whether they may not yet have pilot access
 - where to contact the operator for support
+
+For protected-route behavior, unauthenticated access to `/sessions/new` fail-closes back to `/login?next=%2Fsessions%2Fnew`.
 
 ## Entry page content requirements
 
@@ -126,17 +127,17 @@ Required content:
 ### 1. Pilot context
 
 Example intent:
-- “This pilot gives KSC coaches access to SIC Session Builder for session planning, image-assisted intake, save/export, and pilot feedback.”
+- "This pilot gives KSC coaches access to SIC Session Builder for session planning, image-assisted intake, save/export, and pilot feedback."
 
 ### 2. Primary action
 
 Example intent:
-- “Sign in to continue”
+- "Sign in to continue"
 
 ### 3. Minimal support note
 
 Example intent:
-- “If you expected access and cannot sign in, contact the pilot operator.”
+- "If you expected access and cannot sign in, contact the pilot operator."
 
 ### 4. No tenant instructions
 
@@ -170,18 +171,29 @@ The following is a narrow Week 20 draft, not final product copy.
 
 ## Protected landing recommendation
 
-The post-login landing point should stay inside the current coach-facing SIC web app.
+The post-login landing point stays inside the current coach-facing SIC web app.
 
-The best Week 20 landing path for the current pilot is:
+The shipped Week 20 landing path for the current pilot is:
 
 - `/sessions/new`
 
-Selection criteria:
+Selection criteria remain:
 
 - shortest path to useful session work
 - least confusion for first-time pilot coaches
 - no need to understand platform structure
 - no exposure to incomplete future surfaces
+
+## Runtime evidence
+
+The following Week 20 login-path behaviors were runtime-validated in dev:
+
+- `/login` is implemented as the coach-facing pilot entry path
+- `/login/start` still launches the existing auth flow
+- successful auth lands on `/sessions/new`
+- unauthenticated `/sessions/new` fail-closes to `/login?next=%2Fsessions%2Fnew`
+
+This evidence is limited to the shipped login path behavior. It does not claim walkthrough completion.
 
 ## Operator guidance for the login path
 
@@ -193,7 +205,7 @@ The operator should also be ready to confirm:
 
 - the coach is using the correct entry page
 - the coach is part of the expected pilot group
-- the coach’s access issue is not caused by missing entitlements
+- the coach's access issue is not caused by missing entitlements
 - the coach is not being told to provide tenant information manually
 
 ## Common failure cases
@@ -320,4 +332,4 @@ This login entry path note is done when:
 - the post-login landing expectation is explicit
 - support guidance is documented
 - non-goals are clear
-- the path remains narrow, coach-friendly, and aligned to SIC’s current auth and tenancy model
+- the path remains narrow, coach-friendly, and aligned to SIC's current auth and tenancy model

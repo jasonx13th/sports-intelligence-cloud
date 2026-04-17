@@ -1,4 +1,4 @@
-# Week 20 — Closeout Summary
+# Week 20 - Closeout Summary
 
 ## Theme
 
@@ -6,9 +6,13 @@ KSC Pilot Readiness
 
 ## Status
 
-Documentation closeout for Week 20 pilot-readiness planning and operator guidance.
+Week 20 closeout now includes:
 
-This closeout summarizes the Week 20 documentation pack and the pilot-readiness boundary that has been defined. It does **not** claim implementation work that has not yet been completed or validated in code.
+- completed pilot-readiness documentation
+- implemented and runtime-validated login-entry-path evidence in dev
+- implemented and runtime-validated saved-session feedback evidence in dev
+
+This closeout does not claim pilot walkthrough completion or broader observability work beyond the narrow shipped slice.
 
 ## Strategic objective
 
@@ -44,14 +48,16 @@ The following Week 20 docs were created:
 
 ## What changed
 
-Week 20 created a full pilot-readiness documentation pack that:
+Week 20 created a full pilot-readiness documentation pack and attached narrow implementation evidence for the shipped slices that were runtime-validated.
+
+That Week 20 work:
 
 - froze the KSC pilot boundary
 - defined the allowed pilot tenant setup path
 - defined the smallest KSC tenant config shape
 - defined bounded pilot-user and organization-email sign-in assumptions
-- defined the narrowest safe coach login entry path
-- defined the smallest support logging and pilot feedback slice
+- implemented and validated the narrowest safe coach login entry path
+- implemented and validated the smallest support logging and pilot feedback slice
 - created coach-facing onboarding and quick-start guidance
 - created an internal operator checklist
 - created a walkthrough script for pilot validation and evidence capture
@@ -71,7 +77,7 @@ The documentation pack exists to reduce ambiguity in four areas:
 
 ### Documentation validation
 
-The Week 20 doc set should now be reviewed for:
+The Week 20 doc set has been reviewed for:
 
 - internal consistency
 - source-of-truth alignment
@@ -80,21 +86,24 @@ The Week 20 doc set should now be reviewed for:
 - explicit non-goals
 - explicit stop rules
 
-### Implementation validation
+### Implementation evidence attached
 
-Where actual platform or app changes are later made for Week 20, validation still needs to be attached to those changes.
+The following slices now have implementation evidence attached:
 
-That implementation evidence should include, where applicable:
+- `/login -> /login/start -> /sessions/new` runtime-validated in dev
+- unauthenticated protected-route fail-closed check on `/sessions/new`
+- saved-session feedback success on `/sessions/{sessionId}`
+- duplicate feedback protection on second submit
+- manual `SicApiStack-Dev` deploy required before feedback runtime validation passed
 
-- route or UI behavior checks
-- Postman contract checks
-- auth failure checks
-- missing-entitlements fail-closed checks
-- feedback validation checks
-- support logging spot checks
+### Still-open validation items
+
+The following still require separate evidence if they are to be claimed:
+
 - walkthrough execution notes
-
-This closeout should not be used as proof that those implementation checks are already complete unless separate evidence is attached.
+- broader support logging depth beyond the shipped route-level logging and feedback log enrichment
+- missing-entitlements runtime checks if separately exercised
+- any non-dev environment rollout claims
 
 ## Week 20 success criteria review
 
@@ -116,17 +125,17 @@ Defined at the documentation boundary level.
 ### 4. Visible login entry path for coaches
 
 Status:
-Defined at the documentation boundary level.
+Implemented and runtime-validated in dev. `/login` is the coach-facing pilot entry path, `/login/start` reuses the existing auth flow, successful auth lands on `/sessions/new`, and unauthenticated `/sessions/new` fail-closes to `/login?next=%2Fsessions%2Fnew`.
 
 ### 5. Improved support logging and pilot debug visibility
 
 Status:
-Defined as a bounded Day 2 supportability slice. Actual code-level or runtime evidence must be attached separately if implemented.
+Implemented only at the narrow shipped level. Existing platform/request logging and route-level logging remain in place, and feedback success adds the small `session_feedback_created` enrichment only. No broader observability or dashboard claim is made here.
 
 ### 6. Pilot feedback capture for session quality, drill usefulness, image analysis accuracy, and missing features
 
 Status:
-Defined at the documentation and contract-shape level. Actual route/UI evidence must be attached separately if implemented.
+Implemented and runtime-validated in dev for the shipped saved-session feedback flow. The Week 20 contract is active on `POST /sessions/{sessionId}/feedback`, the saved-session feedback panel works end to end, the first valid submit succeeds, and the second valid submit returns the duplicate message.
 
 ### 7. Onboarding docs and coach quick-start guide
 
@@ -141,19 +150,19 @@ Completed in the documentation pack.
 ### 9. Pilot walkthrough script covering the real coach flow
 
 Status:
-Completed in the documentation pack.
+Completed in the documentation pack. Walkthrough execution is still a separate evidence item and is not claimed here.
 
 ## Tenancy and security check
 
-Week 20 remained aligned to SIC’s non-negotiables:
+Week 20 remained aligned to SIC's non-negotiables:
 
 - tenant scope remains server-derived from verified auth plus authoritative entitlements
 - no `tenant_id`, `tenantId`, or `x-tenant-id` should be accepted from client input
-- no client-side tenant selection path was introduced in the docs
+- no client-side tenant selection path was introduced
 - no scan-then-filter tenancy pattern was proposed
 - role and tier remain server-derived from entitlements
 - auth and authorization are expected to fail closed
-- pilot feedback and session-linked behavior are expected to remain tenant-scoped by construction
+- pilot feedback and session-linked behavior remain tenant-scoped by construction
 
 No approved Week 20 doc should be interpreted as permission to weaken these rules.
 
@@ -161,11 +170,11 @@ No approved Week 20 doc should be interpreted as permission to weaken these rule
 
 Week 20 intentionally stayed minimal and real on observability.
 
-The supportability direction is:
+The shipped supportability direction is:
 
-- structured logging
-- stable reason codes
-- route-level support visibility
+- existing platform/request logging
+- existing route-level support visibility
+- minimal feedback log enrichment
 - privacy-safe request context
 - no broad observability subsystem
 - no dashboard sprawl as a prerequisite for pilot readiness
@@ -174,21 +183,21 @@ If later implementation work adds more than that, it should be treated as scope 
 
 ## Product impact note
 
-The Week 20 documentation pack improves product readiness by making the KSC pilot more understandable and operable before wider release work.
+Week 20 improved product readiness by making the KSC pilot more understandable and operable before wider release work.
 
-The intended product impact is:
+The current product impact is:
 
 - coaches have a clearer way to get into SIC
 - the current Session Builder pilot flow is easier to explain
-- support issues are easier to triage
-- feedback is easier to collect in a bounded way
+- support issues are easier to triage at the narrow shipped level
+- feedback is now collectable in a bounded saved-session flow
 - the internal operator has a practical runbook for readiness and walkthrough review
 
 This is the right kind of Week 20 progress because it increases real pilot readiness without expanding beyond the current SIC slice.
 
 ## What was intentionally not done
 
-Week 20 docs did **not** authorize or imply:
+Week 20 did not authorize or imply:
 
 - auth redesign
 - tenancy-boundary changes
@@ -201,18 +210,15 @@ Week 20 docs did **not** authorize or imply:
 - self-serve tenant administration
 - client-trusted tenant identity
 
-## Open items that still require implementation evidence if code changes are made
+## Open items that still require evidence
 
-If platform or app work is performed after this documentation closeout, attach evidence for:
+If additional platform or app work is performed after this closeout, attach evidence for:
 
-- the exact coach login entry path used in the pilot
 - the actual KSC config or seed artifact shape used in the repo
-- the actual support logging fields or reason codes added
-- the actual pilot feedback request and validation behavior
-- protected-route behavior
-- missing-entitlements behavior
+- any broader support logging fields or reason codes beyond the shipped slice
+- missing-entitlements runtime behavior if separately tested
 - walkthrough execution notes
-- any Postman or manual smoke results
+- any Postman or additional manual smoke results
 
 ## Risks moving into Week 21
 
@@ -232,7 +238,7 @@ Risk:
 Coaches may still reach the wrong entry path or be unclear about where to start.
 
 Mitigation:
-Confirm one approved pilot entry path and keep operator guidance consistent.
+Keep `/login` as the one approved pilot entry path and keep operator guidance consistent.
 
 ### 3. Support logging remains too thin in practice
 
@@ -240,15 +246,15 @@ Risk:
 Real pilot issues may still be hard to triage.
 
 Mitigation:
-Validate stable reason-code coverage on the most likely failure paths before pilot start.
+Validate only the narrow shipped logging slice honestly and expand only if separately justified.
 
-### 4. Feedback capture exists on paper but not in practical flow
+### 4. Feedback capture exists but needs broader rollout discipline
 
 Risk:
-Coaches may not actually submit useful feedback.
+The saved-session flow works, but surrounding pilot operations may still need disciplined evidence capture.
 
 Mitigation:
-Confirm feedback placement is easy to reach and realistic for the current workflow.
+Keep feedback tied to saved sessions, preserve duplicate protection, and document any further expansion separately.
 
 ### 5. Scope creep caused by pilot pressure
 
@@ -260,44 +266,47 @@ Use the documented stop rules and escalate instead of widening the slice informa
 
 ## Readiness assessment
 
-### Ready now at the documentation level
+### Docs completed
 
 - pilot boundary
 - tenant setup boundary
 - KSC config definition
 - pilot-user assumptions
-- login entry-path guidance
-- support and feedback boundary
 - onboarding pack
 - operator checklist
 - walkthrough script
 
-### Still requires implementation or runtime evidence where applicable
+### Implemented and runtime-validated in dev
 
-- actual login-path behavior
-- actual support logging behavior
-- actual feedback flow behavior
-- actual route or UI behavior
-- actual walkthrough run evidence
+- login entry-path behavior
+- protected-route fail-closed check for `/sessions/new`
+- saved-session feedback flow behavior
+- duplicate feedback protection
+
+### Still open
+
+- walkthrough run evidence
+- broader support logging claims beyond the shipped slice
+- any additional non-dev rollout evidence
 
 ## Week 21 handoff
 
 Recommended Week 21 starting point:
 
-- confirm docs match the real product surfaces
-- attach implementation evidence for any Week 20 code changes
-- run pilot-safe smoke checks
+- confirm docs still match the real product surfaces
+- preserve the narrow shipped login and feedback flows
+- run pilot-safe smoke checks as needed
 - run the walkthrough against the real current flow
 - resolve only the smallest blockers that affect real coach usage
 - hold the line on auth, tenancy, entitlements, and infra boundaries
 
 ## Final summary
 
-Week 20 succeeded as a pilot-readiness documentation and boundary-setting week.
+Week 20 succeeded as a pilot-readiness documentation and narrow evidence week.
 
 It created a practical KSC pilot doc pack, kept the product centered on the current shared Session Builder flow, and avoided widening into broader platform work.
 
-The strongest outcome of Week 20 is not more platform depth. It is clearer pilot execution, clearer supportability, and clearer operator control over scope.
+The strongest outcome of Week 20 is not more platform depth. It is clearer pilot execution, clearer supportability at the shipped slice, and clearer operator control over scope.
 
 ## Definition of closeout complete
 
@@ -309,4 +318,5 @@ This closeout is complete when:
 - the operator has a usable checklist
 - the coach has a usable quick-start guide
 - the walkthrough script is ready
-- any later implementation evidence is attached honestly rather than implied
+- implemented evidence is attached honestly
+- unvalidated items remain clearly unclaimed

@@ -1,6 +1,6 @@
 # Architect Process Log
 
-Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_18/` notes.
+Audit-oriented summary of architecture progress and decisions derived from `docs/progress/week_00/` through `docs/progress/week_19/` notes.
 
 ## Running index
 
@@ -23,6 +23,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 16](#week-16)
 - [Week 17](#week-17)
 - [Week 18](#week-18)
+- [Week 19](#week-19)
 
 ## Week 0
 
@@ -829,3 +830,63 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Build on the shipped Week 18 shared Session Builder foundation rather than widen it abruptly.
 - Focus next on confirmed-profile UX, validation clarity, or narrow observability around the shipped image-intake slice.
 - Do not imply broader AI-platform, chatbot, auth, tenancy, or entitlements expansion from the current Week 18 delivery.
+
+
+## Week 19 - AI Evaluation Harness
+
+### Goals
+- Define a lightweight AI evaluation harness for the current AI-assisted Session Builder slice.
+- Freeze the evaluation dataset foundation, rubric, runner boundary, deterministic checks, and pilot-readiness decision layer.
+- Keep Session Builder as the shared core and support Week 20 KSC pilot readiness without widening product or platform scope.
+
+### Work completed
+- Day 1 froze Week 19 scope on the already-shipped Week 18 AI-assisted Session Builder flow and kept the evaluation slice explicitly product-bounded.
+- Frozen evaluation dataset categories and schema were defined for:
+  - `environment_profile`
+  - `setup_to_drill`
+  - `fut_soccer`
+  - `ksc_like`
+  - `negative_boundary`
+- Frozen coach-usefulness rubric dimensions were defined for repeatable review of positive cases.
+- Day 2 froze the local-first runner boundary plus the structured per-case result shape and run-summary shape.
+- Frozen deterministic validator definitions were documented for:
+  - contract validation
+  - equipment compatibility
+  - age-band safety
+  - structure usability
+  - setup faithfulness
+- Day 3 froze the failure-classification rules, pass/hold/fail pilot-readiness thresholds, and the initial golden-example set.
+- Added the Week 19 architecture/process note and closeout summary describing the lightweight evaluation harness and its pilot-readiness role for the current Session Builder AI slice.
+
+### Tenancy/security checks
+- Session Builder remained the shared core; Week 19 evaluated the current shipped slice and did not introduce a separate AI runtime path.
+- No normal evaluation case accepts `tenantId`, `tenant_id`, or `x-tenant-id`.
+- One rejection-only tenant spoof case exists in `negative_boundary` coverage.
+- Tenant scope remained server-derived from verified auth plus authoritative entitlements.
+- No auth-boundary, tenancy-boundary, or entitlements-model change was introduced.
+- No infra, IAM, or CDK change was introduced or implied by the Week 19 harness definition.
+
+### Observability notes
+- Week 19 kept observability intentionally light and review-oriented.
+- The current evidence surface is:
+  - structured per-case result records
+  - structured run-summary output
+  - stable failure reason codes
+  - golden-example visibility
+- No dashboarding expansion, analytics subsystem, or broader AI ops layer was introduced in this slice.
+
+### Evidence
+- `docs/progress/week_19/week19-day1-scope-lock.md`
+- `docs/progress/week_19/week19-day1-review-and-freeze.md`
+- `docs/progress/week_19/week19-day2-runner-boundary.md`
+- `docs/progress/week_19/week19-day2-runner-result-shape.md`
+- `docs/progress/week_19/week19-day3-failure-classification.md`
+- `docs/progress/week_19/week19-day3-pilot-readiness-thresholds.md`
+- `docs/progress/week_19/week19-day3-golden-examples-selection.md`
+- `docs/progress/week_19/closeout-summary.md`
+- `docs/architecture/ai-evaluation-harness.md`
+
+### Next steps
+- Run the frozen harness and golden examples against the current AI-assisted Session Builder slice to support the Week 20 KSC pilot-readiness decision.
+- Use the failure-classification rules and pass/hold/fail thresholds to identify only bounded fixes inside the current shared Session Builder flow if hard gates fail.
+- Carry the frozen golden examples, deterministic checks, and review criteria into Week 20 pilot-readiness work without widening the AI slice into a broader platform narrative.

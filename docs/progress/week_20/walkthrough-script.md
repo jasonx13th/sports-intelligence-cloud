@@ -75,13 +75,11 @@ Use a pilot-safe scenario that reflects real coach work.
 
 Recommended scenario example:
 
-- sport pack: fut-soccer
-- age group: youth
-- player count: realistic for KSC pilot use
-- time available: realistic training block
-- space: small or medium training area
+- flow: fut-soccer
+- age band: youth or the nearest available pilot-safe age band
+- duration: realistic training block
 - equipment: cones, balls, bibs, goals where relevant
-- objective: practical coaching goal such as passing under pressure, ball mastery, pressing, or finishing
+- theme: practical coaching goal such as passing under pressure, ball mastery, pressing, or finishing
 
 If using images, use pilot-safe or sanitized images only.
 
@@ -158,13 +156,11 @@ Begin a new session using the current Session Builder flow and enter practical c
 
 Suggested inputs:
 
-- fut-soccer context
-- age group or level
-- player count
-- time available
-- space available
+- fut-soccer flow where relevant
+- age band
+- duration in minutes
 - equipment available
-- session focus
+- session theme
 
 What to verify:
 
@@ -213,9 +209,9 @@ Review the generated session or drill and confirm whether it matches the coachin
 
 What to verify:
 
-- timing looks appropriate
-- equipment and space assumptions look realistic
-- the objective matches the intended coaching goal
+- duration looks appropriate
+- equipment looks realistic for what was provided
+- the session theme matches the intended coaching goal
 - the Fut-Soccer bias feels useful where expected
 - image-assisted interpretation is acceptable where used
 - the coach has a clear chance to correct issues

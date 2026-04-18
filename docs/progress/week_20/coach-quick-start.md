@@ -26,12 +26,11 @@ Make sure you have:
 - the approved KSC pilot login entry path: `/login`
 - your approved coach access
 - a clear idea of your session needs, such as:
-  - age group or level
-  - player count
-  - time available
-  - space available
-  - equipment available
-  - session focus
+  - flow choice such as Soccer or Fut-Soccer where relevant
+  - age band
+  - session duration
+  - available equipment
+  - session theme
 - an environment or setup photo if you plan to use the image-assisted flow
 
 If you expected access and cannot sign in, contact the pilot operator.
@@ -58,13 +57,12 @@ Start a new session using the current Session Builder path.
 
 You may be asked for or may choose to provide details such as:
 
-- sport or sport-pack context
-- age group
-- number of players
-- available time
-- space or field setup
+- flow choice such as Soccer or Fut-Soccer
+- age band
+- duration in minutes
+- session theme
 - available equipment
-- session objective
+- an optional confirmed image-analysis profile if you use the image-assisted path
 
 Be practical and specific. The better your inputs, the more useful the result is likely to be.
 
@@ -93,10 +91,10 @@ Once SIC generates a result, review it carefully.
 
 Look for:
 
-- whether the session matches your available time
-- whether the activities fit your space and equipment
-- whether the session focus is correct
-- whether the level feels right for your players
+- whether the session matches the duration you requested
+- whether the activities fit the equipment you provided
+- whether the session theme is correct
+- whether the age band and overall difficulty feel right
 - whether any image-derived interpretation needs correction
 
 If something is off, adjust the flow using the available current editing or retry path.

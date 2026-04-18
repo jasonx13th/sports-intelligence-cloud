@@ -100,6 +100,8 @@ In the shipped flow:
 
 After successful sign-in, the coach lands on `/sessions/new` inside the current protected coach-facing SIC app.
 
+In the current shipped Week 20 flow, this is a fixed pilot landing path, not a general return-to-origin redirect contract.
+
 Landing characteristics remain:
 
 - simple
@@ -117,6 +119,8 @@ If login fails or access is denied, the coach should see clear guidance on:
 - where to contact the operator for support
 
 For protected-route behavior, unauthenticated access to `/sessions/new` fail-closes back to `/login?next=%2Fsessions%2Fnew`.
+
+In the current shipped flow, that `next` parameter should be treated as narrow fail-closed route context only. It is not yet a general post-auth return-to-origin contract across protected pages.
 
 ## Entry page content requirements
 

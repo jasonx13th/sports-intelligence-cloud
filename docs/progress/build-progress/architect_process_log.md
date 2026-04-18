@@ -25,6 +25,7 @@ Audit-oriented summary of architecture progress and decisions derived from `docs
 - [Week 18](#week-18)
 - [Week 19](#week-19)
 - [Week 20](#week-20)
+- [Week 21](#week-21)
 
 ## Week 0
 
@@ -948,3 +949,48 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Keep the shipped login-entry and saved-session feedback flows narrow and stable for pilot use.
 - Run the walkthrough and capture separate evidence rather than implying it from the current runtime checks.
 - Continue holding the line on auth, tenancy, entitlements, and infra boundaries as pilot feedback comes in.
+
+
+## Week 21 - Week 20 Drift Alignment and Audit-Doc Cleanup
+
+### Goals
+- Record a narrow audit-oriented Week 21 follow-up for Week 20 drift alignment only.
+- Bring coach-facing and operator-facing wording into line with the already-shipped Week 20 app and doc behavior.
+- Preserve the existing Week 20 product, auth, tenancy, entitlements, and infra boundaries without widening scope.
+
+### Work completed
+- Aligned the saved sessions page copy in `apps/club-vivo/app/sessions/page.tsx` to Week 20 KSC pilot wording and removed the stale Week 12 scaffold reference.
+- Aligned the saved session detail page copy in `apps/club-vivo/app/sessions/[sessionId]/page.tsx` to Week 20 KSC pilot wording and removed the stale Week 12 scaffold reference.
+- Updated `docs/progress/week_20/operator-checklist.md` so the feedback checklist matches the shipped contract and treats `missingFeatures` as required rather than optional.
+- Updated `docs/progress/week_20/login-entry-path.md` to clarify that the shipped successful auth path lands on `/sessions/new` and that the current `next` parameter is narrow fail-closed route context, not a general return-to-origin contract.
+- Updated `docs/progress/week_20/coach-quick-start.md` so the described `/sessions/new` flow matches the currently shipped session form inputs rather than implying unshipped player-count, space, or similar fields.
+- Updated `docs/progress/week_20/walkthrough-script.md` so the suggested session-start inputs and review expectations match the currently shipped `/sessions/new` flow rather than implying unshipped player-count, space, or similar fields.
+
+### Tenancy/security checks
+- This Week 21 follow-up remained docs-and-copy-only.
+- Tenant scope remains server-derived from verified auth plus authoritative entitlements.
+- No `tenant_id`, `tenantId`, or `x-tenant-id` handling changed.
+- No auth-boundary, tenancy-boundary, entitlements-model, IAM, or CDK change was introduced.
+- No client-trusted tenant identity was introduced.
+
+### Observability notes
+- No observability behavior changed in this follow-up.
+- Existing Week 20 route-level logging and narrow feedback log enrichment remained unchanged.
+- This slice updated wording only and did not add dashboards, alarms, metrics, or new telemetry.
+
+### Evidence
+- Updated files:
+  - `apps/club-vivo/app/sessions/page.tsx`
+  - `apps/club-vivo/app/sessions/[sessionId]/page.tsx`
+  - `docs/progress/week_20/operator-checklist.md`
+  - `docs/progress/week_20/login-entry-path.md`
+  - `docs/progress/week_20/coach-quick-start.md`
+  - `docs/progress/week_20/walkthrough-script.md`
+- Validation remained narrow and honest:
+  - `apps/club-vivo` passed TypeScript `tsc --noEmit`
+  - no auth, tenancy, entitlements, IAM, or CDK changes were made
+
+### Next steps
+- Keep the Week 20 pilot docs and coach-facing copy aligned to the real shipped flow as further narrow pilot fixes land.
+- If future work changes the actual session-start inputs or login redirect behavior, update the affected Week 20 pilot docs and app copy together.
+- Continue treating broader auth, tenancy, entitlements, IAM, CDK, and product-scope changes as separate approved slices rather than drift cleanup.

@@ -11,9 +11,10 @@ Week 20 closeout now includes:
 - completed pilot-readiness documentation
 - implemented and runtime-validated login-entry-path evidence in dev
 - implemented and runtime-validated saved-session feedback evidence in dev
+- attached local dev walkthrough execution notes for the narrow shipped pilot flow
 - architect process log updated to record the Week 20 shipped slices, validation, deploy note, and boundary confirmation
 
-This closeout does not claim pilot walkthrough completion or broader observability work beyond the narrow shipped slice.
+This closeout now references `docs/progress/week_20/walkthrough-execution-notes.md` for the local dev walkthrough run. It does not claim successful image-assisted `environment_profile` completion, export verification, `setup_to_drill` verification, or any non-dev walkthrough evidence.
 
 ## Strategic objective
 
@@ -45,6 +46,7 @@ The following Week 20 docs were created:
 - `docs/progress/week_20/coach-quick-start.md`
 - `docs/progress/week_20/operator-checklist.md`
 - `docs/progress/week_20/walkthrough-script.md`
+- `docs/progress/week_20/walkthrough-execution-notes.md`
 - `docs/progress/week_20/closeout-summary.md`
 
 ## What changed
@@ -96,13 +98,15 @@ The following slices now have implementation evidence attached:
 - unauthenticated protected-route fail-closed check on `/sessions/new`
 - saved-session feedback success on `/sessions/{sessionId}`
 - duplicate feedback protection on second submit
+- local dev walkthrough execution notes attached in `docs/progress/week_20/walkthrough-execution-notes.md`, covering login, standard session flow, saved-session verification, feedback success, and duplicate feedback
+- attempted local dev `environment_profile` image-assisted flow failed with the observed body-size limit
+- export and `setup_to_drill` were not exercised in the attached walkthrough run
 - manual `SicApiStack-Dev` deploy required before feedback runtime validation passed
 
 ### Still-open validation items
 
 The following still require separate evidence if they are to be claimed:
 
-- walkthrough execution notes
 - broader support logging depth beyond the shipped route-level logging and feedback log enrichment
 - missing-entitlements runtime checks if separately exercised
 - any non-dev environment rollout claims
@@ -152,7 +156,7 @@ Completed in the documentation pack.
 ### 9. Pilot walkthrough script covering the real coach flow
 
 Status:
-Completed in the documentation pack. Walkthrough execution is still a separate evidence item and is not claimed here.
+Completed in the documentation pack, and local dev walkthrough execution notes are now attached in `docs/progress/week_20/walkthrough-execution-notes.md`. That attached run exercised login, the standard session flow, saved-session verification, feedback success, and duplicate feedback. The attempted `environment_profile` image-assisted flow failed locally with the observed body-size limit, and export plus `setup_to_drill` were not exercised.
 
 ## Tenancy and security check
 
@@ -219,7 +223,6 @@ If additional platform or app work is performed after this closeout, attach evid
 - the actual KSC config or seed artifact shape used in the repo
 - any broader support logging fields or reason codes beyond the shipped slice
 - missing-entitlements runtime behavior if separately tested
-- walkthrough execution notes
 - any Postman or additional manual smoke results
 
 ## Risks moving into Week 21
@@ -287,7 +290,6 @@ Use the documented stop rules and escalate instead of widening the slice informa
 
 ### Still open
 
-- walkthrough run evidence
 - broader support logging claims beyond the shipped slice
 - any additional non-dev rollout evidence
 

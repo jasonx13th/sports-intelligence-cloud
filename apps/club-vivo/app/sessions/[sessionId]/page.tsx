@@ -175,7 +175,7 @@ export default async function SessionDetailPage({
             </h1>
 
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700">
-              This page shows the current Week 12 session detail returned by{" "}
+              This page shows the saved session detail for the current KSC pilot flow from{" "}
               <code>GET /sessions/{`{sessionId}`}</code>.
             </p>
           </div>

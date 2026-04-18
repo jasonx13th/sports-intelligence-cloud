@@ -26,7 +26,7 @@ export default async function SessionsPage() {
             </h1>
 
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700">
-              This page shows the current Week 12 session summaries returned by{" "}
+              This page shows the saved sessions currently available in the KSC pilot flow from{" "}
               <code>GET /sessions</code>.
             </p>
           </div>

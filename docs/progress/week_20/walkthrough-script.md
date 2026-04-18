@@ -141,6 +141,7 @@ After sign-in, confirm that the coach lands in the current protected SIC app and
 
 What to verify:
 
+- successful sign-in currently lands on `/sessions/new`
 - the landing page is coach-appropriate
 - the next action is understandable
 - the path into session work is short

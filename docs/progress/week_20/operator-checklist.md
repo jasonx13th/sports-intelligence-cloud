@@ -124,7 +124,7 @@ Confirm feedback capture is practical and narrow:
   - drill usefulness
   - image analysis accuracy
   - missing features
-- [ ] optional free-text feedback stays short and bounded
+- [ ] required `missingFeatures` feedback stays short and bounded
 - [ ] feedback placement in the current flow is clear
 - [ ] malformed feedback rejection expectations are documented
 - [ ] feedback does not accept client-derived tenant identity

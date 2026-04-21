@@ -41,8 +41,8 @@ export function TeamSelector({ teams, value, onChange }: TeamSelectorProps) {
       </select>
 
       <span className="text-xs leading-5 text-slate-500">
-        Team context is a lightweight Week 21 workspace aid for now. It helps frame defaults
-        without changing the shared generation contract.
+        Pick the team you are planning for so age band and default timing start in a practical
+        place.
       </span>
 
       {selectedTeam ? (

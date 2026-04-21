@@ -16,9 +16,9 @@ type SessionBuilderTopBlockProps = {
   onModeChange: (mode: SessionBuilderMode) => void;
   sport: string;
   ageBand: string;
-  onAgeBandChange: (value: string) => void;
   durationMin: string;
   onDurationMinChange: (value: string) => void;
+  minimumDuration: number;
   objective: string;
   onObjectiveChange: (value: string) => void;
   constraints: string;
@@ -39,9 +39,9 @@ export function SessionBuilderTopBlock({
   onModeChange,
   sport,
   ageBand,
-  onAgeBandChange,
   durationMin,
   onDurationMinChange,
+  minimumDuration,
   objective,
   onObjectiveChange,
   constraints,
@@ -50,63 +50,68 @@ export function SessionBuilderTopBlock({
   onEquipmentChange,
   actions
 }: SessionBuilderTopBlockProps) {
-  const selectedTeam = teams.find((team) => team.id === selectedTeamId);
-
   return (
-    <form action={formAction} className="rounded-3xl border border-slate-200 bg-white/70 p-6">
+    <form action={formAction} className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Session Builder</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Set up</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Keep the everyday coach flow focused: choose team context, pick a mode, set the session
-          details, and generate through the shared path.
+          Choose the team, set the session shape, and add the coaching context before you
+          generate options.
         </p>
       </div>
 
       <input type="hidden" name="sport" value={sport} />
+      <input type="hidden" name="ageBand" value={ageBand} />
       <input type="hidden" name="confirmedProfileJson" value={confirmedProfileJson} />
 
       <div className="mt-6 grid gap-6">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">1. Team</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Choose the team you want to work with for this session.
+            </p>
+          </div>
           <TeamSelector teams={teams} value={selectedTeamId} onChange={onTeamChange} />
+        </section>
+
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">2. Session mode</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Full Session is the current production path. Quick Drill stays visible as a lighter
+              planning direction.
+            </p>
+          </div>
           <ModeSelector value={mode} onChange={onModeChange} />
-        </div>
+        </section>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2 text-sm text-slate-700">
-            <span className="font-medium">Age band</span>
-            <select
-              name="ageBand"
-              value={ageBand}
-              onChange={(event) => onAgeBandChange(event.target.value)}
-              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-              required
-            >
-              <option value="u6">u6</option>
-              <option value="u8">u8</option>
-              <option value="u10">u10</option>
-              <option value="u12">u12</option>
-              <option value="u14">u14</option>
-              <option value="u16">u16</option>
-              <option value="u18">u18</option>
-              <option value="adult">adult</option>
-            </select>
-          </label>
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">3. Session details</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Set the timing, coaching goal, and practical details for today&apos;s group.
+            </p>
+          </div>
 
-          <DurationSelector
-            value={durationMin}
-            onChange={onDurationMinChange}
-            suggestedDurationMin={selectedTeam?.defaultDurationMin}
+          <div className="grid gap-4">
+            <DurationSelector
+              value={durationMin}
+              onChange={onDurationMinChange}
+              minimumDuration={minimumDuration}
+              mode={mode}
+            />
+          </div>
+
+          <ObjectiveConstraintsInputs
+            objective={objective}
+            onObjectiveChange={onObjectiveChange}
+            constraints={constraints}
+            onConstraintsChange={onConstraintsChange}
+            equipment={equipment}
+            onEquipmentChange={onEquipmentChange}
           />
-        </div>
-
-        <ObjectiveConstraintsInputs
-          objective={objective}
-          onObjectiveChange={onObjectiveChange}
-          constraints={constraints}
-          onConstraintsChange={onConstraintsChange}
-          equipment={equipment}
-          onEquipmentChange={onEquipmentChange}
-        />
+        </section>
       </div>
 
       {error ? (
@@ -115,7 +120,12 @@ export function SessionBuilderTopBlock({
         </p>
       ) : null}
 
-      <div className="mt-6 flex justify-end">{actions}</div>
+      <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm leading-6 text-slate-600">
+          Generate session options, then save the one you want to keep.
+        </p>
+        <div>{actions}</div>
+      </div>
     </form>
   );
 }

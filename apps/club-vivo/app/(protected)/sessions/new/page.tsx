@@ -1,8 +1,5 @@
 import { Buffer } from "node:buffer";
 
-import Link from "next/link";
-import { redirect } from "next/navigation";
-
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import {
   NewSessionFlow,
@@ -12,17 +9,12 @@ import {
 } from "./session-new-flow";
 import {
   analyzeSessionImage,
-  createSession,
   generateSessionPack,
-  getSessions,
   type ConfirmedImageAnalysisProfile,
-  type GeneratedSession,
   type ImageAnalysisMode,
-  type SessionBuilderApiError,
-  type SessionListItem
+  type SessionBuilderApiError
 } from "../../../../lib/session-builder-api";
-
-type ReusableSessionSummary = SessionListItem;
+import { saveGeneratedSessionAction } from "../session-actions";
 
 type WorkspaceTeamOption = {
   id: string;
@@ -129,15 +121,6 @@ function parseConfirmedProfile(rawValue: string) {
   return JSON.parse(rawValue) as ConfirmedImageAnalysisProfile;
 }
 
-function getSessionDisplayLabel(session: ReusableSessionSummary) {
-  const objective =
-    session.objectiveTags && session.objectiveTags.length > 0
-      ? session.objectiveTags.join(", ")
-      : "Saved session";
-
-  return `${session.ageBand.toUpperCase()} / ${session.durationMin} min / ${objective}`;
-}
-
 export async function analyzeSessionImageAction(
   _previousState: AnalyzeFormState,
   formData: FormData
@@ -166,7 +149,7 @@ export async function analyzeSessionImageAction(
   if (!SUPPORTED_IMAGE_MIME_TYPES.has(sourceImage.type)) {
     return {
       values,
-      error: "Use a JPG, PNG, or WebP image for Week 18 intake."
+      error: "Use a JPG, PNG, or WebP image for image-assisted intake."
     };
   }
 
@@ -262,40 +245,6 @@ export async function generateSessionPackAction(
   }
 }
 
-export async function saveGeneratedSessionAction(
-  _previousState: SaveFormState,
-  formData: FormData
-): Promise<SaveFormState> {
-  "use server";
-
-  const rawCandidate = String(formData.get("candidate") || "");
-
-  if (!rawCandidate) {
-    return {
-      error: "Select a generated session before saving."
-    };
-  }
-
-  let candidate: GeneratedSession;
-
-  try {
-    candidate = JSON.parse(rawCandidate) as GeneratedSession;
-  } catch {
-    return {
-      error: "Generated session data was invalid. Generate again and retry."
-    };
-  }
-
-  try {
-    const session = await createSession(candidate);
-    redirect(`/sessions/${session.sessionId}`);
-  } catch (error) {
-    return {
-      error: getErrorMessage(error, "Saving failed. Generate again and retry.")
-    };
-  }
-}
-
 function parseSearchParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -304,21 +253,16 @@ export default async function NewSessionPage({
   searchParams
 }: {
   searchParams?: Promise<{
+    notes?: string | string[];
     theme?: string | string[];
     durationMin?: string | string[];
-    sourceSessionId?: string | string[];
-    sourceLabel?: string | string[];
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedTheme = parseSearchParam(resolvedSearchParams?.theme)?.trim() || "";
   const requestedDurationMin = parseSearchParam(resolvedSearchParams?.durationMin)?.trim() || "";
-  const sourceSessionId = parseSearchParam(resolvedSearchParams?.sourceSessionId)?.trim() || "";
-  const sourceLabel = parseSearchParam(resolvedSearchParams?.sourceLabel)?.trim() || "";
-
-  const { items } = await getSessions();
-  const recentSessions: ReusableSessionSummary[] = items.slice(0, 4);
-  const sourceSession = recentSessions.find((session) => session.sessionId === sourceSessionId);
+  const requestedNotes = parseSearchParam(resolvedSearchParams?.notes)?.trim() || "";
+  const initialConstraints = requestedNotes || undefined;
 
   const initialGenerateState: GenerateFormState = {
     values: {
@@ -331,28 +275,12 @@ export default async function NewSessionPage({
     }
   };
 
-  const sourceSessionLabel =
-    sourceLabel || (sourceSession ? getSessionDisplayLabel(sourceSession) : undefined);
-
   return (
     <div className="grid gap-6">
       <CoachPageHeader
-        badge="Generate"
-        title="Build today's session"
-        description={
-          <>
-            Week 21 keeps <code>/sessions/new</code> as the post-login landing target and shared
-            generation route while hardening it into the main coach workspace entry surface.
-          </>
-        }
-        actions={
-          <Link
-            href="/sessions"
-            className="inline-flex rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
-          >
-            Back to sessions
-          </Link>
-        }
+        badge="Session Builder"
+        title="Session Builder"
+        description="Use the detailed setup flow here when you want more control than Home Quick session."
       />
 
       <NewSessionFlow
@@ -360,9 +288,7 @@ export default async function NewSessionPage({
         initialGenerateState={initialGenerateState}
         initialSaveState={INITIAL_SAVE_STATE}
         teamOptions={WORKSPACE_TEAM_OPTIONS}
-        recentSessions={recentSessions}
-        activeSourceSessionId={sourceSessionId || undefined}
-        sourceSessionLabel={sourceSessionLabel}
+        initialConstraints={initialConstraints}
         analyzeAction={analyzeSessionImageAction}
         generateAction={generateSessionPackAction}
         saveAction={saveGeneratedSessionAction}

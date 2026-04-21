@@ -3,11 +3,6 @@
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { RecentSessionsPanel } from "../../../../components/coach/RecentSessionsPanel";
-import {
-  ReuseFromLibraryEntry,
-  type ReusableSessionSummary
-} from "../../../../components/coach/ReuseFromLibraryEntry";
 import { SessionBuilderTopBlock } from "../../../../components/coach/SessionBuilderTopBlock";
 import { type SessionBuilderMode } from "../../../../components/coach/ModeSelector";
 import { type WorkspaceTeamOption } from "../../../../components/coach/TeamSelector";
@@ -51,6 +46,11 @@ type AnalyzeAction = (state: AnalyzeFormState, formData: FormData) => Promise<An
 type SaveAction = (state: SaveFormState, formData: FormData) => Promise<SaveFormState>;
 type SaveFormDispatch = (formData: FormData) => void;
 
+const FULL_SESSION_DEFAULT_DURATION = "60";
+const FULL_SESSION_MIN_DURATION = 30;
+const QUICK_DRILL_DEFAULT_DURATION = "20";
+const QUICK_DRILL_MIN_DURATION = 10;
+
 function AnalyzeButton() {
   const { pending } = useFormStatus();
 
@@ -71,7 +71,7 @@ function GenerateButton() {
   return (
     <button
       type="submit"
-      className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex rounded-full border border-transparent bg-teal-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending}
     >
       {pending ? "Generating..." : "Generate sessions"}
@@ -102,50 +102,73 @@ function CandidateCard({
   index: number;
   saveFormAction: SaveFormDispatch;
 }) {
+  const equipment = Array.isArray(candidate.equipment) ? candidate.equipment : [];
+
   return (
-    <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">
-            Candidate {index + 1}: {candidate.sport} · {candidate.ageBand}
+    <article className="rounded-3xl border border-slate-200 bg-white/80 p-5">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Session option {index + 1}
+          </p>
+          <h3 className="mt-2 text-lg font-semibold text-slate-900">
+            {candidate.ageBand.toUpperCase()} {candidate.sport} session
           </h3>
-          <p className="mt-2 text-sm text-slate-600">{candidate.durationMin} minutes</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {candidate.durationMin} minutes
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {candidate.activities.length} activities
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {candidate.sport}
+            </span>
+          </div>
         </div>
 
-        <form action={saveFormAction}>
+        <form action={saveFormAction} className="sm:shrink-0">
           <input type="hidden" name="candidate" value={JSON.stringify(candidate)} />
           <SaveButton />
         </form>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {candidate.objectiveTags.length > 0 ? (
-          candidate.objectiveTags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-            >
-              {tag}
-            </span>
-          ))
-        ) : (
-          <span className="text-sm text-slate-500">No objective tags</span>
-        )}
-      </div>
+      <div className="mt-5 grid gap-5">
+        <section className="grid gap-2">
+          <h4 className="text-sm font-semibold text-slate-900">Focus</h4>
+          <div className="flex flex-wrap gap-2">
+            {candidate.objectiveTags.length > 0 ? (
+              candidate.objectiveTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                >
+                  {tag}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-slate-500">No objective tags listed</span>
+            )}
+          </div>
+        </section>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {candidate.equipment.length > 0 ? (
-          candidate.equipment.map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-            >
-              {item}
-            </span>
-          ))
-        ) : (
-          <span className="text-sm text-slate-500">No equipment listed</span>
-        )}
+        <section className="grid gap-2">
+          <h4 className="text-sm font-semibold text-slate-900">Equipment</h4>
+          <div className="flex flex-wrap gap-2">
+            {equipment.length > 0 ? (
+              equipment.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                >
+                  {item}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-slate-500">No equipment listed</span>
+            )}
+          </div>
+        </section>
       </div>
 
       <div className="mt-5 grid gap-3">
@@ -155,8 +178,13 @@ function CandidateCard({
             className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <h4 className="text-base font-semibold text-slate-900">{activity.name}</h4>
-              <p className="text-sm text-slate-600">{activity.minutes} minutes</p>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Activity {activityIndex + 1}
+                </p>
+                <h4 className="mt-1 text-base font-semibold text-slate-900">{activity.name}</h4>
+              </div>
+              <p className="text-sm font-medium text-slate-600">{activity.minutes} minutes</p>
             </div>
 
             <p className="mt-3 text-sm leading-6 text-slate-700">
@@ -174,9 +202,7 @@ export function NewSessionFlow({
   initialGenerateState,
   initialSaveState,
   teamOptions,
-  recentSessions,
-  activeSourceSessionId,
-  sourceSessionLabel,
+  initialConstraints,
   analyzeAction,
   generateAction,
   saveAction
@@ -185,9 +211,7 @@ export function NewSessionFlow({
   initialGenerateState: GenerateFormState;
   initialSaveState: SaveFormState;
   teamOptions: WorkspaceTeamOption[];
-  recentSessions: ReusableSessionSummary[];
-  activeSourceSessionId?: string;
-  sourceSessionLabel?: string;
+  initialConstraints?: string;
   analyzeAction: AnalyzeAction;
   generateAction: GenerateAction;
   saveAction: SaveAction;
@@ -201,7 +225,7 @@ export function NewSessionFlow({
   const [ageBand, setAgeBand] = useState(initialGenerateState.values.ageBand);
   const [durationMin, setDurationMin] = useState(initialGenerateState.values.durationMin);
   const [objective, setObjective] = useState(initialGenerateState.values.theme);
-  const [constraints, setConstraints] = useState("");
+  const [constraints, setConstraints] = useState(initialConstraints ?? "");
   const [equipment, setEquipment] = useState(initialGenerateState.values.equipment);
   const [profileEditorValue, setProfileEditorValue] = useState("");
   const [confirmedProfileJson, setConfirmedProfileJson] = useState("");
@@ -231,6 +255,7 @@ export function NewSessionFlow({
     generateState.values.theme
   ]);
 
+  const minimumDuration = workspaceMode === "quick_drill" ? QUICK_DRILL_MIN_DURATION : FULL_SESSION_MIN_DURATION;
   const hasDraftProfile = Boolean(analyzeState.analysis?.profile);
 
   function handleProfileEditorChange(nextValue: string) {
@@ -264,6 +289,11 @@ export function NewSessionFlow({
     }
   }
 
+  function handleModeChange(mode: SessionBuilderMode) {
+    setWorkspaceMode(mode);
+    setDurationMin(mode === "quick_drill" ? QUICK_DRILL_DEFAULT_DURATION : FULL_SESSION_DEFAULT_DURATION);
+  }
+
   function handleTeamChange(teamId: string) {
     setSelectedTeamId(teamId);
 
@@ -277,10 +307,6 @@ export function NewSessionFlow({
     if (selectedTeam.ageBand) {
       setAgeBand(selectedTeam.ageBand);
     }
-
-    if (selectedTeam.defaultDurationMin) {
-      setDurationMin(String(selectedTeam.defaultDurationMin));
-    }
   }
 
   return (
@@ -293,12 +319,12 @@ export function NewSessionFlow({
         selectedTeamId={selectedTeamId}
         onTeamChange={handleTeamChange}
         mode={workspaceMode}
-        onModeChange={setWorkspaceMode}
+        onModeChange={handleModeChange}
         sport={sport}
         ageBand={ageBand}
-        onAgeBandChange={setAgeBand}
         durationMin={durationMin}
         onDurationMinChange={setDurationMin}
+        minimumDuration={minimumDuration}
         objective={objective}
         onObjectiveChange={setObjective}
         constraints={constraints}
@@ -308,66 +334,21 @@ export function NewSessionFlow({
         actions={<GenerateButton />}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <RecentSessionsPanel
-          sessions={recentSessions}
-          activeSourceSessionId={activeSourceSessionId}
-        />
-        <ReuseFromLibraryEntry sourceSessionLabel={sourceSessionLabel} />
-      </div>
-
-      <section className="rounded-3xl border border-slate-200 bg-white/70 p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Review and candidates</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Save one generated candidate to create a session.
-            </p>
-          </div>
-
-          {workspaceMode === "quick_drill" ? (
-            <p className="max-w-sm rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
-              Quick Drill is still a faster UI framing only. Generation still uses the shared
-              backend session path for now.
-            </p>
-          ) : null}
-        </div>
-
-        {saveState.error ? (
-          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {saveState.error}
-          </p>
-        ) : null}
-
-        {generateState.pack ? (
-          <div className="mt-6 grid gap-5">
-            {generateState.pack.sessions.map((candidate, index) => (
-              <CandidateCard
-                key={`${generateState.pack?.packId}-${index}`}
-                candidate={candidate}
-                index={index}
-                saveFormAction={saveFormAction}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
-            <h3 className="text-base font-semibold text-slate-900">No generated sessions yet</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Submit the session builder above to view candidate sessions here.
-            </p>
-          </div>
-        )}
-      </section>
-
       <details className="rounded-3xl border border-slate-200 bg-white/70 p-6">
-        <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
-          Image-assisted intake
+        <summary className="cursor-pointer list-none">
+          <span className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <span className="block">
+              <h2 className="text-lg font-semibold text-slate-900">Image-assisted intake</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Optional support for coaches who want extra help from one field image.
+              </p>
+            </span>
+
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">
+              Secondary
+            </span>
+          </span>
         </summary>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          This remains available as a secondary tool, but it is no longer part of the primary
-          everyday builder flow.
-        </p>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
           <div className="grid gap-6">
@@ -377,8 +358,8 @@ export function NewSessionFlow({
             >
               <h2 className="text-lg font-semibold text-slate-900">Analyze one image</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Upload one image to draft an intake profile. Review and confirm the draft before
-                generation.
+                Upload one image to draft an intake profile, then review it before using it in the
+                main builder.
               </p>
 
               <div className="mt-6 grid gap-4">
@@ -394,8 +375,8 @@ export function NewSessionFlow({
                     <option value="setup_to_drill">Setup to drill</option>
                   </select>
                   <span className="text-xs leading-5 text-slate-500">
-                    environment_profile drafts space understanding. setup_to_drill seeds one drill
-                    activity only.
+                    Environment profile reads the space. Setup to drill drafts a starting drill
+                    idea from the image.
                   </span>
                 </label>
 
@@ -409,7 +390,7 @@ export function NewSessionFlow({
                     required
                   />
                   <span className="text-xs leading-5 text-slate-500">
-                    Week 18 v1 accepts one JPG, PNG, or WebP image per analysis request.
+                    Upload one JPG, PNG, or WebP image per analysis request.
                   </span>
                 </label>
               </div>
@@ -429,7 +410,7 @@ export function NewSessionFlow({
           <section className="rounded-3xl border border-slate-200 bg-slate-50/70 p-6">
             <h2 className="text-lg font-semibold text-slate-900">Draft image profile</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Confirm the reviewed image profile first when you want the main builder to use it.
+              Confirm the reviewed profile only when you want the main builder to use it.
             </p>
 
             {hasDraftProfile ? (
@@ -438,8 +419,7 @@ export function NewSessionFlow({
                   <div>
                     <h3 className="text-base font-semibold text-slate-900">Draft image profile</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Edit the draft JSON if needed. Generation only uses the profile after you
-                      confirm it.
+                      Edit the draft JSON if needed. The builder only uses it after you confirm it.
                     </p>
                   </div>
 
@@ -471,13 +451,58 @@ export function NewSessionFlow({
               <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
                 <h3 className="text-base font-semibold text-slate-900">No analyzed profile yet</h3>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Run image analysis here only when you need extra environment help.
+                  Use image intake only when you want extra environment or setup guidance.
                 </p>
               </div>
             ) : null}
           </section>
         </div>
       </details>
+
+      <section className="rounded-3xl border border-slate-200 bg-white/70 p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Choose a session</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Review the session options below, choose the one that fits today best, and save it
+              to continue.
+            </p>
+          </div>
+
+          {workspaceMode === "quick_drill" ? (
+            <p className="max-w-sm rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+              Quick Drill still uses the shared generation path. It is a lighter planning frame,
+              not a separate backend mode.
+            </p>
+          ) : null}
+        </div>
+
+        {saveState.error ? (
+          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {saveState.error}
+          </p>
+        ) : null}
+
+        {generateState.pack ? (
+          <div className="mt-6 grid gap-5">
+            {generateState.pack.sessions.map((candidate, index) => (
+              <CandidateCard
+                key={`${generateState.pack?.packId}-${index}`}
+                candidate={candidate}
+                index={index}
+                saveFormAction={saveFormAction}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
+            <h3 className="text-base font-semibold text-slate-900">No session options yet</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Generate a session above to see coach-ready options here.
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -9,6 +9,8 @@ import {
 type RecentSessionsPanelProps = {
   sessions: ReusableSessionSummary[];
   activeSourceSessionId?: string;
+  showLibraryLink?: boolean;
+  showReuseAction?: boolean;
 };
 
 function formatCreatedAt(value: string) {
@@ -20,7 +22,9 @@ function formatCreatedAt(value: string) {
 
 export function RecentSessionsPanel({
   sessions,
-  activeSourceSessionId
+  activeSourceSessionId,
+  showLibraryLink = true,
+  showReuseAction = true
 }: RecentSessionsPanelProps) {
   return (
     <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
@@ -28,17 +32,18 @@ export function RecentSessionsPanel({
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Recent sessions</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-            Reuse a recent saved session to prefill this workspace, or jump into full detail when
-            you want to inspect it first.
+            Review your latest saved sessions and open any one for full detail.
           </p>
         </div>
 
-        <Link
-          href="/sessions"
-          className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          View library
-        </Link>
+        {showLibraryLink ? (
+          <Link
+            href="/sessions"
+            className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            View library
+          </Link>
+        ) : null}
       </div>
 
       {sessions.length === 0 ? (
@@ -93,12 +98,14 @@ export function RecentSessionsPanel({
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={buildReuseSessionHref(session)}
-                      className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
-                    >
-                      Reuse here
-                    </Link>
+                    {showReuseAction ? (
+                      <Link
+                        href={buildReuseSessionHref(session)}
+                        className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
+                      >
+                        Reuse here
+                      </Link>
+                    ) : null}
                     <Link
                       href={`/sessions/${session.sessionId}`}
                       className="inline-flex rounded-full border border-slate-300 bg-transparent px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-white/70"

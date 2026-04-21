@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       return redirectToLogin(request);
     }
 
-    const response = NextResponse.redirect(new URL("/sessions/new", request.url));
+    const response = NextResponse.redirect(new URL("/home", request.url));
 
     setAccessTokenCookie(response, {
       accessToken: tokenResult.accessToken,

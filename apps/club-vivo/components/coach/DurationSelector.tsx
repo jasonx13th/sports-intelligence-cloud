@@ -1,21 +1,25 @@
+import type { SessionBuilderMode } from "./ModeSelector";
+
 type DurationSelectorProps = {
   value: string;
   onChange: (value: string) => void;
-  suggestedDurationMin?: number;
+  minimumDuration: number;
+  mode: SessionBuilderMode;
 };
 
 export function DurationSelector({
   value,
   onChange,
-  suggestedDurationMin
+  minimumDuration,
+  mode
 }: DurationSelectorProps) {
   return (
     <label className="grid gap-2 text-sm text-slate-700">
-      <span className="font-medium">Duration (minutes)</span>
+      <span className="font-medium">Time (minutes)</span>
       <input
         name="durationMin"
         type="number"
-        min="5"
+        min={String(minimumDuration)}
         step="1"
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -23,9 +27,9 @@ export function DurationSelector({
         required
       />
       <span className="text-xs leading-5 text-slate-500">
-        {suggestedDurationMin
-          ? `Current team context suggests ${suggestedDurationMin} minutes, but you can adjust it for today.`
-          : "Set the total session time you want the shared generation flow to hit."}
+        {mode === "quick_drill"
+          ? "Quick Drill starts at 20 minutes in the UI, with a frontend minimum of 10. You can still adjust it."
+          : "Full Session starts at 60 minutes in the UI, with a frontend minimum of 30. You can still adjust it."}
       </span>
     </label>
   );

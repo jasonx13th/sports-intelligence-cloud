@@ -5,10 +5,10 @@ import { CoachPrimaryNav } from "./CoachPrimaryNav";
 
 export function CoachAppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen px-6 py-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <header className="club-vivo-shell rounded-[2rem] border px-6 py-5 backdrop-blur">
-          <div className="flex flex-col gap-5">
+    <div className="min-h-screen px-6 py-6 sm:py-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+        <header className="club-vivo-shell rounded-[2rem] border px-6 py-6 backdrop-blur sm:px-7">
+          <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="club-vivo-badge inline-flex rounded-full px-3 py-1 text-sm font-medium tracking-wide uppercase">
@@ -20,21 +20,26 @@ export function CoachAppShell({ children }: { children: ReactNode }) {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col items-start gap-1 text-sm lg:items-end">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Coach account
+                </p>
                 <Link
                   href="/logout"
-                  className="inline-flex rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
+                  className="font-medium text-slate-500 transition hover:text-slate-700 hover:underline"
                 >
-                  Logout
+                  Log out
                 </Link>
               </div>
             </div>
 
-            <CoachPrimaryNav />
+            <div className="border-t border-slate-200/80 pt-4">
+              <CoachPrimaryNav />
+            </div>
           </div>
         </header>
 
-        <div className="mx-auto w-full max-w-6xl">{children}</div>
+        <div className="mx-auto w-full max-w-6xl pb-2">{children}</div>
       </div>
     </div>
   );

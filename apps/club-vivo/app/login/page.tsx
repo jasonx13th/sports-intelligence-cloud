@@ -12,8 +12,7 @@ export default function LoginPage() {
         </h1>
 
         <p className="mt-4 max-w-xl text-base leading-7 text-slate-700">
-          Use SIC Session Builder to create and review training sessions for the KSC pilot.
-          Sign in to continue.
+          Welcome back. Sign in to open the Club Vivo coach workspace for the KSC pilot.
         </p>
 
         <div className="mt-8">
@@ -23,6 +22,10 @@ export default function LoginPage() {
           >
             Sign in
           </Link>
+
+          <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">
+            You will land in the protected coach workspace after sign-in.
+          </p>
 
           <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">
             If you expected pilot access but cannot continue, contact the KSC pilot operator.

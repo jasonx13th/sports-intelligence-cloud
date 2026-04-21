@@ -1,4 +1,4 @@
-import type { SessionPackV2 } from "../../../lib/types/session-pack";
+import type { SessionPackV2 } from "../../../../lib/types/session-pack";
 
 export const MOCK_COACH_LITE_SESSION_PACK: SessionPackV2 = {
   sessionPackId: "preview-pack-u12-defending-001",

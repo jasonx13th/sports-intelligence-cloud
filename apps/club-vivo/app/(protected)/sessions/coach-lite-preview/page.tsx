@@ -3,15 +3,15 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { SessionPackView } from "../../../components/coach/SessionPackView";
-import { buildApiUrl } from "../../../lib/api";
-import { ACCESS_COOKIE } from "../../../lib/auth";
-import { SessionBuilderApiError } from "../../../lib/session-builder-api";
+import { SessionPackView } from "../../../../components/coach/SessionPackView";
+import { buildApiUrl } from "../../../../lib/api";
+import { ACCESS_COOKIE } from "../../../../lib/auth";
+import { SessionBuilderApiError } from "../../../../lib/session-builder-api";
 import type {
   GeneratedSession,
   SessionPack as PublicSessionPack
-} from "../../../lib/session-builder-api";
-import type { SessionPackActivity, SessionPackV2 } from "../../../lib/types/session-pack";
+} from "../../../../lib/session-builder-api";
+import type { SessionPackActivity, SessionPackV2 } from "../../../../lib/types/session-pack";
 import { MOCK_COACH_LITE_SESSION_PACK } from "./mock-session-pack";
 
 const PREVIEW_INPUT = {

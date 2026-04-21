@@ -6,7 +6,7 @@ import { useFormStatus } from "react-dom";
 import type {
   SessionFeedbackFlowMode,
   SessionFeedbackImageAnalysisAccuracy,
-} from "../../../lib/session-builder-api";
+} from "../../../../lib/session-builder-api";
 
 type FeedbackPanelStatus = "idle" | "error" | "success" | "already-submitted";
 

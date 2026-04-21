@@ -62,7 +62,13 @@ export type EnvironmentProfile = {
   summary: string;
   surfaceType: "grass" | "turf" | "indoor" | "hardcourt" | "unknown";
   spaceSize: SpaceSize;
-  boundaryType: "small-grid" | "half-field" | "full-field" | "indoor-court" | "mixed" | "unknown";
+  boundaryType:
+    | "small-grid"
+    | "half-field"
+    | "full-field"
+    | "indoor-court"
+    | "mixed"
+    | "unknown";
   visibleEquipment: string[];
   constraints: string[];
   safetyNotes: string[];
@@ -80,7 +86,13 @@ export type SetupProfile = {
   summary: string;
   layoutType: "box" | "lane" | "channel" | "grid" | "half-pitch" | "unknown";
   spaceSize: SpaceSize;
-  playerOrganization: "individual" | "pairs" | "small-groups" | "two-lines" | "two-teams" | "unknown";
+  playerOrganization:
+    | "individual"
+    | "pairs"
+    | "small-groups"
+    | "two-lines"
+    | "two-teams"
+    | "unknown";
   visibleEquipment: string[];
   focusTags: string[];
   constraints: string[];
@@ -133,7 +145,12 @@ export type SessionPdfResult = {
   expiresInSeconds: number;
 };
 
-export type SessionFeedbackImageAnalysisAccuracy = "not_used" | "low" | "medium" | "high";
+export type SessionFeedbackImageAnalysisAccuracy =
+  | "not_used"
+  | "low"
+  | "medium"
+  | "high";
+
 export type SessionFeedbackFlowMode =
   | "session_builder"
   | "environment_profile"
@@ -161,11 +178,13 @@ export type SessionFeedback = {
 
 export class SessionBuilderApiError extends Error {
   status: number;
+  details?: unknown;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, details?: unknown) {
     super(message);
     this.name = "SessionBuilderApiError";
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -187,9 +206,9 @@ async function requestJson<T>(path: string, init?: RequestInit) {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       ...(init?.body ? { "content-type": "application/json" } : {}),
-      ...(init?.headers || {})
+      ...(init?.headers || {}),
     },
-    cache: "no-store"
+    cache: "no-store",
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -204,7 +223,26 @@ async function requestJson<T>(path: string, init?: RequestInit) {
   const body = (await response.json()) as T;
 
   if (!response.ok) {
-    throw new SessionBuilderApiError("Session Builder API request failed", response.status);
+    let errorMessage = `Session Builder API request failed (${response.status})`;
+    let errorDetails: unknown = body;
+
+    if (
+      body &&
+      typeof body === "object" &&
+      "error" in body &&
+      typeof (body as { error?: unknown }).error === "string"
+    ) {
+      errorMessage = (body as { error: string }).error;
+    } else if (
+      body &&
+      typeof body === "object" &&
+      "message" in body &&
+      typeof (body as { message?: unknown }).message === "string"
+    ) {
+      errorMessage = (body as { message: string }).message;
+    }
+
+    throw new SessionBuilderApiError(errorMessage, response.status, errorDetails);
   }
 
   return body;
@@ -236,7 +274,7 @@ export async function generateSessionPack(input: GenerateSessionPackInput) {
     pack: SessionPack;
   }>("/session-packs", {
     method: "POST",
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 
   return result.pack;
@@ -250,8 +288,8 @@ export async function analyzeSessionImage(input: AnalyzeSessionImageInput) {
     body: JSON.stringify({
       requestType: "image-analysis",
       mode: input.mode,
-      sourceImage: input.sourceImage
-    })
+      sourceImage: input.sourceImage,
+    }),
   });
 
   return result.analysis;
@@ -262,14 +300,16 @@ export async function createSession(session: GeneratedSession) {
     session: SessionDetail;
   }>("/sessions", {
     method: "POST",
-    body: JSON.stringify(session)
+    body: JSON.stringify(session),
   });
 
   return result.session;
 }
 
 export async function getSessionPdf(sessionId: string) {
-  return requestJson<SessionPdfResult>(`/sessions/${encodeURIComponent(sessionId)}/pdf`);
+  return requestJson<SessionPdfResult>(
+    `/sessions/${encodeURIComponent(sessionId)}/pdf`
+  );
 }
 
 export async function submitSessionFeedback(
@@ -280,7 +320,7 @@ export async function submitSessionFeedback(
     feedback: SessionFeedback;
   }>(`/sessions/${encodeURIComponent(sessionId)}/feedback`, {
     method: "POST",
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 
   return result.feedback;

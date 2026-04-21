@@ -1,23 +1,41 @@
+import { Buffer } from "node:buffer";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import {
-  analyzeSessionImage,
-  type ConfirmedImageAnalysisProfile,
-  type ImageAnalysisMode,
-  SessionBuilderApiError,
-  createSession,
-  generateSessionPack,
-  type GeneratedSession,
-} from "../../../lib/session-builder-api";
+import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import {
   NewSessionFlow,
   type AnalyzeFormState,
   type GenerateFormState,
   type SaveFormState
 } from "./session-new-flow";
+import {
+  analyzeSessionImage,
+  createSession,
+  generateSessionPack,
+  getSessions,
+  type ConfirmedImageAnalysisProfile,
+  type GeneratedSession,
+  type ImageAnalysisMode,
+  type SessionBuilderApiError,
+  type SessionListItem
+} from "../../../../lib/session-builder-api";
+
+type ReusableSessionSummary = SessionListItem;
+
+type WorkspaceTeamOption = {
+  id: string;
+  label: string;
+  sport: "soccer" | "fut-soccer";
+  ageBand: string;
+  programType?: "travel" | "ost";
+  methodologyLabel?: string;
+  defaultDurationMin?: number;
+};
 
 const SUPPORTED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 const INITIAL_ANALYZE_STATE: AnalyzeFormState = {
   values: {
     mode: "environment_profile"
@@ -36,6 +54,36 @@ const INITIAL_GENERATE_STATE: GenerateFormState = {
 
 const INITIAL_SAVE_STATE: SaveFormState = {};
 
+const WORKSPACE_TEAM_OPTIONS: WorkspaceTeamOption[] = [
+  {
+    id: "team-ksc-travel-u14",
+    label: "KSC Travel U14",
+    sport: "soccer",
+    ageBand: "u14",
+    programType: "travel",
+    methodologyLabel: "KSC Travel",
+    defaultDurationMin: 60
+  },
+  {
+    id: "team-ksc-travel-u12",
+    label: "KSC Travel U12",
+    sport: "soccer",
+    ageBand: "u12",
+    programType: "travel",
+    methodologyLabel: "KSC Travel",
+    defaultDurationMin: 60
+  },
+  {
+    id: "team-ksc-ost-u10",
+    label: "KSC OST U10",
+    sport: "soccer",
+    ageBand: "u10",
+    programType: "ost",
+    methodologyLabel: "OST / US Soccer",
+    defaultDurationMin: 45
+  }
+];
+
 function parseEquipment(rawValue: string) {
   return rawValue
     .split(",")
@@ -44,18 +92,32 @@ function parseEquipment(rawValue: string) {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof SessionBuilderApiError) {
-    if (error.status === 400) {
-      return fallback;
-    }
+  if (
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    typeof (error as SessionBuilderApiError).status === "number"
+  ) {
+    const apiError = error as SessionBuilderApiError;
+    console.error("SessionBuilderApiError", {
+      status: apiError.status,
+      message: apiError.message,
+      details: apiError.details
+    });
 
-    return `Request failed with status ${error.status}.`;
+    return apiError.message || fallback;
   }
 
   if (error instanceof Error && error.message) {
+    console.error("Unhandled generation error", {
+      message: error.message,
+      error
+    });
+
     return error.message;
   }
 
+  console.error("Unknown generation error", { error });
   return fallback;
 }
 
@@ -64,8 +126,16 @@ function parseConfirmedProfile(rawValue: string) {
     return undefined;
   }
 
-  const parsed = JSON.parse(rawValue) as ConfirmedImageAnalysisProfile;
-  return parsed;
+  return JSON.parse(rawValue) as ConfirmedImageAnalysisProfile;
+}
+
+function getSessionDisplayLabel(session: ReusableSessionSummary) {
+  const objective =
+    session.objectiveTags && session.objectiveTags.length > 0
+      ? session.objectiveTags.join(", ")
+      : "Saved session";
+
+  return `${session.ageBand.toUpperCase()} / ${session.durationMin} min / ${objective}`;
 }
 
 export async function analyzeSessionImageAction(
@@ -118,7 +188,10 @@ export async function analyzeSessionImageAction(
   } catch (error) {
     return {
       values,
-      error: getErrorMessage(error, "Image analysis failed. Try a different image or review the mode.")
+      error: getErrorMessage(
+        error,
+        "Image analysis failed. Try a different image or review the mode."
+      )
     };
   }
 }
@@ -163,7 +236,10 @@ export async function generateSessionPackAction(
   }
 
   try {
-    const confirmedProfile = confirmedProfileJson ? parseConfirmedProfile(confirmedProfileJson) : undefined;
+    const confirmedProfile = confirmedProfileJson
+      ? parseConfirmedProfile(confirmedProfileJson)
+      : undefined;
+
     const pack = await generateSessionPack({
       sport,
       ...(sportPackId ? { sportPackId } : {}),
@@ -220,42 +296,77 @@ export async function saveGeneratedSessionAction(
   }
 }
 
-export default function NewSessionPage() {
+function parseSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function NewSessionPage({
+  searchParams
+}: {
+  searchParams?: Promise<{
+    theme?: string | string[];
+    durationMin?: string | string[];
+    sourceSessionId?: string | string[];
+    sourceLabel?: string | string[];
+  }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const requestedTheme = parseSearchParam(resolvedSearchParams?.theme)?.trim() || "";
+  const requestedDurationMin = parseSearchParam(resolvedSearchParams?.durationMin)?.trim() || "";
+  const sourceSessionId = parseSearchParam(resolvedSearchParams?.sourceSessionId)?.trim() || "";
+  const sourceLabel = parseSearchParam(resolvedSearchParams?.sourceLabel)?.trim() || "";
+
+  const { items } = await getSessions();
+  const recentSessions: ReusableSessionSummary[] = items.slice(0, 4);
+  const sourceSession = recentSessions.find((session) => session.sessionId === sourceSessionId);
+
+  const initialGenerateState: GenerateFormState = {
+    values: {
+      ...INITIAL_GENERATE_STATE.values,
+      theme: requestedTheme || INITIAL_GENERATE_STATE.values.theme,
+      durationMin:
+        requestedDurationMin && Number.isInteger(Number.parseInt(requestedDurationMin, 10))
+          ? requestedDurationMin
+          : INITIAL_GENERATE_STATE.values.durationMin
+    }
+  };
+
+  const sourceSessionLabel =
+    sourceLabel || (sourceSession ? getSessionDisplayLabel(sourceSession) : undefined);
+
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-16">
-      <section className="club-vivo-shell w-full max-w-6xl rounded-[2rem] border p-8 backdrop-blur">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="club-vivo-badge mb-6 inline-flex rounded-full px-3 py-1 text-sm font-medium tracking-wide uppercase">
-              New Session
-            </div>
-
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              Generate a session pack
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700">
-              Generate candidate sessions first, then save one candidate as a session.
-            </p>
-          </div>
-
+    <div className="grid gap-6">
+      <CoachPageHeader
+        badge="Generate"
+        title="Build today's session"
+        description={
+          <>
+            Week 21 keeps <code>/sessions/new</code> as the post-login landing target and shared
+            generation route while hardening it into the main coach workspace entry surface.
+          </>
+        }
+        actions={
           <Link
             href="/sessions"
             className="inline-flex rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
           >
             Back to sessions
           </Link>
-        </div>
+        }
+      />
 
-        <NewSessionFlow
-          initialAnalyzeState={INITIAL_ANALYZE_STATE}
-          initialGenerateState={INITIAL_GENERATE_STATE}
-          initialSaveState={INITIAL_SAVE_STATE}
-          analyzeAction={analyzeSessionImageAction}
-          generateAction={generateSessionPackAction}
-          saveAction={saveGeneratedSessionAction}
-        />
-      </section>
-    </main>
+      <NewSessionFlow
+        initialAnalyzeState={INITIAL_ANALYZE_STATE}
+        initialGenerateState={initialGenerateState}
+        initialSaveState={INITIAL_SAVE_STATE}
+        teamOptions={WORKSPACE_TEAM_OPTIONS}
+        recentSessions={recentSessions}
+        activeSourceSessionId={sourceSessionId || undefined}
+        sourceSessionLabel={sourceSessionLabel}
+        analyzeAction={analyzeSessionImageAction}
+        generateAction={generateSessionPackAction}
+        saveAction={saveGeneratedSessionAction}
+      />
+    </div>
   );
 }

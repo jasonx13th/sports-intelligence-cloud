@@ -1,15 +1,16 @@
 import Link from "next/link";
 
+import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import {
   getSession,
   SessionBuilderApiError,
   submitSessionFeedback,
   type SessionFeedbackFlowMode,
-  type SessionFeedbackImageAnalysisAccuracy,
-} from "../../../lib/session-builder-api";
+  type SessionFeedbackImageAnalysisAccuracy
+} from "../../../../lib/session-builder-api";
 import {
   SessionFeedbackPanel,
-  type FeedbackPanelState,
+  type FeedbackPanelState
 } from "./session-feedback-panel";
 
 function formatCreatedAt(value: string) {
@@ -23,13 +24,13 @@ const IMAGE_ANALYSIS_ACCURACY_VALUES = new Set<SessionFeedbackImageAnalysisAccur
   "not_used",
   "low",
   "medium",
-  "high",
+  "high"
 ]);
 
 const FLOW_MODE_VALUES = new Set<SessionFeedbackFlowMode>([
   "session_builder",
   "environment_profile",
-  "setup_to_drill",
+  "setup_to_drill"
 ]);
 
 const INITIAL_FEEDBACK_PANEL_STATE: FeedbackPanelState = {
@@ -39,8 +40,8 @@ const INITIAL_FEEDBACK_PANEL_STATE: FeedbackPanelState = {
     drillUsefulness: "",
     imageAnalysisAccuracy: "not_used",
     missingFeatures: "",
-    flowMode: "",
-  },
+    flowMode: ""
+  }
 };
 
 function getTrimmedValue(formData: FormData, field: string) {
@@ -89,7 +90,7 @@ export default async function SessionDetailPage({
       imageAnalysisAccuracy:
         imageAnalysisAccuracy || INITIAL_FEEDBACK_PANEL_STATE.values.imageAnalysisAccuracy,
       missingFeatures: missingFeaturesValue,
-      flowMode: flowMode || "",
+      flowMode: flowMode || ""
     };
 
     const sessionQuality = Number.parseInt(sessionQualityValue, 10);
@@ -110,7 +111,7 @@ export default async function SessionDetailPage({
       return {
         status: "error",
         message: "Review the feedback fields and try again.",
-        values,
+        values
       };
     }
 
@@ -120,13 +121,13 @@ export default async function SessionDetailPage({
         drillUsefulness,
         imageAnalysisAccuracy,
         missingFeatures: missingFeaturesValue,
-        ...(flowMode ? { flowMode } : {}),
+        ...(flowMode ? { flowMode } : {})
       });
 
       return {
         status: "success",
         message: "Feedback submitted. Thank you for the pilot feedback.",
-        values,
+        values
       };
     } catch (error) {
       if (error instanceof SessionBuilderApiError) {
@@ -134,7 +135,7 @@ export default async function SessionDetailPage({
           return {
             status: "already-submitted",
             message: "Feedback has already been submitted for this session.",
-            values,
+            values
           };
         }
 
@@ -142,53 +143,48 @@ export default async function SessionDetailPage({
           return {
             status: "error",
             message: "Review the feedback fields and try again.",
-            values,
+            values
           };
         }
 
         return {
           status: "error",
           message: `Request failed with status ${error.status}.`,
-          values,
+          values
         };
       }
 
       return {
         status: "error",
         message: "Feedback could not be submitted right now. Try again shortly.",
-        values,
+        values
       };
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-16">
-      <section className="club-vivo-shell w-full max-w-5xl rounded-[2rem] border p-8 backdrop-blur">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="club-vivo-badge mb-6 inline-flex rounded-full px-3 py-1 text-sm font-medium tracking-wide uppercase">
-              Session Detail
-            </div>
-
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              {session.sport} · {session.ageBand}
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700">
-              This page shows the saved session detail for the current KSC pilot flow from{" "}
-              <code>GET /sessions/{`{sessionId}`}</code>.
-            </p>
-          </div>
-
+    <div className="grid gap-6">
+      <CoachPageHeader
+        badge="Session Detail"
+        title={`${session.sport} / ${session.ageBand}`}
+        description={
+          <>
+            This page shows the saved session detail for the current KSC pilot flow from{" "}
+            <code>GET /sessions/{`{sessionId}`}</code>.
+          </>
+        }
+        actions={
           <Link
             href="/sessions"
             className="inline-flex rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
           >
             Back to sessions
           </Link>
-        </div>
+        }
+      />
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="club-vivo-shell rounded-[2rem] border p-8 backdrop-blur">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sport</h2>
             <p className="mt-2 text-sm text-slate-800">{session.sport}</p>
@@ -287,6 +283,6 @@ export default async function SessionDetailPage({
           submitAction={submitFeedbackAction}
         />
       </section>
-    </main>
+    </div>
   );
 }

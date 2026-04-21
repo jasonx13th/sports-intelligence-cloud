@@ -951,71 +951,88 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Continue holding the line on auth, tenancy, entitlements, and infra boundaries as pilot feedback comes in.
 
 
-## Week 21 - Coach Workspace Hardening for KSC (Scope Lock and Source-of-Truth Alignment)
+## Week 21 - Coach Workspace Hardening for KSC (Scope Lock, Source-of-Truth Alignment, and Frontend Reconstruction Kickoff)
 
 ### Goals
-- Reframe Week 21 as a Coach Workspace hardening week for KSC instead of a generic release or drift-cleanup week.
-- Freeze the next product step after the narrow Session Builder wedge without widening auth, tenancy, entitlements, IAM, CDK, or infra scope.
-- Align the main source-of-truth docs so product direction, repo planning, and architecture guidance all describe the same Week 21 shape.
+- Keep Week 21 framed as **Coach Workspace Hardening for KSC** rather than a generic release or cleanup week.
+- Begin frontend-only implementation inside one shared coach-facing app.
+- Keep `/sessions/new` as the current shared generation path and post-login landing target.
+- Avoid auth, tenancy, entitlements, IAM, and CDK drift while the coach-facing app is hardened.
 
 ### Work completed
 - Froze the Week 21 Day 1 boundary in `docs/progress/week_21/day1-scope-lock.md`.
-- Reframed Week 21 around **Coach Workspace Hardening for KSC** rather than a generic release or narrow doc-cleanup follow-up.
-- Documented the current repo baseline honestly:
+- Reframed Week 21 around **Coach Workspace Hardening for KSC** and documented the current repo baseline honestly:
   - authenticated coach flow already exists
   - `/sessions/new` remains the main current generation path
   - saved sessions list, detail, and feedback already exist
   - export exists at API level but is not yet surfaced in the Next UI
   - team APIs already exist, but the durable team model is still small
   - there is no teams UI route yet
-  - Quick Drill is not yet a first-class product mode
+  - Quick Drill is not yet a first-class runtime mode
   - coach profile, equipment profile, and coach-admin workspace are not yet durable product surfaces
-- Updated `docs/progress/build-progress/roadmap-vnext.md` so Week 21 now reflects Coach Workspace hardening work instead of the older release-only framing.
-- Updated `docs/product/sic-coach-lite/sic-session-builder.md` so the Session Builder spec now carries the Week 21 product direction around:
-  - first-time coach setup
-  - returning-coach fast entry into session creation
-  - team-level program context
-  - team-level methodology defaults
-  - Full Session vs Quick Drill direction
-  - coach-admin governance direction
-- Updated `docs/vision.md` so SIC’s near-term product path is now clearer:
-  - Session Builder remains the active wedge
-  - Coach Workspace is the next product layer
-  - team workflows increasingly depend on richer team context
-  - club workflows include a narrow coach-admin governance direction
-- Added `docs/product/sic-coach-lite/coach-workspace-v1.md` to define the Week 21 Coach Workspace product direction.
-- Added `docs/product/sic-coach-lite/ksc-program-types-and-methodology-v1.md` to define:
-  - one shared app direction
-  - `programType = travel | ost` at the team level
-  - team-level methodology defaulting direction
-  - coach-admin methodology ownership direction
-- Froze the core Week 21 product rules:
-  - one shared coach-facing app
-  - no separate Travel app
-  - no separate OST app
-  - no separate coach-admin app
-  - first-time coach flow is setup-oriented
-  - returning-coach flow should be faster and more team-aware
-  - KSC Travel and OST should be carried through team context, not separate products
-  - methodology should become an explicit product concept rather than hidden generation bias
-  - Full Session and Quick Drill should be treated as distinct product directions, while only Full Session is closest to current shipped behavior
+- Completed source-of-truth alignment across:
+  - `docs/progress/build-progress/roadmap-vnext.md`
+  - `docs/vision.md`
+  - `docs/product/sic-coach-lite/sic-session-builder.md`
+  - `docs/product/sic-coach-lite/coach-workspace-v1.md`
+  - `docs/product/sic-coach-lite/ksc-program-types-and-methodology-v1.md`
+- Updated GPT/project knowledge so Week 21 planning stayed aligned to the frozen docs and product direction.
+- Completed a frontend audit and planning pass for `apps/club-vivo` focused on the current authenticated coach flow, `/sessions/new`, saved sessions, team context reuse, and the smallest safe Coach Workspace slice.
+- Implemented the first Week 21 Session Builder hardening slice in `apps/club-vivo`:
+  - Session Builder top block
+  - team selector
+  - mode selector
+  - duration selector
+  - objective / constraints inputs
+  - recent sessions support
+  - reuse-from-library entry
+- Began builder cleanup on `/sessions/new`:
+  - moved the primary generate CTA to the bottom of the builder
+  - removed the visible `Flow` selector from the main builder
+  - kept Quick Drill as UI-only framing
+  - demoted image-assisted intake into a secondary section instead of the main everyday builder path
+- Started frontend reconstruction toward one shared coach-facing shell:
+  - added a protected app shell
+  - introduced the protected route group under `app/(protected)/`
+  - added a shared nav and shared page-header pattern
+  - added a lightweight `/profile` placeholder
+  - moved protected pages under the shell without changing URL paths:
+    - `/sessions/new`
+    - `/sessions`
+    - `/sessions/[sessionId]`
+    - `/dashboard`
+- Normalized layout across the protected pages so the new shell owns more of the page structure and the individual routes rely less on competing standalone wrappers.
+- Debugged and fixed bounded frontend blockers discovered during the Week 21 slice:
+  - `NewSessionFlow` import/export mismatch
+  - `teamOptions` prop-shape mismatch (`teamId` vs `id`)
+  - broken relative import path in `coach-lite-preview/mock-session-pack.ts`
+- `npx tsc --noEmit` passed successfully in `apps/club-vivo`.
+- The Week 21 closeout note records successful local manual smoke checks for:
+  - `/sessions/new`
+  - `/sessions`
+  - a real saved-session detail route
+  - `/profile`
+  - `/dashboard`
 
 ### Tenancy/security checks
-- Week 21 work is currently documentation and product-alignment only.
+- Week 21 implementation remained frontend-only in this slice.
+- No backend contract changes were introduced.
 - No auth-boundary changes were introduced.
 - No tenancy-boundary changes were introduced.
 - No entitlements-model changes were introduced.
 - No IAM or CDK changes were introduced.
 - No client-trusted tenant identity was introduced.
 - Tenant scope remains server-derived from verified auth plus authoritative entitlements.
-- One shared app direction remains explicit.
-- No separate Travel, OST, or coach-admin deployment path was introduced.
+- One shared app direction remained explicit throughout; no separate Travel, OST, or coach-admin app path was introduced.
 
 ### Observability notes
-- No runtime observability behavior changed in this Week 21 slice so far.
+- No new observability subsystem was introduced in the Week 21 slice.
 - Existing route-level logging, metrics, alarms, and feedback logging remain unchanged.
-- Current Week 21 evidence is documentation and product-boundary alignment rather than runtime telemetry.
-- No new dashboard, alarm, or metrics expansion was introduced at this stage.
+- Current Week 21 evidence is:
+  - local runtime validation
+  - successful `tsc --noEmit`
+  - local manual smoke checks captured in the closeout note
+- No dashboard, alarm, or metrics expansion was introduced as part of this frontend reconstruction kickoff.
 
 ### Evidence
 - `docs/progress/week_21/day1-scope-lock.md`
@@ -1024,12 +1041,13 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - `docs/product/sic-coach-lite/sic-session-builder.md`
 - `docs/vision.md`
 - `docs/progress/build-progress/roadmap-vnext.md`
+- `docs/progress/week_21/day1-closeout-summary.md`
 
 ### Next steps
-- Keep Week 21 implementation grounded in the frozen Coach Workspace boundary.
-- Produce a frontend-only implementation plan for `apps/club-vivo` before widening backend scope.
-- Keep `/sessions/new` as the current shared generation path while hardening the surrounding coach experience.
-- Reuse existing saved-session flow and existing team APIs where possible instead of inventing parallel surfaces.
-- Delay backend model expansion until the smallest useful frontend slice is clear.
-- Continue holding the line on auth, tenancy, entitlements, IAM, and CDK boundaries while Week 21 implementation begins.
-- Record a closeout summary and updated architecture evidence after real Week 21 implementation work lands.
+- Repurpose `/` into a real public entry or redirect page.
+- Create a true protected Home flow while keeping `/dashboard` secondary.
+- Demote or reposition logout so it is less visually dominant in the coach shell.
+- Continue page-by-page refinement across Home, Generate, Sessions, Profile, and Login.
+- Simplify and revalidate `/sessions/new` again so the builder feels more focused and practical.
+- Keep `/profile` lightweight until backend-backed setup surfaces for teams, environment, and equipment actually exist.
+- Continue holding the line on auth, tenancy, entitlements, IAM, and CDK boundaries while Week 21 frontend work continues.

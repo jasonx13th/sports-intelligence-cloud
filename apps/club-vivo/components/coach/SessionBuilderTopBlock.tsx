@@ -1,9 +1,17 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useState } from "react";
 
 import { DurationSelector } from "./DurationSelector";
 import { ModeSelector, type SessionBuilderMode } from "./ModeSelector";
 import { ObjectiveConstraintsInputs } from "./ObjectiveConstraintsInputs";
 import { TeamSelector, type WorkspaceTeamOption } from "./TeamSelector";
+
+type SessionEnvironmentOption = {
+  value: string;
+  label: string;
+};
 
 type SessionBuilderTopBlockProps = {
   formAction: (formData: FormData) => void;
@@ -19,14 +27,27 @@ type SessionBuilderTopBlockProps = {
   durationMin: string;
   onDurationMinChange: (value: string) => void;
   minimumDuration: number;
+  environment: string;
+  environmentOptions: SessionEnvironmentOption[];
+  onEnvironmentChange: (value: string) => void;
+  onAddEnvironment: (value: string) => void;
   objective: string;
   onObjectiveChange: (value: string) => void;
   constraints: string;
   onConstraintsChange: (value: string) => void;
   equipment: string;
   onEquipmentChange: (value: string) => void;
+  equipmentOptions: string[];
+  onSaveEquipmentOption: (
+    value: string
+  ) => Promise<{ items: string[]; error?: string; message?: string }>;
+  selectedTeamName: string;
   actions: ReactNode;
 };
+
+function normalizeCustomEnvironment(value: string) {
+  return value.replace(/\s+/g, " ").trim().slice(0, 48).trim();
+}
 
 export function SessionBuilderTopBlock({
   formAction,
@@ -42,34 +63,58 @@ export function SessionBuilderTopBlock({
   durationMin,
   onDurationMinChange,
   minimumDuration,
+  environment,
+  environmentOptions,
+  onEnvironmentChange,
+  onAddEnvironment,
   objective,
   onObjectiveChange,
   constraints,
   onConstraintsChange,
   equipment,
   onEquipmentChange,
+  equipmentOptions,
+  onSaveEquipmentOption,
+  selectedTeamName,
   actions
 }: SessionBuilderTopBlockProps) {
+  const [isAddingEnvironment, setIsAddingEnvironment] = useState(false);
+  const [environmentDraft, setEnvironmentDraft] = useState("");
+
+  function handleAddEnvironment() {
+    const normalizedDraft = normalizeCustomEnvironment(environmentDraft);
+
+    if (!normalizedDraft) {
+      setEnvironmentDraft("");
+      setIsAddingEnvironment(false);
+      return;
+    }
+
+    onAddEnvironment(normalizedDraft);
+    setEnvironmentDraft("");
+    setIsAddingEnvironment(false);
+  }
+
   return (
     <form action={formAction} className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Set up</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Start here</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Choose the team, set the session shape, and add the coaching context before you
-          generate options.
+          Choose the team, set the build direction, and add the coaching context for today.
         </p>
       </div>
 
       <input type="hidden" name="sport" value={sport} />
       <input type="hidden" name="ageBand" value={ageBand} />
+      <input type="hidden" name="teamName" value={selectedTeamName} />
       <input type="hidden" name="confirmedProfileJson" value={confirmedProfileJson} />
 
       <div className="mt-6 grid gap-6">
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">1. Team</h3>
+            <h3 className="text-base font-semibold text-slate-900">Team</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Choose the team you want to work with for this session.
+              Choose the team you are planning for today.
             </p>
           </div>
           <TeamSelector teams={teams} value={selectedTeamId} onChange={onTeamChange} />
@@ -77,10 +122,9 @@ export function SessionBuilderTopBlock({
 
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">2. Session mode</h3>
+            <h3 className="text-base font-semibold text-slate-900">Build mode</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Full Session is the current production path. Quick Drill stays visible as a lighter
-              planning direction.
+              Pick the planning frame that fits what you want to build.
             </p>
           </div>
           <ModeSelector value={mode} onChange={onModeChange} />
@@ -88,13 +132,81 @@ export function SessionBuilderTopBlock({
 
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">3. Session details</h3>
+            <h3 className="text-base font-semibold text-slate-900">Set-up</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Set the timing, coaching goal, and practical details for today&apos;s group.
+              Set the time, objective, and the practical details that matter for today&apos;s
+              group.
             </p>
           </div>
 
           <div className="grid gap-4">
+            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <label className="grid flex-1 gap-2 text-sm text-slate-700">
+                  <span className="font-medium">Environment</span>
+                  <select
+                    name="environment"
+                    value={environment}
+                    onChange={(event) => onEnvironmentChange(event.target.value)}
+                    className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+                  >
+                    {environmentOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddingEnvironment(true)}
+                  className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Add environment
+                </button>
+              </div>
+
+              {isAddingEnvironment ? (
+                <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                  <label className="grid gap-2 text-sm text-slate-700">
+                    <span className="font-medium">Custom environment</span>
+                    <input
+                      type="text"
+                      value={environmentDraft}
+                      onChange={(event) => setEnvironmentDraft(event.target.value)}
+                      placeholder="Parking lot"
+                      className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={handleAddEnvironment}
+                    className="inline-flex rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800"
+                  >
+                    Save
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEnvironmentDraft("");
+                      setIsAddingEnvironment(false);
+                    }}
+                    className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : null}
+
+              <span className="text-xs leading-5 text-slate-500">
+                Environment helps the builder reflect the real training surface and space. Added
+                environments stay in this builder page for now.
+              </span>
+            </div>
+
             <DurationSelector
               value={durationMin}
               onChange={onDurationMinChange}
@@ -110,6 +222,8 @@ export function SessionBuilderTopBlock({
             onConstraintsChange={onConstraintsChange}
             equipment={equipment}
             onEquipmentChange={onEquipmentChange}
+            equipmentOptions={equipmentOptions}
+            onSaveEquipmentOption={onSaveEquipmentOption}
           />
         </section>
       </div>
@@ -129,3 +243,5 @@ export function SessionBuilderTopBlock({
     </form>
   );
 }
+
+export type { SessionEnvironmentOption };

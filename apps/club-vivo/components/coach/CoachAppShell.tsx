@@ -3,7 +3,13 @@ import type { ReactNode } from "react";
 
 import { CoachPrimaryNav } from "./CoachPrimaryNav";
 
-export function CoachAppShell({ children }: { children: ReactNode }) {
+export function CoachAppShell({
+  children,
+  coachIdentity
+}: {
+  children: ReactNode;
+  coachIdentity: string | null;
+}) {
   return (
     <div className="min-h-screen px-6 py-6 sm:py-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
@@ -21,8 +27,8 @@ export function CoachAppShell({ children }: { children: ReactNode }) {
               </div>
 
               <div className="flex flex-col items-start gap-1 text-sm lg:items-end">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Coach account
+                <p className="max-w-56 truncate font-medium text-slate-700" title={coachIdentity || undefined}>
+                  {coachIdentity || "Signed-in coach"}
                 </p>
                 <Link
                   href="/logout"

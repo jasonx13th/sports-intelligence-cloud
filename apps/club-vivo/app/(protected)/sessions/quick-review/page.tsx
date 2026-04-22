@@ -40,7 +40,6 @@ export default async function QuickReviewPage() {
 
       <QuickSessionReview
         pack={quickSessionPayload.pack}
-        notes={quickSessionPayload.notes}
         editHref={editHref}
         saveAction={saveGeneratedSessionAction}
       />

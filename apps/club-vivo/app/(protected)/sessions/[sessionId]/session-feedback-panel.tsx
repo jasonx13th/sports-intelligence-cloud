@@ -45,7 +45,7 @@ function SubmitButton() {
 
 export function SessionFeedbackPanel({
   initialState,
-  submitAction,
+  submitAction
 }: {
   initialState: FeedbackPanelState;
   submitAction: FeedbackPanelAction;
@@ -85,7 +85,7 @@ export function SessionFeedbackPanel({
             </label>
 
             <label className="grid gap-2 text-sm text-slate-700">
-              <span className="font-medium">Drill usefulness</span>
+              <span className="font-medium">Activity usefulness</span>
               <select
                 name="drillUsefulness"
                 defaultValue={state.values.drillUsefulness}
@@ -102,36 +102,8 @@ export function SessionFeedbackPanel({
             </label>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="grid gap-2 text-sm text-slate-700">
-              <span className="font-medium">Image analysis accuracy</span>
-              <select
-                name="imageAnalysisAccuracy"
-                defaultValue={state.values.imageAnalysisAccuracy}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-                required
-              >
-                <option value="not_used">Not used</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </label>
-
-            <label className="grid gap-2 text-sm text-slate-700">
-              <span className="font-medium">Flow mode</span>
-              <select
-                name="flowMode"
-                defaultValue={state.values.flowMode}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-              >
-                <option value="">Not specified</option>
-                <option value="session_builder">Session Builder</option>
-                <option value="environment_profile">Environment profile</option>
-                <option value="setup_to_drill">Setup to drill</option>
-              </select>
-            </label>
-          </div>
+          <input type="hidden" name="imageAnalysisAccuracy" value="not_used" />
+          <input type="hidden" name="flowMode" value="" />
 
           <label className="grid gap-2 text-sm text-slate-700">
             <span className="font-medium">Missing features</span>

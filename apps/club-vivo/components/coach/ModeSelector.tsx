@@ -14,7 +14,7 @@ export type { SessionBuilderMode };
 export function ModeSelector({ value, onChange }: ModeSelectorProps) {
   return (
     <fieldset className="grid gap-3">
-      <legend className="text-sm font-medium text-slate-700">Build mode</legend>
+      <legend className="sr-only">Build mode</legend>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label
@@ -33,15 +33,9 @@ export function ModeSelector({ value, onChange }: ModeSelectorProps) {
             onChange={() => onChange("full_session")}
             className="sr-only"
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-slate-900">Full Session</span>
-            <span className="rounded-full border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-teal-700">
-              Current
-            </span>
-          </div>
+          <span className="text-sm font-semibold text-slate-900">Full Session</span>
           <span className="text-xs leading-5 text-slate-600">
-            The primary Week 21 option. Use the current shared session-generation flow to build a
-            full practice plan.
+            Build a full practice plan with the current shared generation flow.
           </span>
         </label>
 
@@ -61,15 +55,9 @@ export function ModeSelector({ value, onChange }: ModeSelectorProps) {
             onChange={() => onChange("quick_drill")}
             className="sr-only"
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-slate-900">Quick Drill</span>
-            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-slate-600">
-              Direction
-            </span>
-          </div>
+          <span className="text-sm font-semibold text-slate-900">Quick Drill</span>
           <span className="text-xs leading-5 text-slate-600">
-            A lighter planning view for where the product is headed. It still runs through the same
-            shared generation path for now.
+            Use a lighter drill-first planning frame while staying on the same generation path.
           </span>
         </label>
       </div>

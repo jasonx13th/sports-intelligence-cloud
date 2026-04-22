@@ -1,6 +1,21 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
+import {
+  QUICK_SESSION_TITLE_HINTS_COOKIE,
+  normalizeQuickSessionTitle,
+  parseQuickSessionTitleHints,
+  withQuickSessionTitleHint
+} from "../../../../lib/quick-session-title-hints";
+import {
+  SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
+  buildBuilderSessionDetailTitle,
+  formatEnvironmentLabel,
+  parseSessionBuilderContextHints
+} from "../../../../lib/session-builder-context-hints";
+import { getCurrentUserIdentity } from "../../../../lib/get-current-user-identity";
+import { SESSION_ORIGIN_HINTS_COOKIE, getSessionOriginLabel, parseSessionOriginHints } from "../../../../lib/session-origin-hints";
 import {
   getSession,
   SessionBuilderApiError,
@@ -12,6 +27,7 @@ import {
   SessionFeedbackPanel,
   type FeedbackPanelState
 } from "./session-feedback-panel";
+import { QuickSessionTitleEditor } from "./quick-session-title-editor";
 
 function formatCreatedAt(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -69,6 +85,82 @@ export default async function SessionDetailPage({
 }) {
   const { sessionId } = await params;
   const session = await getSession(sessionId);
+  const cookieStore = await cookies();
+  const sessionOrigins = parseSessionOriginHints(
+    cookieStore.get(SESSION_ORIGIN_HINTS_COOKIE)?.value
+  );
+  const origin = sessionOrigins[sessionId];
+  const isQuickSession = origin === "quick_session";
+  const isBuilderSession = origin === "full_session" || origin === "quick_drill";
+  const quickSessionTitles = parseQuickSessionTitleHints(
+    cookieStore.get(QUICK_SESSION_TITLE_HINTS_COOKIE)?.value
+  );
+  const builderContexts = parseSessionBuilderContextHints(
+    cookieStore.get(SESSION_BUILDER_CONTEXT_HINTS_COOKIE)?.value
+  );
+  const quickSessionTitle = quickSessionTitles[sessionId];
+  const builderContext = builderContexts[sessionId];
+  const coachIdentity = await getCurrentUserIdentity();
+  const createdByLabel =
+    isQuickSession || isBuilderSession
+      ? coachIdentity || "Signed-in coach"
+      : session.createdBy ?? "Unavailable";
+  const builderModeLabel = origin ? getSessionOriginLabel(origin) : "Session";
+  const builderDetailTitle = isBuilderSession
+    ? buildBuilderSessionDetailTitle({
+        buildModeLabel: builderModeLabel,
+        objective: builderContext?.objective,
+        teamName: builderContext?.teamName,
+        ageBand: session.ageBand
+      })
+    : null;
+  const pageTitle = isQuickSession
+    ? "Quick Session"
+    : isBuilderSession
+      ? builderDetailTitle || builderModeLabel
+      : `${session.sport} / ${session.ageBand}`;
+  const pageBadge = isQuickSession || isBuilderSession ? builderModeLabel : "Session Detail";
+
+  async function saveQuickSessionTitleAction(
+    _previousState: {
+      error?: string;
+      message?: string;
+      savedTitle?: string;
+    },
+    formData: FormData
+  ) {
+    "use server";
+
+    const nextTitle = normalizeQuickSessionTitle(String(formData.get("title") || ""));
+
+    if (!nextTitle) {
+      return {
+        error: "Add a short quick-session title before saving.",
+        savedTitle: quickSessionTitle
+      };
+    }
+
+    const responseCookieStore = await cookies();
+    responseCookieStore.set(
+      QUICK_SESSION_TITLE_HINTS_COOKIE,
+      withQuickSessionTitleHint(
+        responseCookieStore.get(QUICK_SESSION_TITLE_HINTS_COOKIE)?.value,
+        sessionId,
+        nextTitle
+      ),
+      {
+        httpOnly: true,
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+        sameSite: "lax"
+      }
+    );
+
+    return {
+      message: "Saved",
+      savedTitle: nextTitle
+    };
+  }
 
   async function submitFeedbackAction(
     _previousState: FeedbackPanelState,
@@ -165,14 +257,8 @@ export default async function SessionDetailPage({
   return (
     <div className="grid gap-6">
       <CoachPageHeader
-        badge="Session Detail"
-        title={`${session.sport} / ${session.ageBand}`}
-        description={
-          <>
-            This page shows the saved session detail for the current KSC pilot flow from{" "}
-            <code>GET /sessions/{`{sessionId}`}</code>.
-          </>
-        }
+        badge={pageBadge}
+        title={pageTitle}
         actions={
           <Link
             href="/sessions"
@@ -184,77 +270,170 @@ export default async function SessionDetailPage({
       />
 
       <section className="club-vivo-shell rounded-[2rem] border p-8 backdrop-blur">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sport</h2>
-            <p className="mt-2 text-sm text-slate-800">{session.sport}</p>
-          </article>
+        {isBuilderSession ? (
+          <>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created By</h2>
+                <p className="mt-2 break-all text-sm text-slate-800">{createdByLabel}</p>
+              </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Age Band</h2>
-            <p className="mt-2 text-sm text-slate-800">{session.ageBand}</p>
-          </article>
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created At</h2>
+                <p className="mt-2 text-sm text-slate-800">{formatCreatedAt(session.createdAt)}</p>
+              </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
-            <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
-          </article>
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Environment</h2>
+                <p className="mt-2 text-sm text-slate-800">
+                  {formatEnvironmentLabel(builderContext?.environment)}
+                </p>
+              </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created At</h2>
-            <p className="mt-2 text-sm text-slate-800">{formatCreatedAt(session.createdAt)}</p>
-          </article>
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
+                <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
+              </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created By</h2>
-            <p className="mt-2 break-all text-sm text-slate-800">
-              {session.createdBy ?? "Unavailable"}
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Schema Version</h2>
-            <p className="mt-2 text-sm text-slate-800">{session.schemaVersion}</p>
-          </article>
-        </div>
-
-        <div className="mt-8 grid gap-4 lg:grid-cols-2">
-          <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-            <h2 className="text-lg font-semibold text-slate-900">Objective Tags</h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {session.objectiveTags.length > 0 ? (
-                session.objectiveTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-                  >
-                    {tag}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-slate-500">No objective tags</span>
-              )}
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">SIC engine</h2>
+                <p className="mt-2 text-sm text-slate-800">v{session.schemaVersion}</p>
+              </article>
             </div>
-          </article>
 
-          <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-            <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {session.equipment.length > 0 ? (
-                session.equipment.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-                  >
-                    {item}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-slate-500">No equipment listed</span>
-              )}
+            <div className="mt-8 grid gap-4 lg:grid-cols-2">
+              <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+                <h2 className="text-lg font-semibold text-slate-900">Objective</h2>
+                <p className="mt-4 text-sm leading-6 text-slate-700">
+                  {builderContext?.objective || "No saved objective context for this session."}
+                </p>
+              </article>
+
+              <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+                <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {session.equipment.length > 0 ? (
+                    session.equipment.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                      >
+                        {item}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-slate-500">No equipment listed</span>
+                  )}
+                </div>
+              </article>
+
+              <article className="rounded-3xl border border-slate-200 bg-white/70 p-5 lg:col-span-2">
+                <h2 className="text-lg font-semibold text-slate-900">Objective Tags</h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {session.objectiveTags.length > 0 ? (
+                    session.objectiveTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                      >
+                        {tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-slate-500">No objective tags</span>
+                  )}
+                </div>
+              </article>
             </div>
-          </article>
-        </div>
+          </>
+        ) : (
+          <>
+            <div className={`grid gap-4 ${isQuickSession ? "sm:grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created By</h2>
+                <p className="mt-2 break-all text-sm text-slate-800">{createdByLabel}</p>
+
+                {isQuickSession ? (
+                  <QuickSessionTitleEditor
+                    initialTitle={quickSessionTitle}
+                    saveTitleAction={saveQuickSessionTitleAction}
+                  />
+                ) : null}
+              </article>
+
+              {!isQuickSession ? (
+                <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created At</h2>
+                  <p className="mt-2 text-sm text-slate-800">{formatCreatedAt(session.createdAt)}</p>
+                </article>
+              ) : null}
+            </div>
+
+            {!isQuickSession ? (
+              <>
+                <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sport</h2>
+                    <p className="mt-2 text-sm text-slate-800">{session.sport}</p>
+                  </article>
+
+                  <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Age Band</h2>
+                    <p className="mt-2 text-sm text-slate-800">{session.ageBand}</p>
+                  </article>
+
+                  <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
+                    <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
+                  </article>
+
+                  <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Schema Version</h2>
+                    <p className="mt-2 text-sm text-slate-800">{session.schemaVersion}</p>
+                  </article>
+                </div>
+
+                <div className="mt-8 grid gap-4 lg:grid-cols-2">
+                  <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+                    <h2 className="text-lg font-semibold text-slate-900">Objective Tags</h2>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {session.objectiveTags.length > 0 ? (
+                        session.objectiveTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                          >
+                            {tag}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-500">No objective tags</span>
+                      )}
+                    </div>
+                  </article>
+
+                  <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+                    <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {session.equipment.length > 0 ? (
+                        session.equipment.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                          >
+                            {item}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-500">No equipment listed</span>
+                      )}
+                    </div>
+                  </article>
+                </div>
+              </>
+            ) : null}
+          </>
+        )}
 
         <article className="mt-8 rounded-3xl border border-slate-200 bg-white/70 p-5">
           <h2 className="text-lg font-semibold text-slate-900">Activities</h2>

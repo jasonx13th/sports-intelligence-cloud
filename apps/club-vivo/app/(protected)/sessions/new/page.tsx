@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { cookies } from "next/headers";
 
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import {
@@ -14,6 +15,13 @@ import {
   type ImageAnalysisMode,
   type SessionBuilderApiError
 } from "../../../../lib/session-builder-api";
+import { COACH_TEAM_HINTS_COOKIE, getCoachTeams } from "../../../../lib/coach-team-hints";
+import {
+  EQUIPMENT_HINTS_COOKIE,
+  getEquipmentItems,
+  serializeEquipmentHints
+} from "../../../../lib/equipment-hints";
+import { formatEnvironmentLabel } from "../../../../lib/session-builder-context-hints";
 import { saveGeneratedSessionAction } from "../session-actions";
 
 type WorkspaceTeamOption = {
@@ -39,6 +47,7 @@ const INITIAL_GENERATE_STATE: GenerateFormState = {
     sport: "soccer",
     ageBand: "u14",
     durationMin: "60",
+    environment: "grass_field",
     theme: "",
     equipment: ""
   }
@@ -46,41 +55,38 @@ const INITIAL_GENERATE_STATE: GenerateFormState = {
 
 const INITIAL_SAVE_STATE: SaveFormState = {};
 
-const WORKSPACE_TEAM_OPTIONS: WorkspaceTeamOption[] = [
-  {
-    id: "team-ksc-travel-u14",
-    label: "KSC Travel U14",
-    sport: "soccer",
-    ageBand: "u14",
-    programType: "travel",
-    methodologyLabel: "KSC Travel",
-    defaultDurationMin: 60
-  },
-  {
-    id: "team-ksc-travel-u12",
-    label: "KSC Travel U12",
-    sport: "soccer",
-    ageBand: "u12",
-    programType: "travel",
-    methodologyLabel: "KSC Travel",
-    defaultDurationMin: 60
-  },
-  {
-    id: "team-ksc-ost-u10",
-    label: "KSC OST U10",
-    sport: "soccer",
-    ageBand: "u10",
-    programType: "ost",
-    methodologyLabel: "OST / US Soccer",
-    defaultDurationMin: 45
-  }
-];
-
 function parseEquipment(rawValue: string) {
   return rawValue
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function buildGenerationTheme({
+  objective,
+  teamName,
+  environment,
+  constraints
+}: {
+  objective: string;
+  teamName: string;
+  environment: string;
+  constraints: string;
+}) {
+  const normalizedObjective = objective.trim();
+  const normalizedTeamName = teamName.trim();
+  const normalizedConstraints = constraints.trim();
+
+  const parts = [
+    `Primary session objective: ${normalizedObjective}.`,
+    normalizedTeamName ? `Team context: ${normalizedTeamName}.` : "",
+    environment ? `Environment context: ${formatEnvironmentLabel(environment)}.` : "",
+    normalizedConstraints
+      ? `Coach brainstorming and extra details for today: ${normalizedConstraints}. Use these notes directly when shaping the session activities.`
+      : ""
+  ].filter(Boolean);
+
+  return parts.join(" ");
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -188,7 +194,10 @@ export async function generateSessionPackAction(
   const selectedSport = String(formData.get("sport") || "").trim();
   const ageBand = String(formData.get("ageBand") || "").trim();
   const durationMin = String(formData.get("durationMin") || "").trim();
+  const environment = String(formData.get("environment") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
+  const constraints = String(formData.get("constraints") || "").trim();
+  const teamName = String(formData.get("teamName") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
   const confirmedProfileJson = String(formData.get("confirmedProfileJson") || "").trim();
 
@@ -199,6 +208,7 @@ export async function generateSessionPackAction(
     sport: selectedSport,
     ageBand,
     durationMin,
+    environment,
     theme,
     equipment
   };
@@ -228,7 +238,12 @@ export async function generateSessionPackAction(
       ...(sportPackId ? { sportPackId } : {}),
       ageBand,
       durationMin: durationValue,
-      theme,
+      theme: buildGenerationTheme({
+        objective: theme,
+        teamName,
+        environment,
+        constraints
+      }),
       ...(equipment ? { equipment: parseEquipment(equipment) } : {}),
       ...(confirmedProfile ? { confirmedProfile } : {})
     });
@@ -263,6 +278,17 @@ export default async function NewSessionPage({
   const requestedDurationMin = parseSearchParam(resolvedSearchParams?.durationMin)?.trim() || "";
   const requestedNotes = parseSearchParam(resolvedSearchParams?.notes)?.trim() || "";
   const initialConstraints = requestedNotes || undefined;
+  const cookieStore = await cookies();
+  const coachTeams = getCoachTeams(cookieStore.get(COACH_TEAM_HINTS_COOKIE)?.value);
+  const initialEquipmentOptions = getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
+  const teamOptions: WorkspaceTeamOption[] = coachTeams.map((team) => ({
+    id: team.id,
+    label: team.teamName,
+    sport: "soccer",
+    ageBand: team.ageBand,
+    programType: team.teamType,
+    defaultDurationMin: team.teamType === "travel" ? 60 : 45
+  }));
 
   const initialGenerateState: GenerateFormState = {
     values: {
@@ -275,11 +301,31 @@ export default async function NewSessionPage({
     }
   };
 
+  async function saveEquipmentOptionsAction(items: string[]) {
+    "use server";
+
+    const serializedItems = serializeEquipmentHints(items);
+    const nextItems = getEquipmentItems(serializedItems);
+
+    const responseCookieStore = await cookies();
+    responseCookieStore.set(EQUIPMENT_HINTS_COOKIE, serializedItems, {
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+      sameSite: "lax"
+    });
+
+    return {
+      items: nextItems,
+      message: "Equipment saved in this browser."
+    };
+  }
+
   return (
     <div className="grid gap-6">
       <CoachPageHeader
         badge="Session Builder"
-        title="Session Builder"
+        title="Build your session"
         description="Use the detailed setup flow here when you want more control than Home Quick session."
       />
 
@@ -287,11 +333,13 @@ export default async function NewSessionPage({
         initialAnalyzeState={INITIAL_ANALYZE_STATE}
         initialGenerateState={initialGenerateState}
         initialSaveState={INITIAL_SAVE_STATE}
-        teamOptions={WORKSPACE_TEAM_OPTIONS}
+        teamOptions={teamOptions}
+        initialEquipmentOptions={initialEquipmentOptions}
         initialConstraints={initialConstraints}
         analyzeAction={analyzeSessionImageAction}
         generateAction={generateSessionPackAction}
         saveAction={saveGeneratedSessionAction}
+        saveEquipmentOptionsAction={saveEquipmentOptionsAction}
       />
     </div>
   );

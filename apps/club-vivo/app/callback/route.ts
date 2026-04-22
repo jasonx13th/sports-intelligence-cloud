@@ -6,7 +6,8 @@ import {
   clearAuthCookies,
   clearTemporaryAuthCookies,
   exchangeAuthorizationCode,
-  setAccessTokenCookie
+  setAccessTokenCookie,
+  setIdentityTokenCookie
 } from "../../lib/auth";
 
 function redirectToLogin(request: NextRequest) {
@@ -46,6 +47,12 @@ export async function GET(request: NextRequest) {
       accessToken: tokenResult.accessToken,
       expiresIn: tokenResult.expiresIn
     });
+    if (tokenResult.idToken) {
+      setIdentityTokenCookie(response, {
+        idToken: tokenResult.idToken,
+        expiresIn: tokenResult.expiresIn
+      });
+    }
     clearTemporaryAuthCookies(response);
 
     return response;

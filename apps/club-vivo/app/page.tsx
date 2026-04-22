@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function Home() {
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
@@ -13,21 +11,29 @@ export default function Home() {
         </h1>
 
         <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
-          Club Vivo is the coach-facing SIC workspace for planning sessions and returning to saved
-          work.
+          Club Vivo is the coach-facing SIC workspace for planning sessions, returning to saved
+          work, and getting straight into the day.
         </p>
 
-        <div className="mt-8">
-          <Link
-            href="/login"
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a
+            href="/login/start"
             className="inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
           >
             Sign in
-          </Link>
+          </a>
+
+          <a
+            href="/login/start?mode=signup"
+            className="inline-flex rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-white"
+          >
+            Sign up
+          </a>
         </div>
 
         <p className="mt-6 max-w-2xl text-sm leading-6 text-slate-600">
-          Sign in to open the protected coach workspace and start from Home.
+          Sign in to return to your coach workspace, or sign up to start planning with the current
+          Club Vivo coach flow.
         </p>
       </section>
     </main>

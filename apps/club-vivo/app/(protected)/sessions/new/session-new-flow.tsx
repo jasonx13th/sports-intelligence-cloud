@@ -3,7 +3,10 @@
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { SessionBuilderTopBlock } from "../../../../components/coach/SessionBuilderTopBlock";
+import {
+  SessionBuilderTopBlock,
+  type SessionEnvironmentOption
+} from "../../../../components/coach/SessionBuilderTopBlock";
 import { type SessionBuilderMode } from "../../../../components/coach/ModeSelector";
 import { type WorkspaceTeamOption } from "../../../../components/coach/TeamSelector";
 import type {
@@ -26,6 +29,7 @@ export type GenerateFormState = {
     sport: string;
     ageBand: string;
     durationMin: string;
+    environment: string;
     theme: string;
     equipment: string;
   };
@@ -45,11 +49,48 @@ type GenerateAction = (
 type AnalyzeAction = (state: AnalyzeFormState, formData: FormData) => Promise<AnalyzeFormState>;
 type SaveAction = (state: SaveFormState, formData: FormData) => Promise<SaveFormState>;
 type SaveFormDispatch = (formData: FormData) => void;
+type SaveEquipmentOptionsAction = (
+  items: string[]
+) => Promise<{ items: string[]; error?: string; message?: string }>;
 
 const FULL_SESSION_DEFAULT_DURATION = "60";
 const FULL_SESSION_MIN_DURATION = 30;
 const QUICK_DRILL_DEFAULT_DURATION = "20";
 const QUICK_DRILL_MIN_DURATION = 10;
+const DEFAULT_ENVIRONMENT_OPTIONS: SessionEnvironmentOption[] = [
+  { value: "grass_field", label: "Grass field" },
+  { value: "turf_field", label: "Turf field" },
+  { value: "gym_floor", label: "Gym floor" },
+  { value: "wood_floor", label: "Wood floor" },
+  { value: "indoor_wood_floor", label: "Indoor wood floor" }
+];
+
+function normalizeCustomEnvironment(value: string) {
+  return value.replace(/\s+/g, " ").trim().slice(0, 48).trim();
+}
+
+function buildEnvironmentOptions(values: string[]): SessionEnvironmentOption[] {
+  const defaultValues = new Set(DEFAULT_ENVIRONMENT_OPTIONS.map((option) => option.value));
+  const customOptions = values.reduce<SessionEnvironmentOption[]>((accumulator, value) => {
+    const normalizedValue = normalizeCustomEnvironment(value);
+
+    if (!normalizedValue || defaultValues.has(normalizedValue)) {
+      return accumulator;
+    }
+
+    if (accumulator.some((option) => option.value === normalizedValue)) {
+      return accumulator;
+    }
+
+    accumulator.push({
+      value: normalizedValue,
+      label: normalizedValue
+    });
+    return accumulator;
+  }, []);
+
+  return [...DEFAULT_ENVIRONMENT_OPTIONS, ...customOptions];
+}
 
 function AnalyzeButton() {
   const { pending } = useFormStatus();
@@ -96,11 +137,19 @@ function SaveButton() {
 function CandidateCard({
   candidate,
   index,
-  saveFormAction
+  origin,
+  saveFormAction,
+  sessionTitleContext
 }: {
   candidate: GeneratedSession;
   index: number;
+  origin: "full_session" | "quick_drill";
   saveFormAction: SaveFormDispatch;
+  sessionTitleContext: {
+    objective: string;
+    teamName: string;
+    environment: string;
+  };
 }) {
   const equipment = Array.isArray(candidate.equipment) ? candidate.equipment : [];
 
@@ -129,6 +178,10 @@ function CandidateCard({
 
         <form action={saveFormAction} className="sm:shrink-0">
           <input type="hidden" name="candidate" value={JSON.stringify(candidate)} />
+          <input type="hidden" name="origin" value={origin} />
+          <input type="hidden" name="objective" value={sessionTitleContext.objective} />
+          <input type="hidden" name="teamName" value={sessionTitleContext.teamName} />
+          <input type="hidden" name="environment" value={sessionTitleContext.environment} />
           <SaveButton />
         </form>
       </div>
@@ -202,19 +255,23 @@ export function NewSessionFlow({
   initialGenerateState,
   initialSaveState,
   teamOptions,
+  initialEquipmentOptions,
   initialConstraints,
   analyzeAction,
   generateAction,
-  saveAction
+  saveAction,
+  saveEquipmentOptionsAction
 }: {
   initialAnalyzeState: AnalyzeFormState;
   initialGenerateState: GenerateFormState;
   initialSaveState: SaveFormState;
   teamOptions: WorkspaceTeamOption[];
+  initialEquipmentOptions: string[];
   initialConstraints?: string;
   analyzeAction: AnalyzeAction;
   generateAction: GenerateAction;
   saveAction: SaveAction;
+  saveEquipmentOptionsAction: SaveEquipmentOptionsAction;
 }) {
   const [analyzeState, analyzeFormAction] = useActionState(analyzeAction, initialAnalyzeState);
   const [generateState, generateFormAction] = useActionState(generateAction, initialGenerateState);
@@ -224,9 +281,14 @@ export function NewSessionFlow({
   const [sport, setSport] = useState(initialGenerateState.values.sport);
   const [ageBand, setAgeBand] = useState(initialGenerateState.values.ageBand);
   const [durationMin, setDurationMin] = useState(initialGenerateState.values.durationMin);
+  const [environment, setEnvironment] = useState(initialGenerateState.values.environment);
+  const [environmentOptions, setEnvironmentOptions] = useState<SessionEnvironmentOption[]>(() =>
+    buildEnvironmentOptions([initialGenerateState.values.environment])
+  );
   const [objective, setObjective] = useState(initialGenerateState.values.theme);
   const [constraints, setConstraints] = useState(initialConstraints ?? "");
   const [equipment, setEquipment] = useState(initialGenerateState.values.equipment);
+  const [equipmentOptions, setEquipmentOptions] = useState(initialEquipmentOptions);
   const [profileEditorValue, setProfileEditorValue] = useState("");
   const [confirmedProfileJson, setConfirmedProfileJson] = useState("");
   const [profileNotice, setProfileNotice] = useState<string>();
@@ -245,18 +307,27 @@ export function NewSessionFlow({
     setSport(generateState.values.sport);
     setAgeBand(generateState.values.ageBand);
     setDurationMin(generateState.values.durationMin);
+    setEnvironment(generateState.values.environment);
+    setEnvironmentOptions((current) =>
+      buildEnvironmentOptions([
+        ...current.map((option) => option.value),
+        generateState.values.environment
+      ])
+    );
     setObjective(generateState.values.theme);
     setEquipment(generateState.values.equipment);
   }, [
     generateState.values.ageBand,
     generateState.values.durationMin,
     generateState.values.equipment,
+    generateState.values.environment,
     generateState.values.sport,
     generateState.values.theme
   ]);
 
   const minimumDuration = workspaceMode === "quick_drill" ? QUICK_DRILL_MIN_DURATION : FULL_SESSION_MIN_DURATION;
   const hasDraftProfile = Boolean(analyzeState.analysis?.profile);
+  const selectedTeam = teamOptions.find((team) => team.id === selectedTeamId);
 
   function handleProfileEditorChange(nextValue: string) {
     setProfileEditorValue(nextValue);
@@ -309,6 +380,23 @@ export function NewSessionFlow({
     }
   }
 
+  function handleAddEnvironment(value: string) {
+    setEnvironmentOptions((current) =>
+      buildEnvironmentOptions([...current.map((option) => option.value), value])
+    );
+    setEnvironment(value);
+  }
+
+  async function handleSaveEquipmentOption(value: string) {
+    const result = await saveEquipmentOptionsAction([...equipmentOptions, value]);
+
+    if (!result.error) {
+      setEquipmentOptions(result.items);
+    }
+
+    return result;
+  }
+
   return (
     <div className="mt-8 grid gap-8">
       <SessionBuilderTopBlock
@@ -325,12 +413,19 @@ export function NewSessionFlow({
         durationMin={durationMin}
         onDurationMinChange={setDurationMin}
         minimumDuration={minimumDuration}
+        environment={environment}
+        environmentOptions={environmentOptions}
+        onEnvironmentChange={setEnvironment}
+        onAddEnvironment={handleAddEnvironment}
         objective={objective}
         onObjectiveChange={setObjective}
         constraints={constraints}
         onConstraintsChange={setConstraints}
         equipment={equipment}
         onEquipmentChange={setEquipment}
+        equipmentOptions={equipmentOptions}
+        onSaveEquipmentOption={handleSaveEquipmentOption}
+        selectedTeamName={selectedTeam?.label || ""}
         actions={<GenerateButton />}
       />
 
@@ -490,7 +585,13 @@ export function NewSessionFlow({
                 key={`${generateState.pack?.packId}-${index}`}
                 candidate={candidate}
                 index={index}
+                origin={workspaceMode === "quick_drill" ? "quick_drill" : "full_session"}
                 saveFormAction={saveFormAction}
+                sessionTitleContext={{
+                  objective,
+                  teamName: selectedTeam?.label || "",
+                  environment
+                }}
               />
             ))}
           </div>

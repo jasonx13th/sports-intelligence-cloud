@@ -1,27 +1,49 @@
+import { cookies } from "next/headers";
+
 import { CoachPageHeader } from "../../../components/coach/CoachPageHeader";
-import { getCurrentUser } from "../../../lib/get-current-user";
+import { EquipmentEssentialsManager } from "../../../components/coach/EquipmentEssentialsManager";
+import {
+  EQUIPMENT_HINTS_COOKIE,
+  getEquipmentItems,
+  serializeEquipmentHints
+} from "../../../lib/equipment-hints";
 
 export default async function EquipmentPage() {
-  await getCurrentUser();
+  const cookieStore = await cookies();
+  const initialItems = getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
+
+  async function saveEquipmentAction(items: string[]) {
+    "use server";
+
+    const serializedItems = serializeEquipmentHints(items);
+    const nextItems = getEquipmentItems(serializedItems);
+
+    const responseCookieStore = await cookies();
+    responseCookieStore.set(EQUIPMENT_HINTS_COOKIE, serializedItems, {
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+      sameSite: "lax"
+    });
+
+    return {
+      items: nextItems,
+      message: "Essentials saved in this browser."
+    };
+  }
 
   return (
     <div className="grid gap-6">
       <CoachPageHeader
         badge="Equipment"
-        title="Equipment list"
-        description="This area will later hold reusable coach equipment items that support session building and image-assisted intake."
+        title="Essentials"
+        description="Start with the standard equipment most coaches need, then add any extra items you want available in your planning context."
       />
 
-      <section className="club-vivo-shell rounded-[2rem] border p-8 backdrop-blur">
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-8">
-          <h2 className="text-lg font-semibold text-slate-900">Placeholder only</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Coaches will later manage reusable equipment items here and use them during session
-            building and image-assisted intake. This Week 21 slice only reserves the route and
-            keeps the UI wording aligned to that future list.
-          </p>
-        </div>
-      </section>
+      <EquipmentEssentialsManager
+        initialItems={initialItems}
+        saveEquipmentAction={saveEquipmentAction}
+      />
     </div>
   );
 }

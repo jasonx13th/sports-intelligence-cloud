@@ -10,7 +10,7 @@ function joinClassNames(...values: Array<string | false | null | undefined>) {
 const PRIMARY_ITEMS = [
   { href: "/home", label: "Home" },
   { href: "/sessions/new", label: "Session Builder" },
-  { href: "/profile", label: "Profile" },
+  { href: "/teams", label: "Teams" },
   { href: "/equipment", label: "Equipment" },
   { href: "/sessions", label: "Sessions" }
 ];

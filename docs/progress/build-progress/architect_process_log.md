@@ -957,6 +957,7 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Reframe Week 21 around Coach Workspace hardening instead of a generic release pass.
 - Keep one shared coach-facing app while making coach entry, creation, and review flows more practical.
 - Separate fast prompt-based Quick Session usage from the more detailed Session Builder flow without widening backend or platform scope.
+- Align the Session Builder backend and shared coach workspace around server-owned planning context, methodology ownership, and safe selected-team handling without widening the public API.
 
 ### Work completed
 - Day 1 kept source-of-truth/product alignment in place across the Week 21 docs.
@@ -989,6 +990,63 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Save from quick review now redirects correctly into saved session detail.
 - Quick prompt mapping now respects explicit duration requests like `50 minute` instead of always defaulting to 60.
 - Session Builder remains the detailed setup path and still owns the builder-style multi-option generation flow.
+- Day 4 completed a narrow backend and workspace alignment slice across five areas:
+  - request-owned duration rule frozen
+  - Methodology v1 groundwork and first implementation
+  - server-owned generation context and resolution groundwork
+  - real optional lookup groundwork plus frozen safe `teamId` source
+  - selected-team server context and Session Builder visibility work in Club Vivo
+- The request-owned duration rule was frozen:
+  - Team must not own duration
+  - `durationMin` remains request-owned
+  - Quick Session duration comes from the coach prompt
+  - Session Builder duration comes from the current builder request
+  - regression protection and contract clarifications were added
+- Methodology v1 groundwork and first implementation were completed:
+  - Methodology v1 contract
+  - validator and focused tests
+  - admin-only text-only routes:
+    - `GET /methodology/{scope}`
+    - `PUT /methodology/{scope}`
+    - `POST /methodology/{scope}/publish`
+  - protected Club Vivo methodology page at `/methodology`
+  - coach read-only behavior
+  - coach-admin save draft and publish behavior
+- Server-owned Session Builder context work was completed:
+  - Generation Context v1 contract/helper/tests
+  - Resolved Generation Context v1 contract/resolver/tests
+  - pipeline now builds and carries:
+    - `generationContext`
+    - `resolvedGenerationContext`
+  - public `POST /session-packs` contract and handler response remained unchanged
+- Real optional lookup groundwork was completed:
+  - lookup loader for tenant-scoped team context
+  - published-only methodology loader
+  - internal-only pipeline support for optional lookup inputs
+- The first safe internal `teamId` source was frozen and implemented:
+  - `teamId` must not be added to public `POST /session-packs`
+  - browser-local team objects are not trusted
+  - first safe source is server-validated selected-team context stored server-side
+  - signed HttpOnly cookie is the accepted first implementation direction
+- Club Vivo selected-team server context and Session Builder visibility were completed:
+  - durable backend team selection in Club Vivo
+  - signed HttpOnly selected-team cookie helper
+  - selection validated against durable backend teams only
+  - `/sessions/new` now reads selected-team context server-side and passes `teamId` internally into the existing pipeline path
+  - `/sessions/new` now visibly shows:
+    - active selected team when present
+    - neutral no-team-selected state otherwise
+  - first safe internal methodology influence pass added:
+    - internal-only
+    - deterministic
+    - limited to wording/style bias
+    - does not override `durationMin`, `theme`, `equipment`, or safety rules
+  - `/sessions/new` now shows a read-only methodology context panel:
+    - methodology in use when applied
+    - applied scopes
+    - active selected team when present
+    - resolved program direction when available
+    - neutral standard-generation-path state otherwise
 - `apps/club-vivo` passed `npx tsc --noEmit` during the implemented Week 21 frontend slices.
 
 ### Current repo/product state
@@ -997,6 +1055,11 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Session Builder remains the more detailed setup path.
 - Equipment is still placeholder-level product surface only.
 - Builder and quick flows still share persistence, but the display layer is beginning to diverge.
+- The shared app now also has:
+  - explicit methodology ownership in the shared coach workspace
+  - a server-owned selected-team context for internal Session Builder use
+  - internal generation-context and resolved-generation-context boundaries
+  - a bounded first methodology influence pass that stays inside internal generation planning
 
 ### What still needs work
 - Quick Session review page still needs one more cleanup pass:
@@ -1011,17 +1074,28 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
   - title direction like Quick Session #<n>
   - remove builder-style metadata/sections such as sport, age band, duration, schema version, objective tags, equipment
   - keep activities and feedback
+- Stronger methodology influence and later Step 5 work remain intentionally deferred.
+- Team `programType` is still not a shipped Team public contract field and should not be overclaimed from the current internal groundwork.
 
 ### Tenancy/security checks
-- Week 21 implementation remained frontend-only in this slice.
-- No backend contract changes were introduced.
+- Week 21 started frontend-first, and Day 4 added narrow backend/domain alignment work without widening the public Session Builder contract.
+- Day 4 introduced backend implementation work, but the public Session Builder API contract remained unchanged.
 - No auth-boundary redesign was introduced.
 - No tenancy-boundary changes were introduced.
 - No entitlements-model changes were introduced.
-- No IAM or CDK changes were introduced.
+- No IAM or CDK widening was introduced beyond the narrow methodology route wiring that was verified in dev.
 - No client-trusted tenant identity was introduced.
 - Tenant scope remains server-derived from verified auth plus authoritative entitlements.
 - One shared app direction remained explicit throughout; no separate Travel, OST, or coach-admin app path was introduced.
+- No `teamId` was added to public `POST /session-packs`.
+- No query-param or header workaround was introduced for `teamId`.
+- Browser-local team objects remain untrusted for backend context.
+- Selected team is validated in tenant scope before being stored server-side.
+- Request-owned fields remained request-owned:
+  - `durationMin`
+  - `theme`
+  - `equipment`
+- No Team public contract expansion for `programType` was shipped.
 
 ### Observability notes
 - No new observability subsystem was introduced in the Week 21 slice.
@@ -1029,22 +1103,39 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Current Week 21 evidence is primarily:
   - documented frontend implementation
   - successful `npx tsc --noEmit` in `apps/club-vivo`
+  - focused backend/domain tests
+  - methodology route dev verification
   - current repo/worktree route and flow shaping
 - No dashboard, alarm, or metric expansion was introduced as part of this frontend/product work.
+- One Windows Node focused test run hit sandboxed `spawn EPERM`, and the same command was rerun outside the sandbox; final focused test results passed.
 
 ### Evidence
 - `docs/progress/week_21/day1-scope-lock.md`
 - `docs/progress/week_21/day1-closeout-summary.md`
 - `docs/progress/week_21/day2-closeout-summary.md`
+- `docs/progress/week_21/day3-closeout-summary.md`
+- `docs/progress/week_21/day4-closeout-summary.md`
 - `docs/progress/week_21/closeout-summary.md`
 - `docs/product/sic-coach-lite/coach-workspace-v1.md`
 - `docs/product/sic-coach-lite/ksc-program-types-and-methodology-v1.md`
 - `docs/product/sic-coach-lite/sic-session-builder.md`
 - `docs/vision.md`
 - `docs/progress/build-progress/roadmap-vnext.md`
+- Day 4 implementation evidence included:
+  - methodology validator tests passed
+  - methodology service and handler tests passed
+  - methodology dev verification passed:
+    - `cdk synth`
+    - `cdk diff`
+    - `cdk deploy`
+    - smoke checks for `404`, `400`, `403`, save draft, publish, and read-after-publish
+  - focused generation-context, resolver, lookup, and pipeline tests passed
+  - `apps/club-vivo` `tsc --noEmit` passed for methodology page, selected-team, and Session Builder visibility work
 
 ### Next steps
 - Keep refining the coach-facing pages inside the shared shell without widening backend or platform scope.
 - Keep `/profile` lightweight until backend-backed setup surfaces for teams, environment, and equipment actually exist.
 - Continue treating `Quick Drill` as product direction unless and until an explicit backend/runtime slice is approved.
 - Continue holding the line on auth, tenancy, entitlements, IAM, and CDK boundaries while Week 21 frontend work continues.
+- Use the now-frozen server-owned planning boundaries as the base for later Step 5 work instead of widening the public Session Builder contract.
+- Keep stronger methodology influence, broader planning defaults, and any Team contract expansion as explicit future slices rather than backfilling them into the completed Day 4 work.

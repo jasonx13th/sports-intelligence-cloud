@@ -20,6 +20,25 @@ function titleCase(value) {
     .join(" ");
 }
 
+function appendSentence(baseText, sentence) {
+  const normalizedBaseText = String(baseText || "").trim();
+  const normalizedSentence = String(sentence || "").trim();
+
+  if (!normalizedSentence) {
+    return normalizedBaseText;
+  }
+
+  if (!normalizedBaseText) {
+    return normalizedSentence;
+  }
+
+  if (normalizedBaseText.endsWith(".")) {
+    return `${normalizedBaseText} ${normalizedSentence}`;
+  }
+
+  return `${normalizedBaseText}. ${normalizedSentence}`;
+}
+
 function mergeUniqueStrings(...groups) {
   const seen = new Set();
   const result = [];
@@ -102,6 +121,55 @@ function baseSession({ sport, ageBand, durationMin, objectiveTags, equipment, ac
   }
 
   return validated;
+}
+
+function applyMethodologyInfluenceToSession(session, methodologyInfluence) {
+  const styleBias = methodologyInfluence?.styleBias || "default";
+
+  if (styleBias === "default") {
+    return session;
+  }
+
+  const styleBiasSentences =
+    styleBias === "travel"
+      ? {
+          first: "Keep the tempo sharp and the details game-realistic.",
+          later: "Finish with competitive repetition and quick decisions.",
+        }
+      : {
+          first: "Keep directions clear and scaffold the first few reps.",
+          later: "Use simple rules and guided repetition to build confidence.",
+        };
+
+  const activities = Array.isArray(session.activities)
+    ? session.activities.map((activity, index, allActivities) => {
+        if (!activity || activity.name === "Cooldown") {
+          return activity;
+        }
+
+        const shouldUseFirstSentence = index === 0;
+        const isLastCompetitiveBlock = index === allActivities.length - 1;
+        const sentence = shouldUseFirstSentence
+          ? styleBiasSentences.first
+          : isLastCompetitiveBlock
+            ? styleBiasSentences.later
+            : "";
+
+        if (!sentence) {
+          return activity;
+        }
+
+        return {
+          ...activity,
+          description: appendSentence(activity.description, sentence),
+        };
+      })
+    : [];
+
+  return {
+    ...session,
+    activities,
+  };
 }
 
 function templatePassingShape({ sport, ageBand, durationMin, equipment }) {
@@ -251,17 +319,38 @@ function pickSportPackTemplate({ sportPackId, themeKey }) {
   return baseTemplate;
 }
 
-function generateSessionFromTheme({ sport, sportPackId, ageBand, durationMin, theme, equipment }) {
+function generateSessionFromTheme({
+  sport,
+  sportPackId,
+  ageBand,
+  durationMin,
+  theme,
+  equipment,
+  methodologyInfluence,
+}) {
   const themeKey = normalizeTheme(theme);
   const t = pickSportPackTemplate({ sportPackId, themeKey });
 
-  if (t === "passing") return templatePassingShape({ sport, ageBand, durationMin, equipment });
-  if (t === "fut-soccer-passing") return templateFutSoccerPassing({ sport, ageBand, durationMin, equipment });
-  if (t === "finishing") return templateFinishing({ sport, ageBand, durationMin, equipment });
-  if (t === "pressing") return templatePressingTransition({ sport, ageBand, durationMin, equipment });
-  if (t === "fut-soccer-pressing") return templateFutSoccerPressing({ sport, ageBand, durationMin, equipment });
+  const session =
+    t === "passing"
+      ? templatePassingShape({ sport, ageBand, durationMin, equipment })
+      : t === "fut-soccer-passing"
+        ? templateFutSoccerPassing({ sport, ageBand, durationMin, equipment })
+        : t === "finishing"
+          ? templateFinishing({ sport, ageBand, durationMin, equipment })
+          : t === "pressing"
+            ? templatePressingTransition({ sport, ageBand, durationMin, equipment })
+            : t === "fut-soccer-pressing"
+              ? templateFutSoccerPressing({ sport, ageBand, durationMin, equipment })
+              : templateFallback({
+                  sport,
+                  ageBand,
+                  durationMin,
+                  theme: themeKey || "general",
+                  equipment,
+                });
 
-  return templateFallback({ sport, ageBand, durationMin, theme: themeKey || "general", equipment });
+  return applyMethodologyInfluenceToSession(session, methodologyInfluence);
 }
 
 function applyEnvironmentProfileToSession(session, confirmedProfile) {
@@ -380,7 +469,17 @@ function buildCoachLiteDraftFromPack(pack) {
   return validateSessionPackV2Draft(draft);
 }
 
-function generatePack({ sport, sportPackId, ageBand, durationMin, theme, sessionsCount, equipment, confirmedProfile }) {
+function generatePack({
+  sport,
+  sportPackId,
+  ageBand,
+  durationMin,
+  theme,
+  sessionsCount,
+  equipment,
+  confirmedProfile,
+  methodologyInfluence,
+}) {
   const packId = require("crypto").randomUUID();
   const createdAt = new Date().toISOString();
   const mergedEquipment = mergeUniqueStrings(equipment, confirmedProfile?.visibleEquipment);
@@ -395,6 +494,7 @@ function generatePack({ sport, sportPackId, ageBand, durationMin, theme, session
       durationMin,
       theme,
       equipment: mergedEquipment,
+      methodologyInfluence,
     });
 
     if (confirmedProfile?.mode === "environment_profile") {

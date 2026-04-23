@@ -41,6 +41,23 @@ test("validateCreateTeam rejects unknown fields including tenantId", () => {
   );
 });
 
+test("validateCreateTeam rejects durationMin as an unknown field", () => {
+  assert.throws(
+    () =>
+      validateCreateTeam({
+        name: "U14 Blue",
+        sport: "soccer",
+        ageBand: "U14",
+        durationMin: 45,
+      }),
+    (err) => {
+      assert.equal(err.code, "unknown_fields");
+      assert.deepEqual(err.details, { unknown: ["durationMin"] });
+      return true;
+    }
+  );
+});
+
 test("validateCreateTeam rejects invalid status values", () => {
   assert.throws(
     () =>

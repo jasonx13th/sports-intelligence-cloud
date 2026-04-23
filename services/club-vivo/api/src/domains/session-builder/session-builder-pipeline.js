@@ -6,6 +6,9 @@ const {
   validateCreateSessionPack,
   validateSessionPackV2Draft,
 } = require("./session-pack-validate");
+const { buildGenerationContext } = require("./generation-context");
+const { loadGenerationContextLookups } = require("./generation-context-lookups");
+const { resolveGenerationContext } = require("./generation-context-resolver");
 const { generatePack, buildCoachLiteDraftFromPack, minutesSum } = require("./session-pack-templates");
 const { validateCreateSession } = require("./session-validate");
 const { validationError } = require("../../platform/validation/validate");
@@ -18,6 +21,46 @@ function normalizeSessionPackInput(rawInput) {
 
 function generateSessionPack(normalizedInput) {
   return generatePack(normalizedInput);
+}
+
+function deriveMethodologyInfluence(resolvedGenerationContext) {
+  const resolvedMethodologyScope = resolvedGenerationContext?.resolvedMethodologyScope;
+  const styleBias =
+    resolvedMethodologyScope === "travel"
+      ? "travel"
+      : resolvedMethodologyScope === "ost"
+        ? "ost"
+        : "default";
+
+  return {
+    styleBias,
+    methodologyApplied: styleBias !== "default",
+    guidanceSnippets:
+      styleBias === "travel"
+        ? ["travel-tempo", "travel-competitive-repetition"]
+        : styleBias === "ost"
+          ? ["ost-clear-directions", "ost-guided-repetition"]
+          : [],
+  };
+}
+
+function planSessionPack(resolvedGenerationContext) {
+  return {
+    ...resolvedGenerationContext,
+    methodologyInfluence: deriveMethodologyInfluence(resolvedGenerationContext),
+  };
+}
+
+function shouldLoadGenerationContextLookups(options = {}) {
+  if (!options.tenantCtx || !options.methodologyRepository) {
+    return false;
+  }
+
+  if (options.teamId && !options.teamRepository) {
+    return false;
+  }
+
+  return true;
 }
 
 function generateCoachLiteDraft(generatedPack) {
@@ -59,15 +102,37 @@ function validateGeneratedPack(generatedPack) {
   };
 }
 
-function processSessionPackRequest(rawInput) {
+async function processSessionPackRequest(rawInput, options = {}) {
   const normalizedInput = normalizeSessionPackInput(rawInput);
-  const generatedPack = generateSessionPack(normalizedInput);
+  const generationContext = buildGenerationContext(normalizedInput);
+  const lookupInputs = shouldLoadGenerationContextLookups(options)
+    ? await loadGenerationContextLookups({
+        tenantCtx: options.tenantCtx,
+        teamId: options.teamId,
+        teamRepository: options.teamRepository,
+        methodologyRepository: options.methodologyRepository,
+      })
+    : {};
+  const resolvedGenerationContext = resolveGenerationContext({
+    generationContext,
+    teamContext:
+      lookupInputs.teamContext !== undefined ? lookupInputs.teamContext : options.teamContext,
+    methodologyRecords:
+      lookupInputs.methodologyRecords !== undefined
+        ? lookupInputs.methodologyRecords
+        : options.methodologyRecords,
+  });
+  const plannedSessionPack = planSessionPack(resolvedGenerationContext);
+  const generatedPack = generateSessionPack(plannedSessionPack);
   const validatedPack = validateGeneratedPack(generatedPack);
   const coachLiteDraft = generateCoachLiteDraft(validatedPack);
   const validatedCoachLiteDraft = validateCoachLiteDraft(coachLiteDraft);
 
   return {
     normalizedInput,
+    generationContext,
+    resolvedGenerationContext,
+    methodologyInfluence: plannedSessionPack.methodologyInfluence,
     generatedPack,
     validatedPack,
     coachLiteDraft,
@@ -176,6 +241,7 @@ module.exports = {
   generateCoachLiteDraft,
   validateCoachLiteDraft,
   validateGeneratedPack,
+  deriveMethodologyInfluence,
   processSessionPackRequest,
   processSessionImageAnalysisRequest,
   persistSession,

@@ -22,9 +22,14 @@ This is a product/API contract freeze, not an infrastructure, auth, tenancy, or 
 - Requests must not include `tenant_id`, `tenantId`, or `x-tenant-id`.
 - `POST /session-packs` remains stateless in v1.
 - `ageBand` is the v1 field name.
+- `durationMin` is request-owned in v1.
+- `durationMin` must come from the current Quick Session or Session Builder generation request.
+- `durationMin` is not inherited from Team.
 - `clubId`, `teamId`, and `seasonId` are not part of the frozen documented v1 contract.
 
 Note: some legacy optional runtime-tolerated fields may still exist in current implementation, but they are not part of the frozen v1 API contract unless documented here.
+
+Team-derived default duration is out of scope for this frozen v1 contract.
 
 ---
 

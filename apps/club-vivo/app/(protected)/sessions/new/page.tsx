@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { cookies } from "next/headers";
+import Link from "next/link";
 
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import {
@@ -10,7 +11,6 @@ import {
 } from "./session-new-flow";
 import {
   analyzeSessionImage,
-  generateSessionPack,
   type ConfirmedImageAnalysisProfile,
   type ImageAnalysisMode,
   type SessionBuilderApiError
@@ -21,6 +21,11 @@ import {
   getEquipmentItems,
   serializeEquipmentHints
 } from "../../../../lib/equipment-hints";
+import {
+  generateSessionPackForWorkspace,
+  getActiveSelectedTeamForWorkspace,
+  getSessionBuilderMethodologyDisplay
+} from "../../../../lib/session-builder-server";
 import { formatEnvironmentLabel } from "../../../../lib/session-builder-context-hints";
 import { saveGeneratedSessionAction } from "../session-actions";
 
@@ -54,6 +59,18 @@ const INITIAL_GENERATE_STATE: GenerateFormState = {
 };
 
 const INITIAL_SAVE_STATE: SaveFormState = {};
+
+function formatSelectedTeamDetails({
+  ageBand,
+  level,
+  status
+}: {
+  ageBand?: string;
+  level?: string;
+  status?: string;
+}) {
+  return [ageBand, level, status].filter(Boolean).join(" - ");
+}
 
 function parseEquipment(rawValue: string) {
   return rawValue
@@ -233,7 +250,7 @@ export async function generateSessionPackAction(
       ? parseConfirmedProfile(confirmedProfileJson)
       : undefined;
 
-    const pack = await generateSessionPack({
+    const pack = await generateSessionPackForWorkspace({
       sport,
       ...(sportPackId ? { sportPackId } : {}),
       ageBand,
@@ -264,6 +281,10 @@ function parseSearchParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function formatMethodologyScopes(scopes: string[]) {
+  return scopes.map((scope) => scope.toUpperCase()).join(", ");
+}
+
 export default async function NewSessionPage({
   searchParams
 }: {
@@ -278,6 +299,8 @@ export default async function NewSessionPage({
   const requestedDurationMin = parseSearchParam(resolvedSearchParams?.durationMin)?.trim() || "";
   const requestedNotes = parseSearchParam(resolvedSearchParams?.notes)?.trim() || "";
   const initialConstraints = requestedNotes || undefined;
+  const activeSelectedTeam = await getActiveSelectedTeamForWorkspace();
+  const methodologyDisplay = await getSessionBuilderMethodologyDisplay();
   const cookieStore = await cookies();
   const coachTeams = getCoachTeams(cookieStore.get(COACH_TEAM_HINTS_COOKIE)?.value);
   const initialEquipmentOptions = getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
@@ -328,6 +351,81 @@ export default async function NewSessionPage({
         title="Build your session"
         description="Use the detailed setup flow here when you want more control than Home Quick session."
       />
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="grid gap-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Active Team Context
+            </p>
+            {activeSelectedTeam ? (
+              <>
+                <h2 className="text-lg font-semibold text-slate-900">{activeSelectedTeam.name}</h2>
+                <p className="text-sm text-slate-600">
+                  {formatSelectedTeamDetails({
+                    ageBand: activeSelectedTeam.ageBand,
+                    level: activeSelectedTeam.level,
+                    status: activeSelectedTeam.status
+                  })}
+                </p>
+                <p className="text-sm text-slate-600">
+                  This selected backend team is available as server-owned context for Session
+                  Builder.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold text-slate-900">No team selected</h2>
+                <p className="text-sm text-slate-600">
+                  Session Builder can still continue without a selected team.
+                </p>
+              </>
+            )}
+          </div>
+
+          <Link
+            href="/teams"
+            className="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
+          >
+            {activeSelectedTeam ? "Change team" : "Select a team"}
+          </Link>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+        <div className="grid gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Methodology Context
+          </p>
+          {methodologyDisplay.methodologyApplied ? (
+            <>
+              <h2 className="text-lg font-semibold text-slate-900">Methodology is in use</h2>
+              <p className="text-sm text-slate-600">
+                Applied scopes: {formatMethodologyScopes(methodologyDisplay.appliedScopes)}.
+              </p>
+              {methodologyDisplay.activeSelectedTeam ? (
+                <p className="text-sm text-slate-600">
+                  Active selected team: {methodologyDisplay.activeSelectedTeam.name}.
+                </p>
+              ) : null}
+              {methodologyDisplay.resolvedProgramDirection ? (
+                <p className="text-sm text-slate-600">
+                  Resolved program direction: {methodologyDisplay.resolvedProgramDirection.toUpperCase()}.
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold text-slate-900">
+                No methodology currently applied
+              </h2>
+              <p className="text-sm text-slate-600">
+                Session Builder is using the standard generation path.
+              </p>
+            </>
+          )}
+        </div>
+      </section>
 
       <NewSessionFlow
         initialAnalyzeState={INITIAL_ANALYZE_STATE}

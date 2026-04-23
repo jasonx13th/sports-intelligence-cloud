@@ -95,6 +95,8 @@ Allowed body fields only:
 
 Unknown fields are rejected.
 
+`durationMin` is not a Team field. Session duration is chosen per request in Quick Session or Session Builder, so `POST /teams` rejects `durationMin` as an unknown field.
+
 #### Create request example
 
 ```json
@@ -167,6 +169,9 @@ An empty object is also valid:
   - `active`
   - `archived`
 - `status` defaults to `active`
+- `durationMin` is not part of the Team model
+- session duration is request-owned and chosen in Quick Session or Session Builder, not on Team
+- `durationMin` is rejected on `POST /teams` as an unknown field
 - Unknown body fields are rejected
 
 ### 3.2 Tenant-scope rejection rules

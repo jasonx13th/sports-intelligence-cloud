@@ -137,6 +137,19 @@ export class SicApiStack extends Stack {
       },
     });
 
+    // Lambda: /methodology
+    const methodologyFn = new lambda.Function(this, "MethodologyFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "methodology/handler.handler",
+      functionName: `sic-club-vivo-methodology-${envName}`,
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
+      timeout: Duration.seconds(15),
+      environment: {
+        TENANT_ENTITLEMENTS_TABLE: tenantEntitlementsTable.tableName,
+        SIC_DOMAIN_TABLE: sicDomainTable.tableName,
+      },
+    });
+
     // -----------------------------
     // IAM grants (least privilege)
     // -----------------------------
@@ -204,6 +217,13 @@ export class SicApiStack extends Stack {
       })
     );
 
+    methodologyFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem"],
+        resources: [tenantEntitlementsTable.tableArn],
+      })
+    );
+
     // Domain table: explicit allow-list (NO Scan) + writes
     const domainAccessActions = [
       // reads
@@ -240,6 +260,13 @@ export class SicApiStack extends Stack {
     teamsFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["dynamodb:Query", "dynamodb:PutItem"],
+        resources: [sicDomainTable.tableArn],
+      })
+    );
+
+    methodologyFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem", "dynamodb:PutItem"],
         resources: [sicDomainTable.tableArn],
       })
     );
@@ -386,6 +413,21 @@ export class SicApiStack extends Stack {
       path: "/teams/{teamId}/sessions/{sessionId}/assign",
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwv2Integrations.HttpLambdaIntegration("TeamSessionAssignIntegration", teamsFn),
+      authorizer,
+    });
+
+    // Routes: /methodology
+    api.addRoutes({
+      path: "/methodology/{scope}",
+      methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.PUT],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("MethodologyIntegration", methodologyFn),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/methodology/{scope}/publish",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwv2Integrations.HttpLambdaIntegration("MethodologyPublishIntegration", methodologyFn),
       authorizer,
     });
 

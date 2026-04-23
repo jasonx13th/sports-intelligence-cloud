@@ -151,6 +151,23 @@ The system prepares the context used for generation.
 
 Reality should always win over preference.
 
+### Frozen internal teamId source
+
+The first safe internal source for `teamId` is a server-validated selected-team context stored server-side after protected team selection.
+
+Frozen rules for this direction:
+
+- `teamId` must not be added to the public `POST /session-packs` body
+- `teamId` must not come from query params or headers
+- browser-local Teams page objects are not a trusted backend source
+- the selected team must be validated inside resolved tenant scope before it is stored
+- the stored selected-team context should be server-owned
+- a signed HttpOnly cookie is an acceptable first implementation direction
+- `/sessions/new` may later read this server-owned selected-team context and pass `teamId` internally into the Session Builder pipeline
+- if no validated selected team exists, Session Builder continues without team lookup
+
+This freezes the trust boundary only. It does not add cookie implementation, handler wiring, frontend changes, or public API contract changes in this step.
+
 ---
 
 ## Step 6 — Session Pack Draft Generation

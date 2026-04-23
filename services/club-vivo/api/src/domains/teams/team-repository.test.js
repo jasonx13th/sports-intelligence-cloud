@@ -37,7 +37,7 @@ function withMockedUuid(uuid, fn) {
     });
 }
 
-test("createTeam persists Team v1 fields and defaults status to active", async () => {
+test("createTeam persists Team fields, optional durable context, and defaults status to active", async () => {
   const repo = new TeamRepository({ tableName: "domain-table" });
   const calls = [];
 
@@ -53,6 +53,8 @@ test("createTeam persists Team v1 fields and defaults status to active", async (
         ageBand: " U14 ",
         level: " competitive ",
         notes: "  Strong group  ",
+        programType: "travel",
+        playerCount: 18,
       });
 
       assert.deepEqual(result, {
@@ -64,6 +66,8 @@ test("createTeam persists Team v1 fields and defaults status to active", async (
           ageBand: "U14",
           level: "competitive",
           notes: "Strong group",
+          programType: "travel",
+          playerCount: 18,
           status: "active",
           createdAt: result.team.createdAt,
           updatedAt: result.team.updatedAt,
@@ -83,9 +87,11 @@ test("createTeam persists Team v1 fields and defaults status to active", async (
   assert.equal(written.ageBand, "U14");
   assert.equal(written.level, "competitive");
   assert.equal(written.notes, "Strong group");
+  assert.equal(written.programType, "travel");
+  assert.equal(written.playerCount, 18);
 });
 
-test("getTeamById uses a tenant-scoped exact-key query and returns the team", async () => {
+test("getTeamById uses a tenant-scoped exact-key query and returns optional Team context when stored", async () => {
   const repo = new TeamRepository({ tableName: "domain-table" });
   const calls = [];
 
@@ -103,6 +109,8 @@ test("getTeamById uses a tenant-scoped exact-key query and returns the team", as
           name: "U14 Blue",
           sport: "soccer",
           ageBand: "U14",
+          programType: "travel",
+          playerCount: 18,
           status: "active",
           createdAt: "2026-04-10T00:00:00.000Z",
           updatedAt: "2026-04-10T00:00:00.000Z",
@@ -119,6 +127,8 @@ test("getTeamById uses a tenant-scoped exact-key query and returns the team", as
         name: "U14 Blue",
         sport: "soccer",
         ageBand: "U14",
+        programType: "travel",
+        playerCount: 18,
         status: "active",
         createdAt: "2026-04-10T00:00:00.000Z",
         updatedAt: "2026-04-10T00:00:00.000Z",
@@ -147,7 +157,7 @@ test("getTeamById returns null when the team is missing in the tenant scope", as
   });
 });
 
-test("listTeams remains query-based and normalizes Team v1 fields", async () => {
+test("listTeams remains query-based and normalizes optional Team context when present", async () => {
   const repo = new TeamRepository({ tableName: "domain-table" });
 
   await withMockedSend(async (command) => {
@@ -165,6 +175,8 @@ test("listTeams remains query-based and normalizes Team v1 fields", async () => 
           sport: "soccer",
           ageBand: "U14",
           notes: "Strong group",
+          programType: "ost",
+          playerCount: 12,
           status: "active",
           createdAt: "2026-04-10T00:00:00.000Z",
           updatedAt: "2026-04-10T00:00:00.000Z",
@@ -183,6 +195,8 @@ test("listTeams remains query-based and normalizes Team v1 fields", async () => 
           sport: "soccer",
           ageBand: "U14",
           notes: "Strong group",
+          programType: "ost",
+          playerCount: 12,
           status: "active",
           createdAt: "2026-04-10T00:00:00.000Z",
           updatedAt: "2026-04-10T00:00:00.000Z",
@@ -191,6 +205,107 @@ test("listTeams remains query-based and normalizes Team v1 fields", async () => 
       ],
       nextToken: undefined,
     });
+  });
+});
+
+test("updateTeam persists edited Team fields and optional durable context", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+
+    if (calls.length === 1) {
+      assert.equal(command instanceof QueryCommand, true);
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "TEAM#team-123",
+            type: "TEAM",
+            teamId: "team-123",
+            tenantId: "tenant_authoritative",
+            name: "U14 Blue",
+            sport: "soccer",
+            ageBand: "U14",
+            status: "active",
+            createdAt: "2026-04-10T00:00:00.000Z",
+            updatedAt: "2026-04-10T00:00:00.000Z",
+            createdBy: "user-123",
+          }),
+        ],
+      };
+    }
+
+    assert.equal(command instanceof PutItemCommand, true);
+    return {};
+  }, async () => {
+    const result = await repo.updateTeam(makeTenantContext(), "team-123", {
+      name: " U14 Blue East ",
+      sport: " soccer ",
+      ageBand: " U14 ",
+      level: " competitive ",
+      notes: "  Strong group  ",
+      status: "archived",
+      programType: "travel",
+      playerCount: 18,
+    });
+
+    assert.deepEqual(result, {
+      team: {
+        teamId: "team-123",
+        tenantId: "tenant_authoritative",
+        name: "U14 Blue East",
+        sport: "soccer",
+        ageBand: "U14",
+        level: "competitive",
+        notes: "Strong group",
+        status: "archived",
+        programType: "travel",
+        playerCount: 18,
+        createdAt: "2026-04-10T00:00:00.000Z",
+        updatedAt: result.team.updatedAt,
+        createdBy: "user-123",
+      },
+    });
+  });
+
+  assert.equal(calls.length, 2);
+  const written = unmarshall(calls[1].input.Item);
+  assert.equal(written.PK, "TENANT#tenant_authoritative");
+  assert.equal(written.SK, "TEAM#team-123");
+  assert.equal(written.type, "TEAM");
+  assert.equal(written.name, "U14 Blue East");
+  assert.equal(written.programType, "travel");
+  assert.equal(written.playerCount, 18);
+  assert.equal(written.createdAt, "2026-04-10T00:00:00.000Z");
+  assert.equal(written.createdBy, "user-123");
+});
+
+test("updateTeam returns 404 when the team is missing in the tenant scope", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    return { Items: [] };
+  }, async () => {
+    await assert.rejects(
+      () =>
+        repo.updateTeam(makeTenantContext(), "team-404", {
+          name: "U14 Blue",
+          sport: "soccer",
+          ageBand: "U14",
+        }),
+      (err) => {
+        assert.equal(err.code, "teams.not_found");
+        assert.equal(err.statusCode, 404);
+        assert.deepEqual(err.details, {
+          entityType: "TEAM",
+          teamId: "team-404",
+        });
+        return true;
+      }
+    );
   });
 });
 

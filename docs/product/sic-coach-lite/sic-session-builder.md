@@ -129,7 +129,7 @@ That setup direction should stay lightweight and focus on:
 - one or more teams
 - team-level program context
 - age context
-- practical defaults such as duration, environment, and equipment
+- practical defaults such as environment and equipment, while duration stays request-owned per generation request
 
 This remains product direction for Week 21, not a claim that all of those durable surfaces are already shipped.
 
@@ -166,14 +166,21 @@ SIC runs **one bot platform**, with these tenant-scoped customizations:
 
 ### Team-level workspace direction
 
-Within the tenant, Session Builder should increasingly use team context as the main product lever for KSC-specific behavior.
+Within the tenant, Session Builder should increasingly use team context as the main product lever for tenant-specific behavior. KSC is the current pilot/example tenant, not shared platform truth.
 
 Near-term Coach Workspace direction:
 
 - `programType = travel | ost`
+- optional `playerCount`
 - team-level methodology defaulting
 - team-level age context
-- team-level default duration
+
+Current repo grounding:
+
+- Team now supports optional durable `programType` and optional durable `playerCount`
+- selected-team server context already exists for internal Session Builder lookup/resolution
+- public `POST /session-packs` remains unchanged
+- `durationMin` remains request-owned and is not inherited from Team
 
 This should happen inside the existing shared app and shared tenant-safe product path.
 
@@ -273,6 +280,8 @@ All stored/queryable **within tenant boundary**.
 
 **Critical rule:** Tenant scoping is never derived from request body/query/headers.
 
+**Duration ownership rule:** `durationMin` remains request-owned. Quick Session duration comes from the coach prompt, and Session Builder duration comes from the current builder request. Team may carry durable context such as `programType` and `playerCount`, but not duration.
+
 ---
 
 ## 11) API Surface (Suggested)
@@ -339,7 +348,7 @@ Examples:
 
 ## 15) Roadmap Fit
 
-Session Builder sits on SIC’s core:
+Session Builder sits on SIC's core:
 - Auth + entitlements → clubs/teams/membership/RBAC → session generation → exports → analytics
 
 It is the adoption surface that makes SIC valuable immediately while building the structured data foundation.

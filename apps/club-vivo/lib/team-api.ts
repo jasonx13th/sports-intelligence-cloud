@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { ACCESS_COOKIE } from "./auth";
 import { buildApiUrl } from "./api";
 
+export type TeamProgramType = "travel" | "ost";
+
 export type TeamRecord = {
   teamId: string;
   tenantId: string;
@@ -15,9 +17,22 @@ export type TeamRecord = {
   level?: string;
   notes?: string;
   status: string;
+  programType?: TeamProgramType;
+  playerCount?: number;
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
+};
+
+export type TeamMutationInput = {
+  name: string;
+  sport: string;
+  ageBand: string;
+  level?: string;
+  notes?: string;
+  status?: string;
+  programType?: TeamProgramType;
+  playerCount?: number;
 };
 
 type ErrorEnvelope = {
@@ -56,6 +71,10 @@ function isTeamRecord(value: unknown): value is TeamRecord {
     typeof candidate.sport === "string" &&
     typeof candidate.ageBand === "string" &&
     typeof candidate.status === "string" &&
+    (candidate.programType === undefined ||
+      candidate.programType === "travel" ||
+      candidate.programType === "ost") &&
+    (candidate.playerCount === undefined || Number.isInteger(candidate.playerCount)) &&
     typeof candidate.createdAt === "string" &&
     typeof candidate.updatedAt === "string"
   );
@@ -123,6 +142,36 @@ export async function getTeam(teamId: string) {
   const result = await requestJson<{
     team: TeamRecord;
   }>(`/teams/${encodeURIComponent(teamId)}`);
+
+  if (!isTeamRecord(result.team)) {
+    throw new TeamApiError("Invalid team response", 500);
+  }
+
+  return result.team;
+}
+
+export async function createTeam(input: TeamMutationInput) {
+  const result = await requestJson<{
+    team: TeamRecord;
+  }>("/teams", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+
+  if (!isTeamRecord(result.team)) {
+    throw new TeamApiError("Invalid team response", 500);
+  }
+
+  return result.team;
+}
+
+export async function updateTeam(teamId: string, input: TeamMutationInput) {
+  const result = await requestJson<{
+    team: TeamRecord;
+  }>(`/teams/${encodeURIComponent(teamId)}`, {
+    method: "PUT",
+    body: JSON.stringify(input)
+  });
 
   if (!isTeamRecord(result.team)) {
     throw new TeamApiError("Invalid team response", 500);

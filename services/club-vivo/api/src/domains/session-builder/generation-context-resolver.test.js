@@ -42,6 +42,9 @@ test("resolveGenerationContext keeps request-owned fields unchanged with base co
   assert.equal(resolvedContext.sources.durationMinSource, "request");
   assert.equal(resolvedContext.teamContextUsed, false);
   assert.equal(resolvedContext.resolvedProgramType, null);
+  assert.equal(resolvedContext.resolvedPlayerCount, null);
+  assert.equal(resolvedContext.teamAgeBand, null);
+  assert.equal(resolvedContext.teamAgeBandConsistentWithRequest, null);
   assert.equal(resolvedContext.resolvedMethodologyScope, null);
   assert.deepEqual(resolvedContext.appliedMethodologyScopes, []);
   assert.equal(resolvedContext.methodologyGuidance, null);
@@ -59,6 +62,9 @@ test("resolveGenerationContext resolves travel program type from team context", 
 
   assert.equal(resolvedContext.teamContextUsed, true);
   assert.equal(resolvedContext.resolvedProgramType, "travel");
+  assert.equal(resolvedContext.resolvedPlayerCount, 16);
+  assert.equal(resolvedContext.teamAgeBand, "u15");
+  assert.equal(resolvedContext.teamAgeBandConsistentWithRequest, false);
   assert.equal(resolvedContext.durationMin, 60);
   assert.equal(resolvedContext.sources.durationMinSource, "request");
 });
@@ -75,8 +81,42 @@ test("resolveGenerationContext resolves ost program type from team context", () 
 
   assert.equal(resolvedContext.teamContextUsed, true);
   assert.equal(resolvedContext.resolvedProgramType, "ost");
+  assert.equal(resolvedContext.resolvedPlayerCount, 12);
+  assert.equal(resolvedContext.teamAgeBand, "u12");
+  assert.equal(resolvedContext.teamAgeBandConsistentWithRequest, false);
   assert.equal(resolvedContext.durationMin, 60);
   assert.equal(resolvedContext.sources.durationMinSource, "request");
+});
+
+test("resolveGenerationContext uses team playerCount and ageBand as helper hints without overriding request-owned fields", () => {
+  const resolvedContext = resolveGenerationContext({
+    generationContext: makeBaseGenerationContext(),
+    teamContext: {
+      ageBand: "u14",
+      playerCount: 14,
+    },
+  });
+
+  assert.equal(resolvedContext.teamContextUsed, true);
+  assert.equal(resolvedContext.resolvedProgramType, null);
+  assert.equal(resolvedContext.resolvedPlayerCount, 14);
+  assert.equal(resolvedContext.teamAgeBand, "u14");
+  assert.equal(resolvedContext.teamAgeBandConsistentWithRequest, true);
+  assert.equal(resolvedContext.ageBand, "u14");
+  assert.equal(resolvedContext.sources.ageBandSource, "request");
+  assert.equal(resolvedContext.resolutionSources.resolvedProgramTypeSource, null);
+  assert.equal(
+    resolvedContext.resolutionSources.resolvedPlayerCountSource,
+    "teamContext.playerCount"
+  );
+  assert.equal(resolvedContext.resolutionSources.teamAgeBandSource, "teamContext.ageBand");
+  assert.equal(
+    resolvedContext.resolutionSources.teamAgeBandConsistencySource,
+    "teamContext.ageBand->request.ageBand"
+  );
+  assert.equal(resolvedContext.durationMin, 60);
+  assert.equal(resolvedContext.theme, "pressing");
+  assert.deepEqual(resolvedContext.equipment, ["cones", "balls"]);
 });
 
 test("resolveGenerationContext applies shared methodology alone", () => {

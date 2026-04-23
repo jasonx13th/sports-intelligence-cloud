@@ -58,6 +58,7 @@ export function HomeSessionStartCard({
             required
           />
           <span className="text-xs leading-5 text-slate-500">
+            Include the coaching focus and, if needed, a duration like <code>45 minutes</code>.
             The prompt maps into the existing shared generation path, then opens the dedicated
             quick-session review flow.
           </span>

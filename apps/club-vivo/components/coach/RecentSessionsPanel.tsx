@@ -6,6 +6,7 @@ import {
   shouldShowObjectiveTagsForOrigin,
   type SessionOriginHint
 } from "../../lib/session-origin-hints";
+import { buildQuickSessionTitle } from "../../lib/quick-session-intent";
 import {
   buildBuilderSessionCardTitle,
   type SessionBuilderContextHint
@@ -73,14 +74,22 @@ export function RecentSessionsPanel({
             const isActiveSource = session.sessionId === activeSourceSessionId;
             const origin = sessionOrigins[session.sessionId];
             const shouldShowObjectiveTags = shouldShowObjectiveTagsForOrigin(origin);
-            const quickSessionTitle = origin === "quick_session"
-              ? quickSessionTitles[session.sessionId]
-              : undefined;
+            const quickSessionTitle =
+              origin === "quick_session"
+                ? quickSessionTitles[session.sessionId] ||
+                  buildQuickSessionTitle({
+                    session: {
+                      objectiveTags: session.objectiveTags
+                    }
+                  })
+                : undefined;
             const builderSessionContext = sessionBuilderContexts[session.sessionId];
             const builderSessionTitle =
               origin === "full_session" || origin === "quick_drill"
                 ? buildBuilderSessionCardTitle({
                     buildModeLabel: getSessionOriginLabel(origin),
+                    objective: builderSessionContext?.objective,
+                    sessionLabel: builderSessionContext?.sessionLabel,
                     teamName: builderSessionContext?.teamName,
                     ageBand: session.ageBand
                   })

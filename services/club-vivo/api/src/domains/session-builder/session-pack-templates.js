@@ -3,6 +3,7 @@
 const { validateCreateSession } = require("./session-validate");
 const { validationError } = require("../../platform/validation/validate");
 const { validateSessionPackV2Draft } = require("./session-pack-validate");
+const MAX_ACTIVITY_DESCRIPTION_LENGTH = 280;
 
 // Deterministic templates first. No Bedrock here.
 function normalizeTheme(theme) {
@@ -37,6 +38,69 @@ function appendSentence(baseText, sentence) {
   }
 
   return `${normalizedBaseText}. ${normalizedSentence}`;
+}
+
+function appendSentenceCapped(baseText, sentence, maxLength = MAX_ACTIVITY_DESCRIPTION_LENGTH) {
+  const nextText = appendSentence(baseText, sentence);
+
+  if (nextText.length > maxLength) {
+    return String(baseText || "").trim();
+  }
+
+  return nextText;
+}
+
+function extractDelimitedValue(theme, label) {
+  const normalizedTheme = String(theme || "").trim();
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pipePattern = new RegExp(`${escapedLabel}\\s*:\\s*([^|]+)`, "i");
+  const sentencePattern = new RegExp(`${escapedLabel}\\s*:\\s*(.+?)(?:\\.|$)`, "i");
+  const pipeMatch = normalizedTheme.match(pipePattern);
+
+  if (pipeMatch?.[1]) {
+    return pipeMatch[1].trim();
+  }
+
+  const sentenceMatch = normalizedTheme.match(sentencePattern);
+  return sentenceMatch?.[1]?.trim() || null;
+}
+
+function extractPromptSignals(theme) {
+  const rawTheme = String(theme || "").trim();
+  const primaryObjective =
+    extractDelimitedValue(rawTheme, "Primary session objective") ||
+    rawTheme.split("|")[0]?.trim() ||
+    rawTheme;
+  const teamContext = extractDelimitedValue(rawTheme, "Team context");
+  const environment =
+    extractDelimitedValue(rawTheme, "Environment context") ||
+    extractDelimitedValue(rawTheme, "env");
+  const coachNotes =
+    extractDelimitedValue(rawTheme, "Coach brainstorming and extra details for today") ||
+    extractDelimitedValue(rawTheme, "notes");
+
+  return {
+    primaryObjective: primaryObjective || rawTheme,
+    teamContext: teamContext || null,
+    environment: environment || null,
+    coachNotes: coachNotes || null,
+  };
+}
+
+function buildPromptInfluenceSentences(promptSignals) {
+  const objective = String(promptSignals?.primaryObjective || "").trim();
+  const environment = String(promptSignals?.environment || "").trim();
+  const coachNotes = String(promptSignals?.coachNotes || "").trim();
+  const teamContext = String(promptSignals?.teamContext || "").trim();
+
+  return {
+    first: [
+      objective ? `Today's focus: ${objective}.` : "",
+      environment ? `Set the area to fit the available ${environment}.` : "",
+    ].filter(Boolean),
+    middle: [coachNotes ? `Coach note: ${coachNotes}.` : ""].filter(Boolean),
+    last: [teamContext ? `Keep the final detail appropriate for ${teamContext}.` : ""].filter(Boolean),
+  };
 }
 
 function mergeUniqueStrings(...groups) {
@@ -165,6 +229,59 @@ function applyMethodologyInfluenceToSession(session, methodologyInfluence) {
         };
       })
     : [];
+
+  return {
+    ...session,
+    activities,
+  };
+}
+
+function applyPromptInfluenceToSession(session, promptSignals) {
+  const activities = Array.isArray(session.activities) ? session.activities.slice() : [];
+
+  if (activities.length < 1) {
+    return session;
+  }
+
+  const nonCooldownIndexes = activities.reduce((accumulator, activity, index) => {
+    if (activity?.name !== "Cooldown") {
+      accumulator.push(index);
+    }
+
+    return accumulator;
+  }, []);
+
+  if (nonCooldownIndexes.length < 1) {
+    return session;
+  }
+
+  const promptSentences = buildPromptInfluenceSentences(promptSignals);
+  const firstIndex = nonCooldownIndexes[0];
+  const middleIndex = nonCooldownIndexes[Math.min(1, nonCooldownIndexes.length - 1)];
+  const lastIndex = nonCooldownIndexes[nonCooldownIndexes.length - 1];
+
+  for (const sentence of promptSentences.first) {
+    activities[firstIndex] = {
+      ...activities[firstIndex],
+      description: appendSentenceCapped(activities[firstIndex].description, sentence),
+    };
+  }
+
+  for (const sentence of promptSentences.middle) {
+    activities[middleIndex] = {
+      ...activities[middleIndex],
+      description: appendSentenceCapped(activities[middleIndex].description, sentence),
+    };
+  }
+
+  if (lastIndex !== middleIndex) {
+    for (const sentence of promptSentences.last) {
+      activities[lastIndex] = {
+        ...activities[lastIndex],
+        description: appendSentenceCapped(activities[lastIndex].description, sentence),
+      };
+    }
+  }
 
   return {
     ...session,
@@ -328,7 +445,8 @@ function generateSessionFromTheme({
   equipment,
   methodologyInfluence,
 }) {
-  const themeKey = normalizeTheme(theme);
+  const promptSignals = extractPromptSignals(theme);
+  const themeKey = normalizeTheme(promptSignals.primaryObjective || theme);
   const t = pickSportPackTemplate({ sportPackId, themeKey });
 
   const session =
@@ -346,11 +464,14 @@ function generateSessionFromTheme({
                   sport,
                   ageBand,
                   durationMin,
-                  theme: themeKey || "general",
+                  theme: normalizeTheme(promptSignals.primaryObjective) || "general",
                   equipment,
                 });
 
-  return applyMethodologyInfluenceToSession(session, methodologyInfluence);
+  return applyMethodologyInfluenceToSession(
+    applyPromptInfluenceToSession(session, promptSignals),
+    methodologyInfluence
+  );
 }
 
 function applyEnvironmentProfileToSession(session, confirmedProfile) {

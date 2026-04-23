@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import {
@@ -8,16 +9,22 @@ import {
   parseQuickSessionTitleHints,
   withQuickSessionTitleHint
 } from "../../../../lib/quick-session-title-hints";
+import { buildQuickSessionTitle } from "../../../../lib/quick-session-intent";
 import {
   SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
   buildBuilderSessionDetailTitle,
   formatEnvironmentLabel,
   parseSessionBuilderContextHints
 } from "../../../../lib/session-builder-context-hints";
+import {
+  buildBuilderSessionLabel,
+  buildBuilderSessionShapeSummary
+} from "../../../../lib/builder-session-label";
 import { getCurrentUserIdentity } from "../../../../lib/get-current-user-identity";
 import { SESSION_ORIGIN_HINTS_COOKIE, getSessionOriginLabel, parseSessionOriginHints } from "../../../../lib/session-origin-hints";
 import {
   getSession,
+  getSessionPdf,
   SessionBuilderApiError,
   submitSessionFeedback,
   type SessionFeedbackFlowMode,
@@ -27,6 +34,7 @@ import {
   SessionFeedbackPanel,
   type FeedbackPanelState
 } from "./session-feedback-panel";
+import { SessionExportButton } from "./session-export-button";
 import { QuickSessionTitleEditor } from "./quick-session-title-editor";
 
 function formatCreatedAt(value: string) {
@@ -99,6 +107,12 @@ export default async function SessionDetailPage({
     cookieStore.get(SESSION_BUILDER_CONTEXT_HINTS_COOKIE)?.value
   );
   const quickSessionTitle = quickSessionTitles[sessionId];
+  const derivedQuickSessionTitle = isQuickSession
+    ? buildQuickSessionTitle({
+        session
+      })
+    : null;
+  const displayQuickSessionTitle = quickSessionTitle || derivedQuickSessionTitle || "Quick Session";
   const builderContext = builderContexts[sessionId];
   const coachIdentity = await getCurrentUserIdentity();
   const createdByLabel =
@@ -110,16 +124,65 @@ export default async function SessionDetailPage({
     ? buildBuilderSessionDetailTitle({
         buildModeLabel: builderModeLabel,
         objective: builderContext?.objective,
+        sessionLabel: builderContext?.sessionLabel,
         teamName: builderContext?.teamName,
         ageBand: session.ageBand
       })
     : null;
+  const builderSessionLabel = isBuilderSession
+    ? buildBuilderSessionLabel({
+        objective: builderContext?.objective,
+        objectiveTags: session.objectiveTags,
+        activities: session.activities
+      })
+    : null;
+  const builderSessionShapeSummary = isBuilderSession
+    ? buildBuilderSessionShapeSummary(session.activities)
+    : null;
   const pageTitle = isQuickSession
-    ? "Quick Session"
+    ? displayQuickSessionTitle
     : isBuilderSession
       ? builderDetailTitle || builderModeLabel
       : `${session.sport} / ${session.ageBand}`;
   const pageBadge = isQuickSession || isBuilderSession ? builderModeLabel : "Session Detail";
+
+  async function exportSessionPdfAction(
+    _previousState: {
+      error?: string;
+    },
+    formData: FormData
+  ) {
+    "use server";
+
+    const requestedSessionId = String(formData.get("sessionId") || "").trim();
+
+    if (!requestedSessionId || requestedSessionId !== sessionId) {
+      return {
+        error: "Export could not start for this session. Refresh and try again."
+      };
+    }
+
+    try {
+      const exportResult = await getSessionPdf(sessionId);
+      redirect(exportResult.url);
+    } catch (error) {
+      if (error instanceof SessionBuilderApiError) {
+        if (error.status === 404) {
+          return {
+            error: "PDF export is not available for this saved session right now."
+          };
+        }
+
+        return {
+          error: `PDF export failed with status ${error.status}. Try again shortly.`
+        };
+      }
+
+      return {
+        error: "PDF export is unavailable right now. Try again shortly."
+      };
+    }
+  }
 
   async function saveQuickSessionTitleAction(
     _previousState: {
@@ -131,12 +194,12 @@ export default async function SessionDetailPage({
   ) {
     "use server";
 
-    const nextTitle = normalizeQuickSessionTitle(String(formData.get("title") || ""));
+      const nextTitle = normalizeQuickSessionTitle(String(formData.get("title") || ""));
 
     if (!nextTitle) {
       return {
         error: "Add a short quick-session title before saving.",
-        savedTitle: quickSessionTitle
+        savedTitle: displayQuickSessionTitle
       };
     }
 
@@ -157,8 +220,8 @@ export default async function SessionDetailPage({
     );
 
     return {
-      message: "Saved",
-      savedTitle: nextTitle
+        message: "Saved",
+        savedTitle: nextTitle
     };
   }
 
@@ -260,12 +323,15 @@ export default async function SessionDetailPage({
         badge={pageBadge}
         title={pageTitle}
         actions={
-          <Link
-            href="/sessions"
-            className="inline-flex rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
-          >
-            Back to sessions
-          </Link>
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+            <SessionExportButton sessionId={sessionId} exportAction={exportSessionPdfAction} />
+            <Link
+              href="/sessions"
+              className="inline-flex rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
+            >
+              Back to sessions
+            </Link>
+          </div>
         }
       />
 
@@ -291,6 +357,20 @@ export default async function SessionDetailPage({
               </article>
 
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Session Focus</h2>
+                <p className="mt-2 text-sm text-slate-800">
+                  {builderSessionLabel || "No saved builder focus available."}
+                </p>
+              </article>
+
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Team Context</h2>
+                <p className="mt-2 text-sm text-slate-800">
+                  {builderContext?.teamName || "No saved team context"}
+                </p>
+              </article>
+
+              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
                 <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
               </article>
@@ -303,13 +383,20 @@ export default async function SessionDetailPage({
 
             <div className="mt-8 grid gap-4 lg:grid-cols-2">
               <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-                <h2 className="text-lg font-semibold text-slate-900">Objective</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Coach Focus</h2>
                 <p className="mt-4 text-sm leading-6 text-slate-700">
                   {builderContext?.objective || "No saved objective context for this session."}
                 </p>
               </article>
 
               <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+                <h2 className="text-lg font-semibold text-slate-900">Session Shape</h2>
+                <p className="mt-4 text-sm leading-6 text-slate-700">
+                  {builderSessionShapeSummary || "No saved session shape available."}
+                </p>
+              </article>
+
+              <article className="rounded-3xl border border-slate-200 bg-white/70 p-5 lg:col-span-2">
                 <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {session.equipment.length > 0 ? (
@@ -355,11 +442,25 @@ export default async function SessionDetailPage({
 
                 {isQuickSession ? (
                   <QuickSessionTitleEditor
-                    initialTitle={quickSessionTitle}
+                    initialTitle={displayQuickSessionTitle}
                     saveTitleAction={saveQuickSessionTitleAction}
                   />
                 ) : null}
               </article>
+
+              {isQuickSession ? (
+                <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
+                  <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
+                </article>
+              ) : null}
+
+              {isQuickSession ? (
+                <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Session Focus</h2>
+                  <p className="mt-2 text-sm text-slate-800">{displayQuickSessionTitle}</p>
+                </article>
+              ) : null}
 
               {!isQuickSession ? (
                 <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
@@ -431,7 +532,45 @@ export default async function SessionDetailPage({
                   </article>
                 </div>
               </>
-            ) : null}
+            ) : (
+              <div className="mt-8 grid gap-4 lg:grid-cols-2">
+                <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+                  <h2 className="text-lg font-semibold text-slate-900">Objective Tags</h2>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {session.objectiveTags.length > 0 ? (
+                      session.objectiveTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                        >
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-slate-500">No objective tags</span>
+                    )}
+                  </div>
+                </article>
+
+                <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+                  <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {session.equipment.length > 0 ? (
+                      session.equipment.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                        >
+                          {item}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-slate-500">No equipment listed</span>
+                    )}
+                  </div>
+                </article>
+              </div>
+            )}
           </>
         )}
 

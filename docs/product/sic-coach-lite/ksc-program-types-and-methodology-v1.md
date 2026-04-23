@@ -7,6 +7,8 @@ Draft v1
 
 This document defines the Week 21 product direction for KSC program types and methodology behavior in SIC Coach Lite.
 
+KSC is the current pilot/example tenant for this topic, not product-wide shared platform truth.
+
 It uses `docs/progress/week_21/day1-scope-lock.md` as the current Week 21 source of truth.
 
 This is a product-direction document only.
@@ -63,7 +65,7 @@ Program differences should be expressed through team context and product default
 
 ## Program types
 
-Week 21 freezes the product direction that each KSC team should eventually carry:
+Week 21 freezes the product direction that each KSC team should carry in the shared multi-tenant product:
 
 - `programType = travel | ost`
 
@@ -110,15 +112,16 @@ It freezes OST as a team-level context that can shape defaults inside the shared
 
 ## Team-level source of truth
 
-Program type and methodology should live primarily on the team.
+Program type and some stable planning context should live primarily on the team.
 
 Frozen rules:
 
 - the team is the main product object for KSC program context
-- the team should eventually carry `programType`
+- the durable Team model now supports optional `programType`
+- the durable Team model now supports optional `playerCount`
 - the team should eventually carry one default methodology context
 - the team should eventually carry age context
-- the team should eventually carry default duration
+- `durationMin` does not belong on Team and remains request-owned
 
 This keeps the model practical for coaches who work across more than one team.
 
@@ -139,6 +142,13 @@ Frozen rules:
 Week 21 does not require a fully shipped Methodology Pack runtime surface.
 It freezes the product rule that methodology ownership and defaulting should be explicit.
 
+Current repo boundary:
+
+- selected-team server context already exists for Session Builder
+- published methodology context already exists in the current Week 21 runtime
+- Team does not yet durably own a methodology linkage/default record
+- any stronger team-driven methodology defaulting should still be treated as future work unless and until that runtime linkage is explicitly added
+
 ---
 
 ## How program type should influence coach flow
@@ -151,6 +161,7 @@ During setup, the coach should eventually be able to:
 
 - create a team
 - choose `travel` or `ost`
+- optionally capture `playerCount`
 - set age context
 - set practical defaults
 - save the team for repeat use
@@ -191,11 +202,13 @@ Week 21 boundary:
 The current repo already contains part of the foundation for this direction:
 
 - team APIs already exist
-- the durable team model already supports `name`, `sport`, `ageBand`, `level`, `notes`, and `status`
-- the durable team model does not yet support `programType`
-- the durable team model does not yet support methodology linkage or default duration
+- the durable team model now supports optional `programType` and optional `playerCount` in addition to `name`, `sport`, `ageBand`, `level`, `notes`, and `status`
+- older team records remain valid because `programType` and `playerCount` are optional
+- the durable team model does not yet support methodology linkage or durable methodology defaulting
+- the durable team model does not support default duration
+- `durationMin` is still request-owned and is not a Team field
 - there is no teams UI route yet
-- methodology is present in docs and product direction, but not yet as a durable first-class runtime surface
+- methodology is present in the current Week 21 runtime and product direction, but not yet as a durable first-class Team-owned linkage surface
 
 This means Week 21 should document the correct product shape without overclaiming current implementation depth.
 
@@ -210,7 +223,7 @@ The following are out of scope for this Week 21 product freeze:
 - tenancy redesign
 - entitlements redesign
 - IAM or CDK redesign
-- claiming shipped runtime behavior for programType defaults
+- claiming shipped runtime behavior for automatic methodology defaults driven directly from durable Team fields
 - claiming shipped runtime behavior for methodology packs
 - claiming shipped coach-admin workspace behavior beyond narrow existing admin-only API surfaces
 
@@ -220,4 +233,4 @@ The following are out of scope for this Week 21 product freeze:
 
 KSC program type and methodology should become explicit team-level product concepts inside one shared SIC coach app.
 
-Week 21 freezes the rule that `travel` and `ost` belong on the team, that teams should eventually carry methodology defaults, and that coaches and coach-admins should benefit from those defaults without splitting SIC into parallel products.
+Week 21 freezes the rule that `travel` and `ost` can now live as optional durable Team context, that optional `playerCount` can now live on Team as well, that `durationMin` still remains request-owned, and that future methodology defaulting should stay inside one shared multi-tenant product rather than splitting SIC into parallel products.

@@ -5,6 +5,11 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import type { GeneratedSession, SessionPack } from "../../../../lib/session-builder-api";
+import {
+  buildQuickSessionPromptSummary,
+  buildQuickSessionTitle,
+  extractQuickSessionDuration
+} from "../../../../lib/quick-session-intent";
 
 type SaveFormState = {
   error?: string;
@@ -29,13 +34,22 @@ function SaveButton() {
 
 function QuickReviewCandidateCard({
   candidate,
+  prompt,
   editHref,
   saveFormAction
 }: {
   candidate: GeneratedSession;
+  prompt: string;
   editHref: string;
   saveFormAction: SaveFormDispatch;
 }) {
+  const quickSessionTitle = buildQuickSessionTitle({
+    prompt,
+    session: candidate
+  });
+  const promptSummary = buildQuickSessionPromptSummary(prompt);
+  const durationSignal = extractQuickSessionDuration(prompt);
+
   return (
     <article className="rounded-3xl border border-slate-200 bg-white/80 p-5">
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
@@ -43,8 +57,14 @@ function QuickReviewCandidateCard({
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Quick session
           </p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-900">Quick Session</h2>
+          <h2 className="mt-2 text-lg font-semibold text-slate-900">{quickSessionTitle}</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            {promptSummary || "No quick-session prompt summary saved."}
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {candidate.ageBand.toUpperCase()}
+            </span>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
               {candidate.durationMin} minutes
             </span>
@@ -52,6 +72,11 @@ function QuickReviewCandidateCard({
               {candidate.activities.length} activities
             </span>
           </div>
+          <p className="mt-3 text-sm text-slate-600">
+            {durationSignal.source === "prompt"
+              ? `Using ${durationSignal.durationMin} minutes from your prompt.`
+              : `Using the standard ${durationSignal.durationMin}-minute quick-session duration.`}
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2 sm:shrink-0">
@@ -64,9 +89,18 @@ function QuickReviewCandidateCard({
           <form action={saveFormAction}>
             <input type="hidden" name="candidate" value={JSON.stringify(candidate)} />
             <input type="hidden" name="origin" value="quick_session" />
+            <input type="hidden" name="quickSessionTitle" value={quickSessionTitle} />
             <SaveButton />
           </form>
         </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+        <h3 className="text-sm font-semibold text-slate-900">Prompt influence</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          The quick prompt sets the session focus, and the detected duration sets the total build
+          length before you save it into the shared session library.
+        </p>
       </div>
 
       <div className="mt-5 grid gap-3">
@@ -97,10 +131,12 @@ function QuickReviewCandidateCard({
 
 export function QuickSessionReview({
   pack,
+  prompt,
   editHref,
   saveAction
 }: {
   pack: SessionPack;
+  prompt: string;
   editHref: string;
   saveAction: SaveAction;
 }) {
@@ -130,6 +166,7 @@ export function QuickSessionReview({
         <QuickReviewCandidateCard
           key={`${pack.packId}-0`}
           candidate={quickCandidate}
+          prompt={prompt}
           editHref={editHref}
           saveFormAction={saveFormAction}
         />

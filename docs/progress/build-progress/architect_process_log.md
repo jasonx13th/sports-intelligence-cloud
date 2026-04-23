@@ -1023,6 +1023,13 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
   - lookup loader for tenant-scoped team context
   - published-only methodology loader
   - internal-only pipeline support for optional lookup inputs
+- A narrow durable Team-model slice was completed after the initial Week 21 grounding:
+  - Team now supports optional `programType`
+  - Team now supports optional `playerCount`
+  - backward compatibility was maintained because both fields are optional
+  - `durationMin` remained excluded from Team
+  - Team contract/docs and focused Team tests were updated
+  - this creates safer durable context for future team-aware Session Builder work without widening the public Session Builder API
 - The first safe internal `teamId` source was frozen and implemented:
   - `teamId` must not be added to public `POST /session-packs`
   - browser-local team objects are not trusted
@@ -1075,7 +1082,11 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
   - remove builder-style metadata/sections such as sport, age band, duration, schema version, objective tags, equipment
   - keep activities and feedback
 - Stronger methodology influence and later Step 5 work remain intentionally deferred.
-- Team `programType` is still not a shipped Team public contract field and should not be overclaimed from the current internal groundwork.
+- Durable Team context is still intentionally narrow:
+  - Team now supports optional `programType`
+  - Team now supports optional `playerCount`
+  - Team does not yet durably own methodology linkage/defaulting
+  - Team does not own `durationMin`
 
 ### Tenancy/security checks
 - Week 21 started frontend-first, and Day 4 added narrow backend/domain alignment work without widening the public Session Builder contract.
@@ -1095,7 +1106,10 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
   - `durationMin`
   - `theme`
   - `equipment`
-- No Team public contract expansion for `programType` was shipped.
+- Team public contract widening stayed narrow and explicit:
+  - optional `programType`
+  - optional `playerCount`
+- No public Session Builder contract widening was introduced.
 
 ### Observability notes
 - No new observability subsystem was introduced in the Week 21 slice.
@@ -1104,6 +1118,7 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
   - documented frontend implementation
   - successful `npx tsc --noEmit` in `apps/club-vivo`
   - focused backend/domain tests
+  - focused Team validator/repository/handler tests for the durable Team slice
   - methodology route dev verification
   - current repo/worktree route and flow shaping
 - No dashboard, alarm, or metric expansion was introduced as part of this frontend/product work.
@@ -1138,4 +1153,4 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Continue treating `Quick Drill` as product direction unless and until an explicit backend/runtime slice is approved.
 - Continue holding the line on auth, tenancy, entitlements, IAM, and CDK boundaries while Week 21 frontend work continues.
 - Use the now-frozen server-owned planning boundaries as the base for later Step 5 work instead of widening the public Session Builder contract.
-- Keep stronger methodology influence, broader planning defaults, and any Team contract expansion as explicit future slices rather than backfilling them into the completed Day 4 work.
+- Keep stronger methodology influence and broader planning defaults as explicit future slices rather than backfilling them into the completed Week 21 work.

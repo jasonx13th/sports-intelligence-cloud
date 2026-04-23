@@ -9,6 +9,7 @@ export type SessionBuilderContextHint = {
   objective?: string;
   teamName?: string;
   environment?: string;
+  sessionLabel?: string;
 };
 
 type SessionBuilderContextHintEntry = SessionBuilderContextHint & {
@@ -30,7 +31,8 @@ function normalizeSessionBuilderContextHint(
   return {
     objective: normalizeText(value.objective, 140),
     teamName: normalizeText(value.teamName, 60),
-    environment: normalizeText(value.environment, 48)
+    environment: normalizeText(value.environment, 48),
+    sessionLabel: normalizeText(value.sessionLabel, 80)
   };
 }
 
@@ -115,37 +117,51 @@ export function formatEnvironmentLabel(environment: string | undefined) {
 export function buildBuilderSessionDetailTitle({
   buildModeLabel,
   objective,
+  sessionLabel,
   teamName,
   ageBand
 }: {
   buildModeLabel: string;
   objective?: string;
+  sessionLabel?: string;
   teamName?: string;
   ageBand?: string;
 }) {
-  return [
-    buildModeLabel,
-    normalizeText(objective, 140),
-    normalizeText(teamName, 60),
-    ageBand ? formatCoachTeamAgeBand(ageBand) : undefined
-  ]
+  const focusLabel = normalizeText(sessionLabel, 80) || normalizeText(objective, 140);
+  const contextLabel = [normalizeText(teamName, 60), ageBand ? formatCoachTeamAgeBand(ageBand) : undefined]
     .filter(Boolean)
     .join(" / ");
+
+  if (focusLabel && contextLabel) {
+    return `${buildModeLabel}: ${focusLabel} for ${contextLabel}`;
+  }
+
+  if (focusLabel) {
+    return `${buildModeLabel}: ${focusLabel}`;
+  }
+
+  if (contextLabel) {
+    return `${buildModeLabel}: ${contextLabel}`;
+  }
+
+  return buildModeLabel;
 }
 
 export function buildBuilderSessionCardTitle({
   buildModeLabel,
   objective,
+  sessionLabel,
   teamName,
   ageBand
 }: {
   buildModeLabel: string;
   objective?: string;
+  sessionLabel?: string;
   teamName?: string;
   ageBand?: string;
 }) {
   const parts = [
-    buildModeLabel,
+    normalizeText(sessionLabel, 80) || normalizeText(objective, 140),
     normalizeText(teamName, 60),
     ageBand ? formatCoachTeamAgeBand(ageBand) : undefined
   ].filter(Boolean);

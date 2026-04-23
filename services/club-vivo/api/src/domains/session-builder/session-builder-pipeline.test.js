@@ -226,6 +226,9 @@ test("optional internal teamContext influences only resolvedGenerationContext", 
   assert.equal(resolvedResult.generationContext.teamContextUsed, false);
   assert.equal(resolvedResult.resolvedGenerationContext.teamContextUsed, true);
   assert.equal(resolvedResult.resolvedGenerationContext.resolvedProgramType, "travel");
+  assert.equal(resolvedResult.resolvedGenerationContext.resolvedPlayerCount, 16);
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBand, "u15");
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBandConsistentWithRequest, false);
   assert.equal(resolvedResult.generationContext.durationMin, 60);
   assert.equal(resolvedResult.resolvedGenerationContext.durationMin, 60);
   assert.deepEqual(
@@ -295,6 +298,25 @@ test("optional internal methodologyRecords influence only resolvedGenerationCont
   assert.equal(Object.hasOwn(resolvedResult.validatedPack, "methodologyInfluence"), false);
 });
 
+test("processSessionPackRequest carries compact builder notes and environment into generated session detail without changing the public shape", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing | notes:first pass after regain | env:turf",
+    sessionsCount: 1,
+  });
+
+  assert.match(result.validatedPack.sessions[0].activities[0].description, /Today's focus: pressing\./i);
+  assert.match(result.validatedPack.sessions[0].activities[0].description, /available turf\./i);
+  assert.match(
+    result.validatedPack.sessions[0].activities[1].description,
+    /Coach note: first pass after regain\./i
+  );
+  assert.equal(result.validatedPack.theme, "pressing | notes:first pass after regain | env:turf");
+  assert.equal(Object.hasOwn(result.validatedPack, "promptSignals"), false);
+});
+
 test("lookup path loads teamContext and published methodology records when tenant inputs and repositories are supplied", async () => {
   const tenantCtx = {
     tenantId: "tenant-123",
@@ -357,8 +379,11 @@ test("lookup path loads teamContext and published methodology records when tenan
     },
   });
 
-  assert.deepEqual(result.resolvedGenerationContext.teamContextUsed, false);
+  assert.deepEqual(result.resolvedGenerationContext.teamContextUsed, true);
   assert.equal(result.resolvedGenerationContext.resolvedProgramType, null);
+  assert.equal(result.resolvedGenerationContext.resolvedPlayerCount, 14);
+  assert.equal(result.resolvedGenerationContext.teamAgeBand, "u14");
+  assert.equal(result.resolvedGenerationContext.teamAgeBandConsistentWithRequest, true);
   assert.equal(result.resolvedGenerationContext.resolvedMethodologyScope, "shared");
   assert.deepEqual(result.resolvedGenerationContext.appliedMethodologyScopes, ["shared"]);
   assert.match(result.resolvedGenerationContext.methodologyGuidance, /Shared principles/);
@@ -431,6 +456,9 @@ test("lookup path can resolve missing team programType and published travel meth
   assert.equal(result.generationContext.teamContextUsed, false);
   assert.equal(result.resolvedGenerationContext.teamContextUsed, true);
   assert.equal(result.resolvedGenerationContext.resolvedProgramType, "travel");
+  assert.equal(result.resolvedGenerationContext.resolvedPlayerCount, 18);
+  assert.equal(result.resolvedGenerationContext.teamAgeBand, "u15");
+  assert.equal(result.resolvedGenerationContext.teamAgeBandConsistentWithRequest, false);
   assert.equal(result.resolvedGenerationContext.sources.durationMinSource, "request");
   assert.deepEqual(result.methodologyInfluence, {
     styleBias: "travel",

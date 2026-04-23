@@ -397,7 +397,7 @@ export class SicApiStack extends Stack {
 
     api.addRoutes({
       path: "/teams/{teamId}",
-      methods: [apigwv2.HttpMethod.GET],
+      methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.PUT],
       integration: new apigwv2Integrations.HttpLambdaIntegration("TeamByIdIntegration", teamsFn),
       authorizer,
     });

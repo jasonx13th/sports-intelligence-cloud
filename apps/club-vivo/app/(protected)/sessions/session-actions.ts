@@ -15,6 +15,11 @@ import {
   SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
   withSessionBuilderContextHint
 } from "../../../lib/session-builder-context-hints";
+import { buildBuilderSessionLabelFromSession } from "../../../lib/builder-session-label";
+import {
+  QUICK_SESSION_TITLE_HINTS_COOKIE,
+  withQuickSessionTitleHint
+} from "../../../lib/quick-session-title-hints";
 
 export type SaveGeneratedSessionState = {
   error?: string;
@@ -79,6 +84,11 @@ export async function saveGeneratedSessionAction(
   const objective = String(formData.get("objective") || "").trim();
   const teamName = String(formData.get("teamName") || "").trim();
   const environment = String(formData.get("environment") || "").trim();
+  const quickSessionTitle = String(formData.get("quickSessionTitle") || "").trim();
+  const sessionLabel = buildBuilderSessionLabelFromSession({
+    objective,
+    session: candidate
+  });
 
   try {
     const session = await createSession(candidate);
@@ -106,6 +116,23 @@ export async function saveGeneratedSessionAction(
       }
     );
 
+    if (origin === "quick_session" && quickSessionTitle) {
+      cookieStore.set(
+        QUICK_SESSION_TITLE_HINTS_COOKIE,
+        withQuickSessionTitleHint(
+          cookieStore.get(QUICK_SESSION_TITLE_HINTS_COOKIE)?.value,
+          sessionId,
+          quickSessionTitle
+        ),
+        {
+          httpOnly: true,
+          maxAge: 60 * 60 * 24 * 7,
+          path: "/",
+          sameSite: "lax"
+        }
+      );
+    }
+
     if (origin === "full_session" || origin === "quick_drill") {
       cookieStore.set(
         SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
@@ -115,7 +142,8 @@ export async function saveGeneratedSessionAction(
           {
             objective,
             teamName,
-            environment
+            environment,
+            sessionLabel
           }
         ),
         {

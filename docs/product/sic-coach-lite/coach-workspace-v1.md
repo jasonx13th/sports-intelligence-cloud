@@ -24,7 +24,8 @@ That means this document must stay aligned to the current repo reality:
 - `/sessions/new` is the main current generation path
 - saved sessions list, detail, and feedback already exist
 - export exists at API level but is not yet surfaced in the Next UI
-- team APIs already exist, but the durable team model is still small
+- team APIs already exist, and `/teams` is still the current team-management surface
+- the durable team model is still intentionally small, but now includes optional `programType` and optional `playerCount`
 - there is no teams UI route yet
 - Quick Drill is not yet a first-class product mode
 - coach profile is not yet a durable product surface
@@ -60,6 +61,9 @@ The current shipped flow already provides a real foundation for Coach Workspace 
 - saved sessions can already be listed and viewed
 - saved-session feedback already exists
 - export continuity already exists at the API level
+- selected-team server context already exists for Session Builder
+- the methodology page already exists in the shared app, with coach read-only behavior and admin edit/publish behavior
+- Team is now a small durable context object, not a full planning-defaults object
 
 Week 21 should build forward from that reality rather than replace it.
 
@@ -120,7 +124,7 @@ Target direction:
 3. Coach creates basic coach setup information.
 4. Coach creates one or more teams.
 5. Coach sets team context such as program type and age context.
-6. Coach sets practical defaults such as likely duration, environment context, and equipment context.
+6. Coach sets practical defaults such as environment context and equipment context, while duration stays request-owned.
 7. Coach saves this setup for future reuse.
 
 Week 21 boundary:
@@ -193,10 +197,17 @@ Team context should become the main way SIC carries repeat-use defaults.
 That includes direction for:
 
 - program type
+- player count
 - age context
-- default duration
 - methodology defaults
 - later environment and equipment defaults
+
+Current repo boundary:
+
+- Team now durably carries optional `programType` and optional `playerCount`
+- selected-team server context can already feed internal Session Builder lookup/resolution work
+- `durationMin` is still not a Team field and remains request-owned
+- stronger durable methodology-linkage/defaulting on Team is still future work
 
 This keeps the coach workflow practical:
 

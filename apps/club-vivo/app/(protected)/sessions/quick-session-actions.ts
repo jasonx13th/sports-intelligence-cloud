@@ -9,14 +9,18 @@ import {
   QUICK_SESSION_COOKIE,
   serializeQuickSessionPayload
 } from "../../../lib/quick-session-payload";
+import {
+  buildQuickSessionTheme,
+  extractQuickSessionDuration,
+  QUICK_SESSION_DEFAULT_DURATION_MIN
+} from "../../../lib/quick-session-intent";
 
 const QUICK_SESSION_DEFAULTS = {
   sport: "soccer",
   ageBand: "u14",
-  durationMin: "60",
+  durationMin: String(QUICK_SESSION_DEFAULT_DURATION_MIN),
   equipment: ""
 } as const;
-const QUICK_SESSION_THEME_MAX_LENGTH = 60;
 
 export type QuickSessionActionState = {
   error?: string;
@@ -71,35 +75,6 @@ function formatDevErrorDetails(details: unknown) {
   }
 }
 
-function deriveQuickSessionTheme(prompt: string) {
-  const normalizedPrompt = prompt.replace(/\s+/g, " ").trim();
-
-  if (!normalizedPrompt) {
-    return "Quick session request";
-  }
-
-  if (normalizedPrompt.length <= QUICK_SESSION_THEME_MAX_LENGTH) {
-    return normalizedPrompt;
-  }
-
-  const truncatedPrompt = normalizedPrompt
-    .slice(0, QUICK_SESSION_THEME_MAX_LENGTH - 3)
-    .trimEnd();
-
-  return truncatedPrompt ? `${truncatedPrompt}...` : "Quick session request";
-}
-
-function extractQuickSessionDuration(prompt: string) {
-  const match = prompt.match(/\b(\d{1,3})\s*(?:-| )?(?:minute|minutes|min|mins)\b/i);
-  const duration = match ? Number.parseInt(match[1] || "", 10) : Number.NaN;
-
-  if (!Number.isInteger(duration) || duration < 1) {
-    return Number.parseInt(QUICK_SESSION_DEFAULTS.durationMin, 10);
-  }
-
-  return duration;
-}
-
 function getQuickSessionErrorMessage(error: unknown) {
   if (error instanceof SessionBuilderApiError) {
     const detailMessage = readErrorDetail(error.details);
@@ -146,7 +121,7 @@ export async function createQuickSessionAction(
   "use server";
 
   const prompt = String(formData.get("prompt") || "").trim();
-  const quickSessionTheme = deriveQuickSessionTheme(prompt);
+  const quickSessionTheme = buildQuickSessionTheme(prompt);
   const quickSessionDuration = extractQuickSessionDuration(prompt);
 
   if (!prompt) {
@@ -159,7 +134,7 @@ export async function createQuickSessionAction(
     const pack = await generateSessionPack({
       sport: QUICK_SESSION_DEFAULTS.sport,
       ageBand: QUICK_SESSION_DEFAULTS.ageBand,
-      durationMin: quickSessionDuration,
+      durationMin: quickSessionDuration.durationMin,
       theme: quickSessionTheme
     });
 
@@ -170,7 +145,7 @@ export async function createQuickSessionAction(
         pack,
         values: {
           ...QUICK_SESSION_DEFAULTS,
-          durationMin: String(quickSessionDuration),
+          durationMin: String(quickSessionDuration.durationMin),
           theme: quickSessionTheme
         },
         notes: prompt

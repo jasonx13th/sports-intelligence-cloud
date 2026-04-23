@@ -59,6 +59,7 @@ const INITIAL_GENERATE_STATE: GenerateFormState = {
 };
 
 const INITIAL_SAVE_STATE: SaveFormState = {};
+const MAX_GENERATION_THEME_LENGTH = 60;
 
 function formatSelectedTeamDetails({
   ageBand,
@@ -72,6 +73,26 @@ function formatSelectedTeamDetails({
   return [ageBand, level, status].filter(Boolean).join(" - ");
 }
 
+function formatProgramTypeLabel(programType?: "travel" | "ost") {
+  if (programType === "travel") {
+    return "Travel";
+  }
+
+  if (programType === "ost") {
+    return "OST";
+  }
+
+  return "Program type not set";
+}
+
+function formatPlayerCountLabel(playerCount?: number) {
+  return typeof playerCount === "number" ? String(playerCount) : "Player count not set";
+}
+
+function formatAgeContextLabel(ageBand?: string) {
+  return ageBand?.trim() ? ageBand.toUpperCase() : "Age context not set";
+}
+
 function parseEquipment(rawValue: string) {
   return rawValue
     .split(",")
@@ -79,31 +100,39 @@ function parseEquipment(rawValue: string) {
     .filter(Boolean);
 }
 
+function clampPromptPart(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized.slice(0, maxLength).trim();
+}
+
 function buildGenerationTheme({
   objective,
-  teamName,
   environment,
   constraints
 }: {
   objective: string;
-  teamName: string;
   environment: string;
   constraints: string;
 }) {
-  const normalizedObjective = objective.trim();
-  const normalizedTeamName = teamName.trim();
-  const normalizedConstraints = constraints.trim();
-
+  const objectivePart = clampPromptPart(objective, 32);
+  const environmentPart =
+    environment && environment !== "grass_field"
+      ? clampPromptPart(formatEnvironmentLabel(environment).toLowerCase(), 14)
+      : "";
+  const notesPart = clampPromptPart(constraints, 26);
   const parts = [
-    `Primary session objective: ${normalizedObjective}.`,
-    normalizedTeamName ? `Team context: ${normalizedTeamName}.` : "",
-    environment ? `Environment context: ${formatEnvironmentLabel(environment)}.` : "",
-    normalizedConstraints
-      ? `Coach brainstorming and extra details for today: ${normalizedConstraints}. Use these notes directly when shaping the session activities.`
-      : ""
+    objectivePart,
+    notesPart ? `notes:${notesPart}` : "",
+    environmentPart ? `env:${environmentPart}` : ""
   ].filter(Boolean);
+  const compactTheme = parts.join(" | ");
 
-  return parts.join(" ");
+  return clampPromptPart(compactTheme, MAX_GENERATION_THEME_LENGTH);
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -214,7 +243,6 @@ export async function generateSessionPackAction(
   const environment = String(formData.get("environment") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
   const constraints = String(formData.get("constraints") || "").trim();
-  const teamName = String(formData.get("teamName") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
   const confirmedProfileJson = String(formData.get("confirmedProfileJson") || "").trim();
 
@@ -257,7 +285,6 @@ export async function generateSessionPackAction(
       durationMin: durationValue,
       theme: buildGenerationTheme({
         objective: theme,
-        teamName,
         environment,
         constraints
       }),
@@ -356,11 +383,13 @@ export default async function NewSessionPage({
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="grid gap-1">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Active Team Context
+              Team Influence
             </p>
             {activeSelectedTeam ? (
               <>
-                <h2 className="text-lg font-semibold text-slate-900">{activeSelectedTeam.name}</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Using team context from {activeSelectedTeam.name}
+                </h2>
                 <p className="text-sm text-slate-600">
                   {formatSelectedTeamDetails({
                     ageBand: activeSelectedTeam.ageBand,
@@ -368,16 +397,50 @@ export default async function NewSessionPage({
                     status: activeSelectedTeam.status
                   })}
                 </p>
+                <dl className="mt-3 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Program type
+                    </dt>
+                    <dd className="mt-1 text-sm text-slate-900">
+                      {formatProgramTypeLabel(activeSelectedTeam.programType)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Player count
+                    </dt>
+                    <dd className="mt-1 text-sm text-slate-900">
+                      {formatPlayerCountLabel(activeSelectedTeam.playerCount)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Age context
+                    </dt>
+                    <dd className="mt-1 text-sm text-slate-900">
+                      {formatAgeContextLabel(activeSelectedTeam.ageBand)}
+                    </dd>
+                  </div>
+                </dl>
                 <p className="text-sm text-slate-600">
-                  This selected backend team is available as server-owned context for Session
-                  Builder.
+                  These are durable team context signals for Session Builder, not all of today&apos;s
+                  session inputs.
+                </p>
+                <p className="text-sm text-slate-600">
+                  Today&apos;s duration, focus, and equipment still come from this session request.
                 </p>
               </>
             ) : (
               <>
-                <h2 className="text-lg font-semibold text-slate-900">No team selected</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  No team context selected
+                </h2>
                 <p className="text-sm text-slate-600">
-                  Session Builder can still continue without a selected team.
+                  Using the standard session generation path for this page.
+                </p>
+                <p className="text-sm text-slate-600">
+                  Today&apos;s duration, focus, and equipment still come from this session request.
                 </p>
               </>
             )}

@@ -6,6 +6,7 @@ import {
   QUICK_SESSION_TITLE_HINTS_COOKIE,
   parseQuickSessionTitleHints
 } from "../../../lib/quick-session-title-hints";
+import { buildQuickSessionTitle } from "../../../lib/quick-session-intent";
 import {
   SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
   buildBuilderSessionCardTitle,
@@ -80,14 +81,22 @@ export default async function SessionsPage() {
           {items.map((session) => {
             const origin = sessionOrigins[session.sessionId];
             const shouldShowObjectiveTags = shouldShowObjectiveTagsForOrigin(origin);
-            const quickSessionTitle = origin === "quick_session"
-              ? quickSessionTitles[session.sessionId]
-              : undefined;
+            const quickSessionTitle =
+              origin === "quick_session"
+                ? quickSessionTitles[session.sessionId] ||
+                  buildQuickSessionTitle({
+                    session: {
+                      objectiveTags: session.objectiveTags
+                    }
+                  })
+                : undefined;
             const builderSessionContext = sessionBuilderContexts[session.sessionId];
             const builderSessionTitle =
               origin === "full_session" || origin === "quick_drill"
                 ? buildBuilderSessionCardTitle({
                     buildModeLabel: getSessionOriginLabel(origin),
+                    objective: builderSessionContext?.objective,
+                    sessionLabel: builderSessionContext?.sessionLabel,
                     teamName: builderSessionContext?.teamName,
                     ageBand: session.ageBand
                   })

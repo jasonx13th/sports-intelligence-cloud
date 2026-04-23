@@ -15,6 +15,7 @@ import type {
   ImageAnalysisResult,
   SessionPack
 } from "../../../../lib/session-builder-api";
+import { buildBuilderSessionLabelFromSession } from "../../../../lib/builder-session-label";
 
 export type AnalyzeFormState = {
   values: {
@@ -152,6 +153,10 @@ function CandidateCard({
   };
 }) {
   const equipment = Array.isArray(candidate.equipment) ? candidate.equipment : [];
+  const sessionLabel = buildBuilderSessionLabelFromSession({
+    objective: sessionTitleContext.objective,
+    session: candidate
+  });
 
   return (
     <article className="rounded-3xl border border-slate-200 bg-white/80 p-5">
@@ -161,9 +166,12 @@ function CandidateCard({
             Session option {index + 1}
           </p>
           <h3 className="mt-2 text-lg font-semibold text-slate-900">
-            {candidate.ageBand.toUpperCase()} {candidate.sport} session
+            {sessionLabel}
           </h3>
           <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {candidate.ageBand.toUpperCase()}
+            </span>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
               {candidate.durationMin} minutes
             </span>

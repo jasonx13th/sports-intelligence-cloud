@@ -180,6 +180,22 @@ test("generatePack applies a deterministic fut-soccer pressing bias without chan
   ]);
 });
 
+test("generatePack applies compact builder prompt notes and environment to activity descriptions", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing | notes:first pass after regain | env:turf",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.match(session.activities[0].description, /Today's focus: pressing\./i);
+  assert.match(session.activities[0].description, /available turf\./i);
+  assert.match(session.activities[1].description, /Coach note: first pass after regain\./i);
+});
+
 test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {
   const pack = generatePack({
     sport: "soccer",

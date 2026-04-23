@@ -8,6 +8,36 @@ function resolveProgramType(teamContext) {
   return PROGRAM_TYPES.includes(programType) ? programType : null;
 }
 
+function resolvePlayerCount(teamContext) {
+  const playerCount = teamContext?.playerCount;
+
+  if (!Number.isInteger(playerCount) || playerCount < 1) {
+    return null;
+  }
+
+  return playerCount;
+}
+
+function normalizeAgeBandSignal(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+
+  return normalized || null;
+}
+
+function resolveTeamAgeBand(teamContext) {
+  return normalizeAgeBandSignal(teamContext?.ageBand);
+}
+
+function resolveTeamAgeBandConsistency({ generationContext, teamAgeBand }) {
+  const requestAgeBand = normalizeAgeBandSignal(generationContext?.ageBand);
+
+  if (!teamAgeBand || !requestAgeBand) {
+    return null;
+  }
+
+  return teamAgeBand === requestAgeBand;
+}
+
 function pickAppliedMethodologyRecords({ methodologyRecords, resolvedProgramType }) {
   const appliedRecords = [];
 
@@ -58,7 +88,16 @@ function resolveGenerationContext({
   methodologyRecords,
 } = {}) {
   const resolvedProgramType = resolveProgramType(teamContext);
-  const teamContextUsed = resolvedProgramType !== null;
+  const resolvedPlayerCount = resolvePlayerCount(teamContext);
+  const teamAgeBand = resolveTeamAgeBand(teamContext);
+  const teamAgeBandConsistentWithRequest = resolveTeamAgeBandConsistency({
+    generationContext,
+    teamAgeBand,
+  });
+  const teamContextUsed =
+    resolvedProgramType !== null ||
+    resolvedPlayerCount !== null ||
+    teamAgeBand !== null;
   const appliedMethodologyRecords = pickAppliedMethodologyRecords({
     methodologyRecords,
     resolvedProgramType,
@@ -70,11 +109,22 @@ function resolveGenerationContext({
     ...generationContext,
     teamContextUsed,
     resolvedProgramType,
+    resolvedPlayerCount,
+    teamAgeBand,
+    teamAgeBandConsistentWithRequest,
     resolvedMethodologyScope,
     appliedMethodologyScopes,
     methodologyGuidance: buildMethodologyGuidance(appliedMethodologyRecords),
     resolutionSources: {
-      resolvedProgramTypeSource: teamContextUsed ? "teamContext.programType" : null,
+      resolvedProgramTypeSource:
+        resolvedProgramType !== null ? "teamContext.programType" : null,
+      resolvedPlayerCountSource:
+        resolvedPlayerCount !== null ? "teamContext.playerCount" : null,
+      teamAgeBandSource: teamAgeBand !== null ? "teamContext.ageBand" : null,
+      teamAgeBandConsistencySource:
+        teamAgeBandConsistentWithRequest !== null
+          ? "teamContext.ageBand->request.ageBand"
+          : null,
       resolvedMethodologyScopeSource: resolvedMethodologyScope
         ? `methodology.${resolvedMethodologyScope}`
         : null,

@@ -7,7 +7,7 @@ const {
 } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
 const crypto = require("crypto");
-const { validateCreateTeam } = require("./team-validate");
+const { validateCreateTeam, validateUpdateTeam } = require("./team-validate");
 
 const ddb = new DynamoDBClient({});
 
@@ -78,6 +78,8 @@ function normalizeTeam(obj) {
     ageBand: obj.ageBand,
     ...(obj.level ? { level: obj.level } : {}),
     ...(obj.notes ? { notes: obj.notes } : {}),
+    ...(obj.programType ? { programType: obj.programType } : {}),
+    ...(obj.playerCount !== undefined ? { playerCount: obj.playerCount } : {}),
     status: obj.status,
     createdAt: obj.createdAt,
     updatedAt: obj.updatedAt,
@@ -683,6 +685,8 @@ class TeamRepository {
       ageBand: teamInput.ageBand,
       ...(teamInput.level !== undefined ? { level: teamInput.level } : {}),
       ...(teamInput.notes !== undefined ? { notes: teamInput.notes } : {}),
+      ...(teamInput.programType !== undefined ? { programType: teamInput.programType } : {}),
+      ...(teamInput.playerCount !== undefined ? { playerCount: teamInput.playerCount } : {}),
       status: teamInput.status,
       createdAt: now,
       updatedAt: now,
@@ -699,6 +703,55 @@ class TeamRepository {
 
     return {
       team: normalizeTeam(teamItem),
+    };
+  }
+
+  async updateTeam(tenantContext, teamId, input) {
+    const tenantId = requireTenantId(tenantContext);
+    const safeTeamId = requireTeamId(teamId);
+    const teamInput = validateUpdateTeam(input);
+    const existing = await this.getTeamById(tenantContext, safeTeamId);
+
+    if (!existing?.team) {
+      const err = new Error("Team not found");
+      err.code = "teams.not_found";
+      err.statusCode = 404;
+      err.details = {
+        entityType: "TEAM",
+        teamId: safeTeamId,
+      };
+      throw err;
+    }
+
+    const currentTeam = existing.team;
+    const updatedItem = {
+      PK: `TENANT#${tenantId}`,
+      SK: `TEAM#${safeTeamId}`,
+      type: "TEAM",
+      teamId: safeTeamId,
+      tenantId,
+      name: teamInput.name,
+      sport: teamInput.sport,
+      ageBand: teamInput.ageBand,
+      ...(teamInput.level !== undefined ? { level: teamInput.level } : {}),
+      ...(teamInput.notes !== undefined ? { notes: teamInput.notes } : {}),
+      ...(teamInput.programType !== undefined ? { programType: teamInput.programType } : {}),
+      ...(teamInput.playerCount !== undefined ? { playerCount: teamInput.playerCount } : {}),
+      status: teamInput.status,
+      createdAt: currentTeam.createdAt,
+      updatedAt: new Date().toISOString(),
+      createdBy: currentTeam.createdBy ?? null,
+    };
+
+    await ddb.send(
+      new PutItemCommand({
+        TableName: this.tableName,
+        Item: marshall(updatedItem),
+      })
+    );
+
+    return {
+      team: normalizeTeam(updatedItem),
     };
   }
 }

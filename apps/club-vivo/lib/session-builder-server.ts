@@ -1,7 +1,6 @@
 import "server-only";
 
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 import { getCurrentUser } from "./get-current-user";
 import {
@@ -57,20 +56,21 @@ type MethodologyDisplayModel = {
   styleBias: "default" | "travel" | "ost";
 };
 
-const require = createRequire(import.meta.url);
-const pipelineModulePath = fileURLToPath(
-  new URL(
-    "../../../services/club-vivo/api/src/domains/session-builder/session-builder-pipeline.js",
-    import.meta.url
-  )
+const pipelineModulePath = resolve(
+  process.cwd(),
+  "../../services/club-vivo/api/src/domains/session-builder/session-builder-pipeline.js"
 );
-const resolverModulePath = fileURLToPath(
-  new URL(
-    "../../../services/club-vivo/api/src/domains/session-builder/generation-context-resolver.js",
-    import.meta.url
-  )
+const resolverModulePath = resolve(
+  process.cwd(),
+  "../../services/club-vivo/api/src/domains/session-builder/generation-context-resolver.js"
 );
-const { processSessionPackRequest, deriveMethodologyInfluence } = require(pipelineModulePath) as {
+
+function loadBackendModule<T>(absolutePath: string): T {
+  const runtimeRequire = eval("require") as NodeRequire;
+  return runtimeRequire(absolutePath) as T;
+}
+
+const { processSessionPackRequest, deriveMethodologyInfluence } = loadBackendModule<{
   processSessionPackRequest: (
     rawInput: GenerateSessionPackInput,
     options?: {
@@ -84,8 +84,9 @@ const { processSessionPackRequest, deriveMethodologyInfluence } = require(pipeli
     styleBias: "default" | "travel" | "ost";
     methodologyApplied: boolean;
   };
-};
-const { resolveGenerationContext } = require(resolverModulePath) as {
+}>(pipelineModulePath);
+
+const { resolveGenerationContext } = loadBackendModule<{
   resolveGenerationContext: (input: {
     generationContext: Record<string, never>;
     teamContext?: {
@@ -95,7 +96,7 @@ const { resolveGenerationContext } = require(resolverModulePath) as {
     } | null;
     methodologyRecords?: Partial<Record<MethodologyScope, MethodologyRecord | null>>;
   }) => ResolvedGenerationContext;
-};
+}>(resolverModulePath);
 
 function createPipelineTeamRepository(): PipelineTeamRepository {
   return {
@@ -143,7 +144,7 @@ async function getValidatedSelectedTeam(currentUser: PipelineTenantContext): Pro
 }
 
 function getTeamProgramType(team: TeamRecord | null) {
-  const programType = (team as TeamRecord & { programType?: unknown } | null)?.programType;
+  const programType = (team as (TeamRecord & { programType?: unknown }) | null)?.programType;
   return programType === "travel" || programType === "ost" ? programType : null;
 }
 

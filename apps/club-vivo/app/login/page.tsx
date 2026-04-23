@@ -4,13 +4,6 @@ function parseSearchParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-const LOGIN_PATH_HIGHLIGHTS = [
-  "Quick Session for the fastest prompt-to-review flow",
-  "Session Builder for the detailed planning path",
-  "Teams and Methodology inside the same shared coach workspace",
-  "Saved sessions, detail views, and PDF export continuity"
-];
-
 export default async function LoginPage({
   searchParams
 }: {
@@ -21,7 +14,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
-      <section className="club-vivo-shell w-full max-w-3xl rounded-[2rem] border p-8 backdrop-blur">
+      <section className="club-vivo-shell w-full max-w-2xl rounded-[2rem] border p-8 backdrop-blur">
         <div className="club-vivo-badge mb-6 inline-flex rounded-full px-3 py-1 text-sm font-medium tracking-wide uppercase">
           SIC / Club Vivo
         </div>
@@ -52,33 +45,14 @@ export default async function LoginPage({
           </Link>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-          <div className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-            <h2 className="text-lg font-semibold text-slate-900">What opens after login</h2>
-            <div className="mt-4 grid gap-3">
-              {LOGIN_PATH_HIGHLIGHTS.map((item) => (
-                <p
-                  key={item}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
-                >
-                  {item}
-                </p>
-              ))}
-            </div>
-          </div>
+        <p className="mt-6 max-w-xl text-sm leading-6 text-slate-600">
+          Sign in opens the current hosted auth flow. Starting access uses the same path and lands
+          in the same coach workspace after auth completes.
+        </p>
 
-          <div className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-            <h2 className="text-lg font-semibold text-slate-900">Current access path</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Sign in opens the current hosted auth flow right away. Starting access uses the same
-              callback and lands in the same Home workspace after auth completes.
-            </p>
-            <p className="mt-4 text-sm leading-6 text-slate-600">
-              If you expected coach access but cannot continue, contact your Club Vivo pilot
-              operator.
-            </p>
-          </div>
-        </div>
+        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">
+          If you expected access but cannot continue, contact your Club Vivo pilot operator.
+        </p>
       </section>
     </main>
   );

@@ -58,12 +58,12 @@ export function SessionFeedbackPanel({
     <article className="mt-8 rounded-3xl border border-slate-200 bg-white/70 p-5">
       <h2 className="text-lg font-semibold text-slate-900">Feedback</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-        Share one short round of pilot feedback for this saved session.
+        Apply this session with your team first, then submit one short round of pilot feedback.
       </p>
 
       {isLocked ? (
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {state.message}
+          {state.message || "Feedback recorded for this session."}
         </div>
       ) : (
         <form action={formAction} className="mt-6 grid gap-4">

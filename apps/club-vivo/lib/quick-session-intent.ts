@@ -3,6 +3,8 @@ import { buildBuilderSessionLabel } from "./builder-session-label";
 export const QUICK_SESSION_DEFAULT_DURATION_MIN = 60;
 const QUICK_SESSION_THEME_MAX_LENGTH = 60;
 const QUICK_SESSION_OBJECTIVE_MAX_LENGTH = 44;
+const QUICK_SESSION_MIN_DURATION_MIN = 5;
+const QUICK_SESSION_MAX_DURATION_MIN = 240;
 
 type QuickSessionLike = {
   objectiveTags: string[];
@@ -68,6 +70,21 @@ function cleanObjectiveSeed(prompt: string) {
 function detectOverloads(prompt: string) {
   const matches = prompt.match(/\b\d+\s*v\s*\d+\b/gi) || [];
   return [...new Set(matches.map((match) => match.toLowerCase().replace(/\s+/g, "")))];
+}
+
+function detectQuickSessionActivityFormat(prompt: string) {
+  const normalized = ` ${normalizeText(prompt).toLowerCase()} `;
+
+  if (
+    includesAny(normalized, [
+      /\b(?:one|1)\s+(?:drill|activity|exercise)\b/,
+      /\bsingle\s+(?:drill|activity|exercise)\b/,
+    ])
+  ) {
+    return "one_drill";
+  }
+
+  return "";
 }
 
 export function detectQuickSessionFocusTags(prompt: string) {
@@ -172,8 +189,13 @@ export function extractQuickSessionDuration(prompt: string) {
     };
   }
 
+  const safeDuration = Math.min(
+    Math.max(duration, QUICK_SESSION_MIN_DURATION_MIN),
+    QUICK_SESSION_MAX_DURATION_MIN
+  );
+
   return {
-    durationMin: duration,
+    durationMin: safeDuration,
     source: "prompt" as const
   };
 }
@@ -214,8 +236,10 @@ export function buildQuickSessionTheme(prompt: string) {
   const notesPart = buildQuickSessionNotes(prompt);
   const environmentPart = clampPromptPart(detectEnvironment(prompt), 14);
   const playerCount = detectQuickSessionPlayerCount(prompt);
+  const activityFormat = detectQuickSessionActivityFormat(prompt);
   const compactTheme = [
     "quick",
+    activityFormat ? `format:${activityFormat}` : "",
     objectivePart,
     playerCount ? `${playerCount} players` : "",
     notesPart ? `notes:${notesPart}` : "",

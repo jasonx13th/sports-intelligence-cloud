@@ -89,6 +89,7 @@ function isControlThemeSegment(segment) {
     normalizedSegment.startsWith("team context:") ||
     normalizedSegment.startsWith("coach brainstorming and extra details for today:") ||
     normalizedSegment.startsWith("primary session objective:") ||
+    normalizedSegment.startsWith("format:") ||
     normalizedSegment.startsWith("mode:")
   );
 }
@@ -109,12 +110,14 @@ function extractPromptSignals(theme) {
   const coachNotes =
     extractDelimitedValue(rawTheme, "Coach brainstorming and extra details for today") ||
     extractDelimitedValue(rawTheme, "notes");
+  const activityFormat = extractDelimitedValue(rawTheme, "format");
 
   return {
     primaryObjective: primaryObjective || rawTheme,
     teamContext: teamContext || null,
     environment: environment || null,
     coachNotes: coachNotes || null,
+    activityFormat: activityFormat || null,
     playerCount: playerCountMatch?.[1] ? Number.parseInt(playerCountMatch[1], 10) : null,
     sessionMode: segments.some((segment) => isQuickSessionSegment(segment)) ? "quick" : null,
   };
@@ -291,15 +294,69 @@ function minutesSum(activities) {
   return (activities || []).reduce((acc, a) => acc + (Number(a.minutes) || 0), 0);
 }
 
+function fitActivityDurationsToDuration({ durationMin, activities }) {
+  const total = minutesSum(activities);
+
+  if (total <= durationMin || activities.length < 1) {
+    return activities;
+  }
+
+  const minimumTotal = activities.length;
+  if (durationMin < minimumTotal) {
+    return activities.slice(0, durationMin).map((activity) => ({
+      ...activity,
+      minutes: 1,
+    }));
+  }
+
+  const weighted = activities.map((activity, index) => {
+    const rawMinutes = ((Number(activity.minutes) || 1) / total) * durationMin;
+    return {
+      activity,
+      index,
+      minutes: Math.max(1, Math.floor(rawMinutes)),
+      remainder: rawMinutes - Math.floor(rawMinutes),
+    };
+  });
+
+  let fittedTotal = weighted.reduce((sum, item) => sum + item.minutes, 0);
+  const byRemainder = [...weighted].sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+
+  while (fittedTotal < durationMin) {
+    const item = byRemainder[(durationMin - fittedTotal - 1) % byRemainder.length];
+    item.minutes += 1;
+    fittedTotal += 1;
+  }
+
+  while (fittedTotal > durationMin) {
+    const item = [...weighted]
+      .sort((a, b) => b.minutes - a.minutes || a.index - b.index)
+      .find((candidate) => candidate.minutes > 1);
+
+    if (!item) break;
+
+    item.minutes -= 1;
+    fittedTotal -= 1;
+  }
+
+  return weighted
+    .sort((a, b) => a.index - b.index)
+    .map(({ activity, minutes }) => ({
+      ...activity,
+      minutes,
+    }));
+}
+
 function padWithCoolDown({ durationMin, activities }) {
-  const used = minutesSum(activities);
+  const fittedActivities = fitActivityDurationsToDuration({ durationMin, activities });
+  const used = minutesSum(fittedActivities);
   const remaining = durationMin - used;
   const cooldownCap = 10;
 
-  if (remaining <= 0) return activities;
+  if (remaining <= 0) return fittedActivities;
 
   if (remaining <= cooldownCap) {
-    return activities.concat([
+    return fittedActivities.concat([
       {
         name: "Cooldown",
         minutes: remaining,
@@ -308,7 +365,7 @@ function padWithCoolDown({ durationMin, activities }) {
     ]);
   }
 
-  return activities.concat([
+  return fittedActivities.concat([
     {
       name: "Low-intensity technical reps",
       minutes: remaining - cooldownCap,
@@ -498,7 +555,7 @@ function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
   const activities = [
     { name: "Ball mastery arrival game", minutes: 10, description: "Set a simple grid, give each player a ball where possible, and add an easy scoring target to get the group moving." },
     { name: `Theme challenge: ${theme}`, minutes: 20, description: "Create one clear rule tied to the theme. Score the desired action and pause briefly to name the coaching cue." },
-    { name: "Play-to-goal game", minutes: 20, description: "Use game-like constraints tied to the main theme. Progress by changing space, numbers, or touch limits." },
+    { name: "End game challenge", minutes: 20, description: "Use game-like constraints tied to the main theme. Progress by changing space, numbers, or touch limits." },
   ];
 
   return baseSession({
@@ -508,6 +565,37 @@ function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
     objectiveTags: ["theme"],
     equipment,
     activities,
+  });
+}
+
+function templateQuickOneDrill({ sport, ageBand, durationMin, theme, equipment, promptSignals }) {
+  const objective = normalizeTheme(promptSignals?.primaryObjective || theme) || "quick challenge";
+  const objectiveTags = inferFocusTagsFromText(objective);
+  const displayObjective = titleCase(objective).slice(0, 52) || "Quick Challenge";
+  const playerCount =
+    typeof promptSignals?.playerCount === "number" && Number.isInteger(promptSignals.playerCount)
+      ? `${promptSignals.playerCount} players`
+      : "the group";
+  const description = [
+    `Setup: build one clear area for ${playerCount} and demo the first action.`,
+    "Scoring: award points for the focus action and quick positive restarts.",
+    "Cue: be brave, change speed, and recognize when to attack space.",
+    "Progression: add a defender, time limit, or bonus point for creativity.",
+  ].join(" ");
+
+  return baseSession({
+    sport,
+    ageBand,
+    durationMin,
+    objectiveTags: objectiveTags.length ? objectiveTags : ["theme"],
+    equipment,
+    activities: [
+      {
+        name: `${displayObjective} Game`,
+        minutes: durationMin,
+        description,
+      },
+    ],
   });
 }
 
@@ -551,7 +639,9 @@ function generateSessionFromTheme({
   const t = pickSportPackTemplate({ sportPackId, themeKey });
 
   const session =
-    t === "passing"
+    promptSignals.sessionMode === "quick" && promptSignals.activityFormat === "one_drill"
+      ? templateQuickOneDrill({ sport, ageBand, durationMin, theme, equipment, promptSignals })
+      : t === "passing"
       ? templatePassingShape({ sport, ageBand, durationMin, equipment })
       : t === "fut-soccer-passing"
         ? templateFutSoccerPassing({ sport, ageBand, durationMin, equipment })

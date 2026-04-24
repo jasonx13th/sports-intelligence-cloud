@@ -262,6 +262,47 @@ test("generatePack uses pressure and possession prompt words instead of falling 
   assert.equal(session.objectiveTags.includes("pressure"), true);
 });
 
+test("generatePack keeps default quick sessions at 60 minutes with exact activity totals", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | dribbling creativity | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(pack.durationMin, 60);
+  assert.equal(session.durationMin, 60);
+  assert.equal(minutesSum(session.activities), 60);
+  assert.deepEqual(session.equipment, ["cones", "pinnies"]);
+});
+
+test("generatePack creates a valid compact one-drill quick plan under 25 minutes", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 25,
+    theme: "quick | format:one_drill | 1v1 dribbling creativity | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.durationMin, 25);
+  assert.equal(session.activities.length, 1);
+  assert.equal(minutesSum(session.activities), 25);
+  assert.equal(session.activities[0].minutes, 25);
+  assert.equal(session.objectiveTags.includes("1v1"), true);
+  assert.equal(session.objectiveTags.includes("dribbling"), true);
+  assert.match(session.activities[0].description, /Setup:/);
+  assert.match(session.activities[0].description, /Scoring:/);
+  assert.match(session.activities[0].description, /Progression:/);
+});
+
 test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {
   const pack = generatePack({
     sport: "soccer",

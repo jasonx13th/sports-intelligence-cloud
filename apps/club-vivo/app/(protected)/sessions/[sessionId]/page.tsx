@@ -304,7 +304,7 @@ export default async function SessionDetailPage({
 
       return {
         status: "success",
-        message: "Feedback submitted. Thank you for the pilot feedback.",
+        message: "Feedback recorded for this session.",
         values
       };
     } catch (error) {
@@ -312,7 +312,7 @@ export default async function SessionDetailPage({
         if (error.status === 409) {
           return {
             status: "already-submitted",
-            message: "Feedback has already been submitted for this session.",
+            message: "Feedback already recorded for this session.",
             values
           };
         }

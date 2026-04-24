@@ -95,14 +95,6 @@ function QuickReviewCandidateCard({
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">Prompt influence</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-700">
-          The quick prompt sets the session focus, and the detected duration sets the total build
-          length before you save it into the shared session library.
-        </p>
-      </div>
-
       <div className="mt-5 grid gap-3">
         {candidate.activities.map((activity, activityIndex) => (
           <section

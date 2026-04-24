@@ -591,6 +591,49 @@ test("quick-marked themes keep the public pack shape while making the generated 
   assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
 });
 
+test("quick one-drill requests under 25 minutes validate with exact activity totals", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 25,
+    theme: "quick | format:one_drill | 1v1 dribbling | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = result.validatedPack.sessions;
+
+  assert.equal(result.validatedPack.durationMin, 25);
+  assert.equal(session.durationMin, 25);
+  assert.equal(session.activities.length, 1);
+  assert.equal(
+    session.activities.reduce((sum, activity) => sum + activity.minutes, 0),
+    25
+  );
+  assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
+  assert.equal(Object.hasOwn(result.validatedPack, "activityFormat"), false);
+});
+
+test("quick requests without explicit duration keep the caller's default 60-minute duration", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | 1v1 dribbling creativity | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = result.validatedPack.sessions;
+
+  assert.equal(result.validatedPack.durationMin, 60);
+  assert.equal(session.durationMin, 60);
+  assert.equal(
+    session.activities.reduce((sum, activity) => sum + activity.minutes, 0),
+    60
+  );
+});
+
 test("processSessionImageAnalysisRequest stores one tenant-scoped image and returns a draft profile", async () => {
   const storageCalls = [];
   const analysisCalls = [];

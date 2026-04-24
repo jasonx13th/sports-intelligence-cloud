@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { useState } from "react";
 
 import type { QuickSessionActionState } from "../../app/(protected)/sessions/quick-session-actions";
 
@@ -12,6 +11,7 @@ type HomeSessionStartCardProps = {
     formData: FormData
   ) => Promise<QuickSessionActionState>;
   initialPrompt?: string;
+  showPromptHelper?: boolean;
 };
 
 function CreateSessionButton() {
@@ -30,10 +30,14 @@ function CreateSessionButton() {
 
 export function HomeSessionStartCard({
   createQuickSessionAction,
-  initialPrompt = ""
+  initialPrompt = "",
+  showPromptHelper = true
 }: HomeSessionStartCardProps) {
   const [notes, setNotes] = useState(initialPrompt);
-  const [state, formAction] = useActionState(createQuickSessionAction, {});
+  const [state, formAction] = useActionState<QuickSessionActionState, FormData>(
+    createQuickSessionAction,
+    {}
+  );
 
   return (
     <section className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur sm:p-8">
@@ -57,11 +61,12 @@ export function HomeSessionStartCard({
             placeholder="Today we need a sharp possession session, 14 players, tight space, and a strong finishing block at the end."
             required
           />
-          <span className="text-xs leading-5 text-slate-500">
-            Include the coaching focus and, if needed, a duration like <code>45 minutes</code>.
-            The prompt maps into the existing shared generation path, then opens the dedicated
-            quick-session review flow.
-          </span>
+          {showPromptHelper ? (
+            <span className="text-xs leading-5 text-slate-500">
+              The prompt maps into the existing shared generation path, then opens the dedicated
+              quick-session review flow.
+            </span>
+          ) : null}
         </label>
 
         {state.error ? (

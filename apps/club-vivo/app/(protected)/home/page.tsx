@@ -34,20 +34,13 @@ export default async function HomePage() {
       <CoachPageHeader
         badge="Home"
         title="Coach workspace"
-        description="Use the top workspace navigation to move between Session Builder, Teams, Methodology, equipment, and saved sessions. Start the fastest coach flow right here with Quick Session."
+        description="Brainstorm fast, turn the idea into a session, or use the top navigation when you want to go deeper on planning, teams, methodology, equipment, and saved sessions."
       />
 
-      <section className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">SIC Coach Workspace</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-          Home is the coach starting point for the current shared workflow. Use Quick Session here
-          when you want the fastest prompt-to-plan path, then rely on the top navigation when you
-          want to move into detailed planning, team context, methodology, equipment, or saved
-          session follow-through.
-        </p>
-      </section>
-
-      <HomeSessionStartCard createQuickSessionAction={createQuickSessionAction} />
+      <HomeSessionStartCard
+        createQuickSessionAction={createQuickSessionAction}
+        showPromptHelper={false}
+      />
 
       <RecentSessionsPanel
         sessions={recentSessions}

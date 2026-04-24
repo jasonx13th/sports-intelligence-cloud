@@ -204,7 +204,7 @@ test("processSessionPackRequest keeps existing single-argument usage and default
   assert.equal(resultWithoutOptions.resolvedGenerationContext.resolvedProgramType, null);
 });
 
-test("optional internal teamContext influences only resolvedGenerationContext", async () => {
+test("programType team context can bias generated sessions while keeping request-owned fields authoritative", async () => {
   const rawInput = {
     sport: "soccer",
     ageBand: "u14",
@@ -231,10 +231,22 @@ test("optional internal teamContext influences only resolvedGenerationContext", 
   assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBandConsistentWithRequest, false);
   assert.equal(resolvedResult.generationContext.durationMin, 60);
   assert.equal(resolvedResult.resolvedGenerationContext.durationMin, 60);
-  assert.deepEqual(
+  assert.deepEqual(resolvedResult.methodologyInfluence, {
+    styleBias: "travel",
+    methodologyApplied: false,
+    guidanceSnippets: ["travel-tempo", "travel-competitive-repetition"],
+  });
+  assert.notDeepEqual(
     stripPackIdentity(baseResult.validatedPack),
     stripPackIdentity(resolvedResult.validatedPack)
   );
+  assert.match(
+    resolvedResult.validatedPack.sessions[0].activities[0].description,
+    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
+  );
+  assert.equal(resolvedResult.validatedPack.durationMin, rawInput.durationMin);
+  assert.equal(resolvedResult.validatedPack.theme, rawInput.theme);
+  assert.deepEqual(resolvedResult.validatedPack.equipment, rawInput.equipment);
 });
 
 test("optional internal methodologyRecords influence only resolvedGenerationContext", async () => {
@@ -292,7 +304,7 @@ test("optional internal methodologyRecords influence only resolvedGenerationCont
   );
   assert.match(
     resolvedResult.validatedPack.sessions[0].activities[0].description,
-    /Keep the tempo sharp and the details game-realistic\./
+    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
   );
   assert.equal(Object.hasOwn(resolvedResult.validatedPack, "resolvedMethodologyScope"), false);
   assert.equal(Object.hasOwn(resolvedResult.validatedPack, "methodologyInfluence"), false);
@@ -474,7 +486,7 @@ test("lookup path can resolve missing team programType and published travel meth
   assert.deepEqual(result.validatedPack.equipment, rawInput.equipment);
   assert.match(
     result.validatedPack.sessions[0].activities[0].description,
-    /Keep the tempo sharp and the details game-realistic\./
+    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
   );
   assert.equal(Object.hasOwn(result.validatedPack, "resolvedProgramType"), false);
   assert.equal(Object.hasOwn(result.validatedPack, "appliedMethodologyScopes"), false);
@@ -527,9 +539,30 @@ test("ost methodology context applies only an internal ost style bias while pres
   );
   assert.match(
     resolvedResult.validatedPack.sessions[0].activities[0].description,
-    /Keep directions clear and scaffold the first few reps\./
+    /Keep the setup simple, explain one rule at a time, and let the players learn through play\./
   );
   assert.equal(Object.hasOwn(resolvedResult.validatedPack, "methodologyInfluence"), false);
+});
+
+test("quick-marked themes keep the public pack shape while making the generated session more playful", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 60,
+    theme: "quick | finishing | notes:small teams",
+    sessionsCount: 1,
+  });
+
+  assert.match(
+    result.validatedPack.sessions[0].activities[0].description,
+    /Keep the setup easy to run and let the players get into the activity quickly\./
+  );
+  assert.match(
+    result.validatedPack.sessions[0].activities[1].description,
+    /Use playful competition and simple rules so the session stays fun and game-like\./
+  );
+  assert.equal(result.validatedPack.theme, "quick | finishing | notes:small teams");
+  assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
 });
 
 test("processSessionImageAnalysisRequest stores one tenant-scoped image and returns a draft profile", async () => {

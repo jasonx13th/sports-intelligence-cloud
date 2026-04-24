@@ -65,11 +65,41 @@ function extractDelimitedValue(theme, label) {
   return sentenceMatch?.[1]?.trim() || null;
 }
 
+function splitThemeSegments(theme) {
+  return String(theme || "")
+    .split("|")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function isQuickSessionSegment(segment) {
+  const normalizedSegment = normalizeTheme(segment);
+
+  return normalizedSegment === "quick" || normalizedSegment === "mode: quick";
+}
+
+function isControlThemeSegment(segment) {
+  const normalizedSegment = normalizeTheme(segment);
+
+  return (
+    isQuickSessionSegment(normalizedSegment) ||
+    normalizedSegment.startsWith("notes:") ||
+    normalizedSegment.startsWith("env:") ||
+    normalizedSegment.startsWith("environment context:") ||
+    normalizedSegment.startsWith("team context:") ||
+    normalizedSegment.startsWith("coach brainstorming and extra details for today:") ||
+    normalizedSegment.startsWith("primary session objective:") ||
+    normalizedSegment.startsWith("mode:")
+  );
+}
+
 function extractPromptSignals(theme) {
   const rawTheme = String(theme || "").trim();
+  const segments = splitThemeSegments(rawTheme);
   const primaryObjective =
     extractDelimitedValue(rawTheme, "Primary session objective") ||
-    rawTheme.split("|")[0]?.trim() ||
+    segments.find((segment) => !isControlThemeSegment(segment)) ||
+    segments[0] ||
     rawTheme;
   const teamContext = extractDelimitedValue(rawTheme, "Team context");
   const environment =
@@ -84,6 +114,7 @@ function extractPromptSignals(theme) {
     teamContext: teamContext || null,
     environment: environment || null,
     coachNotes: coachNotes || null,
+    sessionMode: segments.some((segment) => isQuickSessionSegment(segment)) ? "quick" : null,
   };
 }
 
@@ -100,6 +131,63 @@ function buildPromptInfluenceSentences(promptSignals) {
     ].filter(Boolean),
     middle: [coachNotes ? `Coach note: ${coachNotes}.` : ""].filter(Boolean),
     last: [teamContext ? `Keep the final detail appropriate for ${teamContext}.` : ""].filter(Boolean),
+  };
+}
+
+function findNonCooldownIndexes(activities) {
+  return (activities || []).reduce((accumulator, activity, index) => {
+    if (
+      activity?.name !== "Cooldown" &&
+      normalizeTheme(activity?.name) !== "low-intensity technical reps"
+    ) {
+      accumulator.push(index);
+    }
+
+    return accumulator;
+  }, []);
+}
+
+function applySentenceGroupsToActivities(session, sentenceGroups) {
+  const activities = Array.isArray(session.activities) ? session.activities.slice() : [];
+
+  if (activities.length < 1) {
+    return session;
+  }
+
+  const nonCooldownIndexes = findNonCooldownIndexes(activities);
+
+  if (nonCooldownIndexes.length < 1) {
+    return session;
+  }
+
+  const firstIndex = nonCooldownIndexes[0];
+  const middleIndex = nonCooldownIndexes[Math.min(1, nonCooldownIndexes.length - 1)];
+  const lastIndex = nonCooldownIndexes[nonCooldownIndexes.length - 1];
+
+  for (const sentence of sentenceGroups.first || []) {
+    activities[firstIndex] = {
+      ...activities[firstIndex],
+      description: appendSentenceCapped(activities[firstIndex].description, sentence),
+    };
+  }
+
+  for (const sentence of sentenceGroups.middle || []) {
+    activities[middleIndex] = {
+      ...activities[middleIndex],
+      description: appendSentenceCapped(activities[middleIndex].description, sentence),
+    };
+  }
+
+  for (const sentence of sentenceGroups.last || []) {
+    activities[lastIndex] = {
+      ...activities[lastIndex],
+      description: appendSentenceCapped(activities[lastIndex].description, sentence),
+    };
+  }
+
+  return {
+    ...session,
+    activities,
   };
 }
 
@@ -197,96 +285,33 @@ function applyMethodologyInfluenceToSession(session, methodologyInfluence) {
   const styleBiasSentences =
     styleBias === "travel"
       ? {
-          first: "Keep the tempo sharp and the details game-realistic.",
-          later: "Finish with competitive repetition and quick decisions.",
+          first: ["Build the session with clear spacing, scanning detail, and a progression the group can grow into."],
+          middle: ["Add decision-making detail and raise the pressure as the players settle in."],
+          last: ["Finish with a competitive progression that rewards tempo, decisions, and execution under pressure."],
         }
       : {
-          first: "Keep directions clear and scaffold the first few reps.",
-          later: "Use simple rules and guided repetition to build confidence.",
+          first: ["Keep the setup simple, explain one rule at a time, and let the players learn through play."],
+          middle: ["Use clear restarts, simple scoring, and plenty of touches so everyone can follow the activity."],
+          last: ["Finish with a fun game block that keeps the group moving, smiling, and competing."],
         };
 
-  const activities = Array.isArray(session.activities)
-    ? session.activities.map((activity, index, allActivities) => {
-        if (!activity || activity.name === "Cooldown") {
-          return activity;
-        }
-
-        const shouldUseFirstSentence = index === 0;
-        const isLastCompetitiveBlock = index === allActivities.length - 1;
-        const sentence = shouldUseFirstSentence
-          ? styleBiasSentences.first
-          : isLastCompetitiveBlock
-            ? styleBiasSentences.later
-            : "";
-
-        if (!sentence) {
-          return activity;
-        }
-
-        return {
-          ...activity,
-          description: appendSentence(activity.description, sentence),
-        };
-      })
-    : [];
-
-  return {
-    ...session,
-    activities,
-  };
+  return applySentenceGroupsToActivities(session, styleBiasSentences);
 }
 
 function applyPromptInfluenceToSession(session, promptSignals) {
-  const activities = Array.isArray(session.activities) ? session.activities.slice() : [];
+  return applySentenceGroupsToActivities(session, buildPromptInfluenceSentences(promptSignals));
+}
 
-  if (activities.length < 1) {
+function applySessionModeInfluenceToSession(session, promptSignals) {
+  if (promptSignals?.sessionMode !== "quick") {
     return session;
   }
 
-  const nonCooldownIndexes = activities.reduce((accumulator, activity, index) => {
-    if (activity?.name !== "Cooldown") {
-      accumulator.push(index);
-    }
-
-    return accumulator;
-  }, []);
-
-  if (nonCooldownIndexes.length < 1) {
-    return session;
-  }
-
-  const promptSentences = buildPromptInfluenceSentences(promptSignals);
-  const firstIndex = nonCooldownIndexes[0];
-  const middleIndex = nonCooldownIndexes[Math.min(1, nonCooldownIndexes.length - 1)];
-  const lastIndex = nonCooldownIndexes[nonCooldownIndexes.length - 1];
-
-  for (const sentence of promptSentences.first) {
-    activities[firstIndex] = {
-      ...activities[firstIndex],
-      description: appendSentenceCapped(activities[firstIndex].description, sentence),
-    };
-  }
-
-  for (const sentence of promptSentences.middle) {
-    activities[middleIndex] = {
-      ...activities[middleIndex],
-      description: appendSentenceCapped(activities[middleIndex].description, sentence),
-    };
-  }
-
-  if (lastIndex !== middleIndex) {
-    for (const sentence of promptSentences.last) {
-      activities[lastIndex] = {
-        ...activities[lastIndex],
-        description: appendSentenceCapped(activities[lastIndex].description, sentence),
-      };
-    }
-  }
-
-  return {
-    ...session,
-    activities,
-  };
+  return applySentenceGroupsToActivities(session, {
+    first: ["Keep the setup easy to run and let the players get into the activity quickly."],
+    middle: ["Use playful competition and simple rules so the session stays fun and game-like."],
+    last: ["Finish with a free-flowing game that lets the players solve problems and enjoy the session."],
+  });
 }
 
 function templatePassingShape({ sport, ageBand, durationMin, equipment }) {
@@ -400,9 +425,9 @@ function templateFutSoccerPressing({ sport, ageBand, durationMin, equipment }) {
 
 function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
   const activities = [
-    { name: "Warmup", minutes: 10, description: "Dynamic movement + ball touches." },
-    { name: `Theme focus: ${theme}`, minutes: 20, description: "Coaching points based on the theme." },
-    { name: "Game-like scenario", minutes: 20, description: "Constraints tied to the theme focus." },
+    { name: "Ball mastery arrival game", minutes: 10, description: "Dynamic movement, plenty of touches, and an easy scoring target to get the group moving." },
+    { name: `Theme challenge: ${theme}`, minutes: 20, description: "Coach the main theme with clear rules, obvious scoring, and repeatable success moments." },
+    { name: "Play-to-goal game", minutes: 20, description: "Use game-like constraints tied to the main theme so the players can solve the problem in play." },
   ];
 
   return baseSession({
@@ -469,7 +494,10 @@ function generateSessionFromTheme({
                 });
 
   return applyMethodologyInfluenceToSession(
-    applyPromptInfluenceToSession(session, promptSignals),
+    applySessionModeInfluenceToSession(
+      applyPromptInfluenceToSession(session, promptSignals),
+      promptSignals
+    ),
     methodologyInfluence
   );
 }
@@ -558,6 +586,9 @@ function buildCoachLiteActivity(session, activity, index) {
 
 function buildCoachLiteDraftFromPack(pack) {
   const session = Array.isArray(pack?.sessions) ? pack.sessions[0] : null;
+  const promptSignals = extractPromptSignals(pack?.theme);
+  const displayTheme =
+    titleCase(normalizeTheme(promptSignals.primaryObjective)) || titleCase(pack.theme);
 
   if (!session) {
     throw validationError("invalid_field", "Generated pack is invalid", {
@@ -568,7 +599,7 @@ function buildCoachLiteDraftFromPack(pack) {
   const draft = {
     sessionPackId: pack.packId,
     specVersion: "session-pack.v2",
-    title: `${displayAgeGroup(pack.ageBand)} ${titleCase(pack.theme)} Session`,
+    title: `${displayAgeGroup(pack.ageBand)} ${displayTheme} Session`,
     sport: pack.sport,
     ageGroup: displayAgeGroup(pack.ageBand),
     durationMinutes: pack.durationMin,
@@ -579,7 +610,7 @@ function buildCoachLiteDraftFromPack(pack) {
     objective:
       session.objectiveTags?.length > 0
         ? `Focus on ${session.objectiveTags.join(", ")}.`
-        : `Focus on ${pack.theme}.`,
+        : `Focus on ${promptSignals.primaryObjective || pack.theme}.`,
     activities: session.activities.map((activity, index) => buildCoachLiteActivity(session, activity, index)),
     assumptions: [
       "derived from the existing deterministic Session Builder pack",

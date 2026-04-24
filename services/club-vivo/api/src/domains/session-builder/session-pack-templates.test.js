@@ -196,6 +196,31 @@ test("generatePack applies compact builder prompt notes and environment to activ
   assert.match(session.activities[1].description, /Coach note: first pass after regain\./i);
 });
 
+test("generatePack applies a quick-session bias that feels playful and easy to run", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 60,
+    theme: "quick | finishing | notes:small teams | env:grass",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.match(
+    session.activities[0].description,
+    /Keep the setup easy to run and let the players get into the activity quickly\./
+  );
+  assert.match(
+    session.activities[1].description,
+    /Use playful competition and simple rules so the session stays fun and game-like\./
+  );
+  assert.match(
+    session.activities[2].description,
+    /Finish with a free-flowing game that lets the players solve problems and enjoy the session\./
+  );
+});
+
 test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {
   const pack = generatePack({
     sport: "soccer",
@@ -220,4 +245,19 @@ test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite dr
   );
   assert.equal(Object.hasOwn(draft, "tenantId"), false);
   assert.equal(Object.hasOwn(draft, "tenant_id"), false);
+});
+
+test("buildCoachLiteDraftFromPack uses the primary objective rather than control segments in internal titles", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | pressing | notes:first pass after regain",
+    sessionsCount: 1,
+  });
+
+  const draft = buildCoachLiteDraftFromPack(pack);
+
+  assert.equal(draft.title, "U14 Pressing Session");
+  assert.equal(draft.objective, "Focus on pressing, transition.");
 });

@@ -25,16 +25,20 @@ function generateSessionPack(normalizedInput) {
 
 function deriveMethodologyInfluence(resolvedGenerationContext) {
   const resolvedMethodologyScope = resolvedGenerationContext?.resolvedMethodologyScope;
+  const resolvedProgramType = resolvedGenerationContext?.resolvedProgramType;
   const styleBias =
-    resolvedMethodologyScope === "travel"
+    resolvedMethodologyScope === "travel" ||
+    (resolvedMethodologyScope !== "ost" && resolvedProgramType === "travel")
       ? "travel"
-      : resolvedMethodologyScope === "ost"
+      : resolvedMethodologyScope === "ost" ||
+          (resolvedMethodologyScope !== "travel" && resolvedProgramType === "ost")
         ? "ost"
         : "default";
 
   return {
     styleBias,
-    methodologyApplied: styleBias !== "default",
+    methodologyApplied:
+      resolvedMethodologyScope === "travel" || resolvedMethodologyScope === "ost",
     guidanceSnippets:
       styleBias === "travel"
         ? ["travel-tempo", "travel-competitive-repetition"]

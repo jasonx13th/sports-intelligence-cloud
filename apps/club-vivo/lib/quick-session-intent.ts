@@ -98,7 +98,7 @@ export function buildQuickSessionTheme(prompt: string) {
   const objectivePart = buildQuickSessionObjective(prompt);
   const notesPart = buildQuickSessionNotes(prompt);
   const environmentPart = clampPromptPart(detectEnvironment(prompt), 14);
-  const compactTheme = [objectivePart, notesPart ? `notes:${notesPart}` : "", environmentPart ? `env:${environmentPart}` : ""]
+  const compactTheme = ["quick", objectivePart, notesPart ? `notes:${notesPart}` : "", environmentPart ? `env:${environmentPart}` : ""]
     .filter(Boolean)
     .join(" | ");
 

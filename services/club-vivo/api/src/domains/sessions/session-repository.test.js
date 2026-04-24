@@ -474,6 +474,7 @@ test("createSessionFeedback persists one tenant-scoped feedback record per sessi
           sessionQuality: 4,
           drillUsefulness: 5,
           imageAnalysisAccuracy: "high",
+          favoriteActivity: "Activity 2 because the scoring rule made players compete.",
           missingFeatures: "Wanted easier drill editing.",
           flowMode: "setup_to_drill",
         },
@@ -489,6 +490,10 @@ test("createSessionFeedback persists one tenant-scoped feedback record per sessi
       assert.equal(result.feedback.sessionQuality, 4);
       assert.equal(result.feedback.drillUsefulness, 5);
       assert.equal(result.feedback.imageAnalysisAccuracy, "high");
+      assert.equal(
+        result.feedback.favoriteActivity,
+        "Activity 2 because the scoring rule made players compete."
+      );
       assert.equal(result.feedback.flowMode, "setup_to_drill");
       assert.equal(result.feedback.schemaVersion, 2);
     });
@@ -507,6 +512,10 @@ test("createSessionFeedback persists one tenant-scoped feedback record per sessi
   assert.equal(feedbackWrite.sessionQuality, 4);
   assert.equal(feedbackWrite.drillUsefulness, 5);
   assert.equal(feedbackWrite.imageAnalysisAccuracy, "high");
+  assert.equal(
+    feedbackWrite.favoriteActivity,
+    "Activity 2 because the scoring rule made players compete."
+  );
   assert.equal(feedbackWrite.missingFeatures, "Wanted easier drill editing.");
   assert.equal(feedbackWrite.flowMode, "setup_to_drill");
   assert.equal(feedbackWrite.schemaVersion, 2);

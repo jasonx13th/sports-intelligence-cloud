@@ -160,6 +160,7 @@ export type SubmitSessionFeedbackInput = {
   sessionQuality: number;
   drillUsefulness: number;
   imageAnalysisAccuracy: SessionFeedbackImageAnalysisAccuracy;
+  favoriteActivity?: string;
   missingFeatures: string;
   flowMode?: SessionFeedbackFlowMode;
 };
@@ -171,6 +172,7 @@ export type SessionFeedback = {
   sessionQuality: number;
   drillUsefulness: number;
   imageAnalysisAccuracy: SessionFeedbackImageAnalysisAccuracy;
+  favoriteActivity?: string;
   missingFeatures: string;
   flowMode?: SessionFeedbackFlowMode;
   schemaVersion: number;

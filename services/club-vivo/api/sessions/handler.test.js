@@ -271,6 +271,7 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
     sessionQuality: 4,
     drillUsefulness: 5,
     imageAnalysisAccuracy: "high",
+    favoriteActivity: "Activity 2 because the scoring rule made players compete.",
     missingFeatures: "Wanted easier drill editing.",
     flowMode: "setup_to_drill",
     schemaVersion: 2,
@@ -282,6 +283,7 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
         sessionQuality: 4,
         drillUsefulness: 5,
         imageAnalysisAccuracy: "high",
+        favoriteActivity: "Activity 2 because the scoring rule made players compete.",
         missingFeatures: "Wanted easier drill editing.",
         flowMode: "setup_to_drill",
       });
@@ -294,6 +296,10 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
       assert.equal(typeof deps.sessionRepository.getSessionById, "function");
       assert.equal(typeof deps.sessionRepository.createSessionFeedback, "function");
       assert.equal(input.sessionQuality, 4);
+      assert.equal(
+        input.favoriteActivity,
+        "Activity 2 because the scoring rule made players compete."
+      );
       return { feedback: expectedFeedback };
     },
   });
@@ -311,6 +317,7 @@ test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response
         sessionQuality: 4,
         drillUsefulness: 5,
         imageAnalysisAccuracy: "high",
+        favoriteActivity: "Activity 2 because the scoring rule made players compete.",
         missingFeatures: "Wanted easier drill editing.",
         flowMode: "setup_to_drill",
       }),

@@ -63,6 +63,7 @@ test("submitSessionFeedback passes minimal event metadata into the repository wr
       sessionQuality: 4,
       drillUsefulness: 5,
       imageAnalysisAccuracy: "high",
+      favoriteActivity: "Activity 2 because the scoring rule made players compete.",
       missingFeatures: "Wanted easier drill editing.",
       flowMode: "setup_to_drill",
       schemaVersion: 2,
@@ -76,6 +77,7 @@ test("submitSessionFeedback passes minimal event metadata into the repository wr
       sessionQuality: 4,
       drillUsefulness: 5,
       imageAnalysisAccuracy: "high",
+      favoriteActivity: "Activity 2 because the scoring rule made players compete.",
       missingFeatures: "Wanted easier drill editing.",
       flowMode: "setup_to_drill",
     },
@@ -89,6 +91,7 @@ test("submitSessionFeedback passes minimal event metadata into the repository wr
             sessionQuality: 4,
             drillUsefulness: 5,
             imageAnalysisAccuracy: "high",
+            favoriteActivity: "Activity 2 because the scoring rule made players compete.",
             missingFeatures: "Wanted easier drill editing.",
             flowMode: "setup_to_drill",
           });

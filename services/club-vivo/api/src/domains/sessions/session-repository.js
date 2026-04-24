@@ -155,6 +155,7 @@ function normalizeSessionFeedback(obj) {
     sessionQuality: obj.sessionQuality,
     drillUsefulness: obj.drillUsefulness,
     imageAnalysisAccuracy: obj.imageAnalysisAccuracy,
+    ...(obj.favoriteActivity !== undefined ? { favoriteActivity: obj.favoriteActivity } : {}),
     missingFeatures: obj.missingFeatures,
     ...(obj.flowMode !== undefined ? { flowMode: obj.flowMode } : {}),
     schemaVersion: obj.schemaVersion,
@@ -553,6 +554,9 @@ class SessionRepository {
       sessionQuality: feedbackInput.sessionQuality,
       drillUsefulness: feedbackInput.drillUsefulness,
       imageAnalysisAccuracy: feedbackInput.imageAnalysisAccuracy,
+      ...(feedbackInput.favoriteActivity !== undefined
+        ? { favoriteActivity: feedbackInput.favoriteActivity }
+        : {}),
       missingFeatures: feedbackInput.missingFeatures,
       ...(feedbackInput.flowMode !== undefined ? { flowMode: feedbackInput.flowMode } : {}),
     };

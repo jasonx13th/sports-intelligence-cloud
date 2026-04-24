@@ -67,6 +67,7 @@ const INITIAL_FEEDBACK_PANEL_STATE: FeedbackPanelState = {
     sessionQuality: "",
     drillUsefulness: "",
     imageAnalysisAccuracy: "not_used",
+    favoriteActivity: "",
     missingFeatures: "",
     flowMode: ""
   }
@@ -252,6 +253,7 @@ export default async function SessionDetailPage({
     const sessionQualityValue = getTrimmedValue(formData, "sessionQuality");
     const drillUsefulnessValue = getTrimmedValue(formData, "drillUsefulness");
     const imageAnalysisAccuracyValue = getTrimmedValue(formData, "imageAnalysisAccuracy");
+    const favoriteActivityValue = getTrimmedValue(formData, "favoriteActivity");
     const missingFeaturesValue = getTrimmedValue(formData, "missingFeatures");
     const flowModeValue = getTrimmedValue(formData, "flowMode");
     const imageAnalysisAccuracy = parseImageAnalysisAccuracy(imageAnalysisAccuracyValue);
@@ -262,6 +264,7 @@ export default async function SessionDetailPage({
       drillUsefulness: drillUsefulnessValue,
       imageAnalysisAccuracy:
         imageAnalysisAccuracy || INITIAL_FEEDBACK_PANEL_STATE.values.imageAnalysisAccuracy,
+      favoriteActivity: favoriteActivityValue,
       missingFeatures: missingFeaturesValue,
       flowMode: flowMode || ""
     };
@@ -277,6 +280,7 @@ export default async function SessionDetailPage({
       drillUsefulness < 1 ||
       drillUsefulness > 5 ||
       !imageAnalysisAccuracy ||
+      favoriteActivityValue.length > 280 ||
       !missingFeaturesValue ||
       missingFeaturesValue.length > 280 ||
       (flowModeValue !== "" && !flowMode)
@@ -293,6 +297,7 @@ export default async function SessionDetailPage({
         sessionQuality,
         drillUsefulness,
         imageAnalysisAccuracy,
+        ...(favoriteActivityValue ? { favoriteActivity: favoriteActivityValue } : {}),
         missingFeatures: missingFeaturesValue,
         ...(flowMode ? { flowMode } : {})
       });

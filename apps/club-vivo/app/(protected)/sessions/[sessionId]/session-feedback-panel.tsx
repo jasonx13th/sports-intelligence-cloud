@@ -14,6 +14,7 @@ type FeedbackPanelValues = {
   sessionQuality: string;
   drillUsefulness: string;
   imageAnalysisAccuracy: SessionFeedbackImageAnalysisAccuracy;
+  favoriteActivity: string;
   missingFeatures: string;
   flowMode: SessionFeedbackFlowMode | "";
 };
@@ -104,6 +105,18 @@ export function SessionFeedbackPanel({
 
           <input type="hidden" name="imageAnalysisAccuracy" value="not_used" />
           <input type="hidden" name="flowMode" value="" />
+
+          <label className="grid gap-2 text-sm text-slate-700">
+            <span className="font-medium">Favorite activity from this session</span>
+            <textarea
+              name="favoriteActivity"
+              defaultValue={state.values.favoriteActivity}
+              maxLength={280}
+              rows={3}
+              placeholder="Example: Activity 2 because the scoring rule made the players compete."
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+            />
+          </label>
 
           <label className="grid gap-2 text-sm text-slate-700">
             <span className="font-medium">Missing features</span>

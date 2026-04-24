@@ -62,12 +62,12 @@ function makeTenantCtx({
   return { tenantId, userId, role, tier };
 }
 
-test("POST /teams creates a team for an admin with normalized optional Team context", async () => {
+test("POST /teams allows a coach to create a team with normalized optional Team context", async () => {
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
   const calls = [];
   const loggerEvents = [];
-  const tenantCtx = makeTenantCtx();
+  const tenantCtx = makeTenantCtx({ role: "coach" });
   const inner = createTeamsInner({
     getTeamRepoFn: () => ({
       createTeam: async (actualTenantCtx, input) => {
@@ -179,38 +179,6 @@ test("POST /teams returns 400 when tenant scope is supplied from body query or h
     (err) => {
       assert.equal(err.code, "platform.bad_request");
       assert.equal(err.httpStatus, 400);
-      return true;
-    }
-  );
-});
-
-test("POST /teams returns 403 for non-admin users and does not call the repo", async () => {
-  process.env.SIC_DOMAIN_TABLE = "domain-table";
-
-  let repoCalled = false;
-  const inner = createTeamsInner({
-    getTeamRepoFn: () => ({
-      createTeam: async () => {
-        repoCalled = true;
-        throw new Error("repo should not be called");
-      },
-    }),
-  });
-
-  await assert.rejects(
-    () =>
-      inner({
-        event: makeEvent({
-          method: "POST",
-          body: { name: "U14 Blue", sport: "soccer", ageBand: "U14" },
-        }),
-        tenantCtx: makeTenantCtx({ role: "coach" }),
-        logger: makeLogger([]),
-      }),
-    (err) => {
-      assert.equal(err.code, "teams.admin_required");
-      assert.equal(err.httpStatus, 403);
-      assert.equal(repoCalled, false);
       return true;
     }
   );
@@ -403,7 +371,7 @@ test("GET /teams/{teamId} returns 200 with the tenant-scoped team detail", async
   assert.deepEqual(calls, [{ actualTenantCtx: tenantCtx, teamId: "team-123" }]);
 });
 
-test("GET /teams/{teamId} returns 404 when the team is not found in tenant scope", async () => {
+test("GET /teams/{teamId} returns 404 when a coach requests a team they do not own", async () => {
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
   const inner = createTeamsInner({
@@ -433,12 +401,12 @@ test("GET /teams/{teamId} returns 404 when the team is not found in tenant scope
   );
 });
 
-test("PUT /teams/{teamId} updates a team for an admin with normalized editable Team fields", async () => {
+test("PUT /teams/{teamId} lets an owning coach update editable Team fields", async () => {
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
   const calls = [];
   const loggerEvents = [];
-  const tenantCtx = makeTenantCtx();
+  const tenantCtx = makeTenantCtx({ role: "coach" });
   const inner = createTeamsInner({
     getTeamRepoFn: () => ({
       updateTeam: async (actualTenantCtx, teamId, input) => {
@@ -563,44 +531,7 @@ test("PUT /teams/{teamId} returns 400 when tenant scope is supplied from body qu
   );
 });
 
-test("PUT /teams/{teamId} returns 403 for non-admin users and does not call the repo", async () => {
-  process.env.SIC_DOMAIN_TABLE = "domain-table";
-
-  let repoCalled = false;
-  const inner = createTeamsInner({
-    getTeamRepoFn: () => ({
-      updateTeam: async () => {
-        repoCalled = true;
-        throw new Error("repo should not be called");
-      },
-    }),
-  });
-
-  await assert.rejects(
-    () =>
-      inner({
-        event: makeEvent({
-          rawPath: "/teams/team-123",
-          method: "PUT",
-          routeKey: "PUT /teams/{teamId}",
-          pathParameters: { teamId: "team-123" },
-          body: { name: "U14 Blue", sport: "soccer", ageBand: "U14" },
-          headers: {},
-          queryStringParameters: {},
-        }),
-        tenantCtx: makeTenantCtx({ role: "coach" }),
-        logger: makeLogger([]),
-      }),
-    (err) => {
-      assert.equal(err.code, "teams.admin_required");
-      assert.equal(err.httpStatus, 403);
-      assert.equal(repoCalled, false);
-      return true;
-    }
-  );
-});
-
-test("PUT /teams/{teamId} returns 404 when the team is not found in tenant scope", async () => {
+test("PUT /teams/{teamId} returns 404 when a coach tries to update a team they do not own", async () => {
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
   const inner = createTeamsInner({
@@ -634,7 +565,7 @@ test("PUT /teams/{teamId} returns 404 when the team is not found in tenant scope
             ageBand: "U14",
           },
         }),
-        tenantCtx: makeTenantCtx(),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
         logger: makeLogger([]),
       }),
     (err) => {

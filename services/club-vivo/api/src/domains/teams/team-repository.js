@@ -22,6 +22,17 @@ function requireTenantId(tenantContext) {
   return tenantId;
 }
 
+function requireUserId(tenantContext) {
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    const err = new Error("Missing userId in tenantContext");
+    err.code = "missing_user_context";
+    err.statusCode = 500;
+    throw err;
+  }
+  return userId.trim();
+}
+
 function newTeamId() {
   if (typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -83,7 +94,35 @@ function normalizeTeam(obj) {
     status: obj.status,
     createdAt: obj.createdAt,
     updatedAt: obj.updatedAt,
-    createdBy: obj.createdBy,
+    createdBy: obj.createdBy ?? null,
+  };
+}
+
+function isAdminActor(tenantContext) {
+  return tenantContext?.role === "admin";
+}
+
+function canAccessTeam(tenantContext, team) {
+  if (isAdminActor(tenantContext)) {
+    return true;
+  }
+
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    return false;
+  }
+
+  return team?.createdBy === userId.trim();
+}
+
+function toItemKey(item) {
+  if (!item?.PK || !item?.SK) {
+    return undefined;
+  }
+
+  return {
+    PK: item.PK,
+    SK: item.SK,
   };
 }
 
@@ -268,24 +307,64 @@ class TeamRepository {
   async listTeams(tenantContext, { limit, nextToken } = {}) {
     const tenantId = requireTenantId(tenantContext);
     const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
-    const exclusiveStartKey = decodeNextToken(nextToken);
+    let exclusiveStartKey = decodeNextToken(nextToken);
 
-    const res = await ddb.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
-        ExpressionAttributeValues: {
-          ":pk": { S: `TENANT#${tenantId}` },
-          ":skPrefix": { S: "TEAM#" },
-        },
-        Limit: safeLimit,
-        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
-      })
-    );
+    const queryPage = async (startKey) =>
+      ddb.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": { S: `TENANT#${tenantId}` },
+            ":skPrefix": { S: "TEAM#" },
+          },
+          Limit: safeLimit,
+          ...(startKey ? { ExclusiveStartKey: startKey } : {}),
+        })
+      );
+
+    if (isAdminActor(tenantContext)) {
+      const res = await queryPage(exclusiveStartKey);
+
+      return {
+        items: (res.Items ?? []).map((item) => normalizeTeam(unmarshall(item))),
+        nextToken: encodeNextToken(res.LastEvaluatedKey),
+      };
+    }
+
+    const visibleItems = [];
+    let nextVisibleTokenKey;
+
+    while (visibleItems.length < safeLimit) {
+      const res = await queryPage(exclusiveStartKey);
+      const pageItems = res.Items ?? [];
+
+      for (let index = 0; index < pageItems.length; index += 1) {
+        const item = pageItems[index];
+        const normalizedTeam = normalizeTeam(unmarshall(item));
+        if (!canAccessTeam(tenantContext, normalizedTeam)) {
+          continue;
+        }
+
+        visibleItems.push(normalizedTeam);
+
+        if (visibleItems.length === safeLimit) {
+          const hasMoreRawItems = index < pageItems.length - 1 || Boolean(res.LastEvaluatedKey);
+          nextVisibleTokenKey = hasMoreRawItems ? toItemKey(item) : undefined;
+          break;
+        }
+      }
+
+      if (visibleItems.length === safeLimit || !res.LastEvaluatedKey) {
+        break;
+      }
+
+      exclusiveStartKey = res.LastEvaluatedKey;
+    }
 
     return {
-      items: (res.Items ?? []).map((item) => normalizeTeam(unmarshall(item))),
-      nextToken: encodeNextToken(res.LastEvaluatedKey),
+      items: visibleItems,
+      nextToken: encodeNextToken(nextVisibleTokenKey),
     };
   }
 
@@ -308,8 +387,13 @@ class TeamRepository {
     const item = res.Items?.[0];
     if (!item) return null;
 
+    const normalizedTeam = normalizeTeam(unmarshall(item));
+    if (!canAccessTeam(tenantContext, normalizedTeam)) {
+      return null;
+    }
+
     return {
-      team: normalizeTeam(unmarshall(item)),
+      team: normalizedTeam,
     };
   }
 
@@ -670,6 +754,7 @@ class TeamRepository {
 
   async createTeam(tenantContext, input) {
     const tenantId = requireTenantId(tenantContext);
+    const createdBy = requireUserId(tenantContext);
     const teamInput = validateCreateTeam(input);
 
     const now = new Date().toISOString();
@@ -690,7 +775,7 @@ class TeamRepository {
       status: teamInput.status,
       createdAt: now,
       updatedAt: now,
-      createdBy: tenantContext?.userId || null,
+      createdBy,
     };
 
     await ddb.send(

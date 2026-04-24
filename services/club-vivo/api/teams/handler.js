@@ -16,7 +16,6 @@ const {
 } = require("../src/domains/teams/team-weekly-planning-validate");
 const {
   BadRequestError,
-  ForbiddenError,
   NotFoundError,
   ConflictError,
   InternalError,
@@ -139,16 +138,6 @@ function isCreateAttendanceRoute(event) {
   return /^POST \/teams\/[^/]+\/attendance$/.test(rk);
 }
 
-function requireAdminRole(tenantCtx) {
-  if (tenantCtx?.role !== "admin") {
-    throw new ForbiddenError({
-      code: "teams.admin_required",
-      message: "Forbidden",
-      details: { requiredRole: "admin" },
-    });
-  }
-}
-
 function rethrowTeamDomainError(err) {
   if (err?.httpStatus) {
     throw err;
@@ -194,7 +183,6 @@ function createTeamsInner({
     const rk = routeKey(event);
 
     if (rk === "POST /teams") {
-      requireAdminRole(tenantCtx);
       assertNoClientTenantInputs(event);
 
       let body;
@@ -237,7 +225,6 @@ function createTeamsInner({
     }
 
     if (isUpdateTeamRoute(event)) {
-      requireAdminRole(tenantCtx);
       assertNoClientTenantInputs(event);
 
       const teamId = event?.pathParameters?.teamId;

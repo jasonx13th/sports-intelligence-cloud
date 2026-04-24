@@ -1131,3 +1131,70 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Keep Team Manager polish narrow and product-first while preserving the current working create/list/edit flow.
 - Keep image-assisted intake / Rekognition-style expansion explicitly deferred.
 - Continue holding the line on auth, tenancy, entitlements, IAM, and CDK boundaries while the remaining Week 21 cleanup is completed.
+
+## Week 21 Day 6 - Coach-owned sessions and builder simplification
+
+### Summary
+Day 6 completed a narrow hardening and simplification pass across saved sessions, Quick Session, feedback, Methodology copy, and Session Builder.
+
+This was not a production launch and did not introduce new auth, tenancy, entitlement, infrastructure, upload, RAG, source-mode, or PDF design scope.
+
+### What changed
+- Saved sessions moved to the same owner/admin visibility rule as Teams:
+  - regular coaches can see and use only their own saved sessions
+  - admin coaches can see and use all saved sessions in the tenant
+  - non-owner detail, export, and feedback paths return `404`
+  - legacy sessions without `createdBy` are admin-visible only
+- Saved-session routes expanded spoofing guard coverage:
+  - no client `tenant_id`
+  - no client `tenantId`
+  - no client `x-tenant-id`
+- Quick Session prompt intelligence improved:
+  - better focus, equipment, player-count, and overload detection
+  - no-duration prompts keep the standard 60-minute duration
+  - explicit short durations are honored safely
+  - one-drill prompts can produce a compact valid plan instead of failing duration validation
+  - visible Prompt influence box was removed from quick review
+- Feedback improved:
+  - optional Favorite activity from this session field added
+  - helper copy now asks coaches to apply the session before submitting feedback
+  - submitted / duplicate feedback states show a simple recorded state instead of keeping the full form visible
+- Session Builder was simplified:
+  - visible Team Influence card removed
+  - visible Methodology Context card removed
+  - Start Here team dropdown remains the team context source
+  - methodology influence remains backend generation context
+  - review now shows one generated candidate instead of three similar options
+  - save flow revalidates Home and Sessions so recent/list views refresh after save
+- Methodology page copy was clarified as the tenant / club knowledge area for KSC.
+- Parking-lot docs were added:
+  - `docs/product/sic-coach-lite/image-assisted-intake-parking-lot.md`
+  - `docs/product/sic-coach-lite/methodology-source-mode-planning.md`
+
+### Current state
+- Coaches own teams and saved sessions.
+- Admin coaches retain wider tenant visibility.
+- Tenant identity remains server-derived.
+- Session Builder remains at `/sessions/new`.
+- Saved session detail remains at `/sessions/[sessionId]`.
+- Methodology is still draft / published text guidance today.
+- Image-assisted intake remains parked.
+- Methodology source-mode selection remains a future product decision.
+
+### Remaining Week 21 work
+- Final Week 21 walkthrough still needs to happen.
+- Final session output visual design still needs polish.
+- PDF export design is still not ready.
+- Methodology upload, document management, RAG/vector ingestion, and source-mode switching remain future scope.
+- Image-assisted intake / Rekognition-style expansion remains a parking-lot idea.
+
+### Evidence
+- `docs/progress/week_21/day6-closeout-summary.md`
+- `docs/product/sic-coach-lite/image-assisted-intake-parking-lot.md`
+- `docs/product/sic-coach-lite/methodology-source-mode-planning.md`
+- Day 6 validation evidence included:
+  - `cmd /c npx tsc --noEmit` in `apps/club-vivo`
+  - saved-session repository and handler tests
+  - session feedback tests
+  - Session Builder template and pipeline tests
+  - Team assignment / ownership-adjacent tests where touched

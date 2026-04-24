@@ -18,6 +18,16 @@ function parseSearchParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function isNextRedirectError(error: unknown): error is { digest: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
 function normalizeRequiredText(formData: FormData, field: string) {
   return String(formData.get(field) || "").trim();
 }
@@ -338,8 +348,11 @@ export default async function TeamsPage({
 
     try {
       await createTeam(normalizeTeamInput(formData));
-      redirect(buildRedirectPath({ teamStatus: "created" }));
     } catch (error) {
+      if (isNextRedirectError(error)) {
+        throw error;
+      }
+
       if (error instanceof TeamApiError) {
         redirect(
           buildRedirectPath({
@@ -360,6 +373,8 @@ export default async function TeamsPage({
 
       throw error;
     }
+
+    redirect(buildRedirectPath({ teamStatus: "created" }));
   }
 
   async function updateTeamAction(formData: FormData) {
@@ -376,13 +391,11 @@ export default async function TeamsPage({
 
     try {
       await updateTeam(teamId, normalizeTeamInput(formData));
-      redirect(
-        buildRedirectPath({
-          teamStatus: "updated",
-          teamId
-        })
-      );
     } catch (error) {
+      if (isNextRedirectError(error)) {
+        throw error;
+      }
+
       if (error instanceof TeamApiError) {
         redirect(
           buildRedirectPath({
@@ -405,6 +418,13 @@ export default async function TeamsPage({
 
       throw error;
     }
+
+    redirect(
+      buildRedirectPath({
+        teamStatus: "updated",
+        teamId
+      })
+    );
   }
 
   return (

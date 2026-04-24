@@ -111,7 +111,7 @@ export default async function MethodologyPage() {
       <CoachPageHeader
         badge="Methodology"
         title="KSC Club Methodology"
-        description="This is the club-facing methodology guide for the current tenant. Coaches can read published KSC guidance here; when available, SIC should use the club philosophy as influence for session generation. Today this workspace supports draft and published text, with a path toward combining general sport knowledge with club-specific guidance, or using club-only guidance when configured."
+        description="This is the tenant knowledge area for KSC club methodology. Regular coaches can read published guidance; admin coaches can maintain the current draft and publish flow. Over time, admins should be able to manage club documents such as philosophy, mission, teaching methodology, soccer learning model, and other guidance that can influence generation. Future generation modes should support SIC platform repository only, club methodology only, or SIC platform repository plus club methodology. SIC platform repository data remains private and is never exposed as raw content to clubs or coaches."
       />
 
       <MethodologyWorkspace

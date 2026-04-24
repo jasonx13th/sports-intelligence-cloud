@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import {
@@ -27,6 +27,7 @@ import {
   getSessionPdf,
   SessionBuilderApiError,
   submitSessionFeedback,
+  type SessionDetail,
   type SessionFeedbackFlowMode,
   type SessionFeedbackImageAnalysisAccuracy
 } from "../../../../lib/session-builder-api";
@@ -92,7 +93,18 @@ export default async function SessionDetailPage({
   params: Promise<{ sessionId: string }>;
 }) {
   const { sessionId } = await params;
-  const session = await getSession(sessionId);
+  let session: SessionDetail;
+
+  try {
+    session = await getSession(sessionId);
+  } catch (error) {
+    if (error instanceof SessionBuilderApiError && error.status === 404) {
+      notFound();
+    }
+
+    throw error;
+  }
+
   const cookieStore = await cookies();
   const sessionOrigins = parseSessionOriginHints(
     cookieStore.get(SESSION_ORIGIN_HINTS_COOKIE)?.value

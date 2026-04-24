@@ -31,8 +31,8 @@ function makeEvent(opts = {}) {
   const {
     rawPath = "/sessions/session-123/pdf",
     method = "GET",
-    headers = { "x-tenant-id": "spoofed" },
-    queryStringParameters = { tenant_id: "spoofed" },
+    headers = {},
+    queryStringParameters = {},
     routeKey,
   } = opts;
 
@@ -65,11 +65,11 @@ function makeEvent(opts = {}) {
   };
 }
 
-function makeTenantCtx() {
+function makeTenantCtx({ role = "coach", userId = "user-123" } = {}) {
   return {
     tenantId: "tenant_authoritative",
-    userId: "user-123",
-    role: "coach",
+    userId,
+    role,
     tier: "free",
   };
 }
@@ -169,6 +169,94 @@ test("POST /sessions keeps the public { session } response shape while using the
   assert.equal(response.statusCode, 201);
   assert.deepEqual(JSON.parse(response.body), { session: expectedSession });
   assert.equal(loggerEvents[0].eventType, "session_created");
+});
+
+test("saved session routes reject client-supplied tenant scope before data access", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+  process.env.PDF_BUCKET_NAME = "pdf-bucket";
+
+  const inner = createSessionsInner({
+    getSessionRepoFn: () => ({
+      listSessions: async () => {
+        throw new Error("repo should not list");
+      },
+      getSessionById: async () => {
+        throw new Error("repo should not fetch");
+      },
+    }),
+    persistSessionFn: async () => {
+      throw new Error("persist should not run");
+    },
+  });
+
+  const cases = [
+    {
+      name: "create",
+      event: {
+        rawPath: "/sessions",
+        path: "/sessions",
+        routeKey: "POST /sessions",
+        requestContext: { http: { method: "POST", path: "/sessions" } },
+        headers: { "x-tenant-id": "spoofed" },
+        body: JSON.stringify({
+          sport: "soccer",
+          ageBand: "u14",
+          durationMin: 60,
+          activities: [{ name: "Warm-up", minutes: 10 }],
+        }),
+      },
+      expectedUnknown: ["x-tenant-id"],
+    },
+    {
+      name: "list",
+      event: {
+        rawPath: "/sessions",
+        path: "/sessions",
+        routeKey: "GET /sessions",
+        requestContext: { http: { method: "GET", path: "/sessions" } },
+        queryStringParameters: { tenantId: "spoofed" },
+      },
+      expectedUnknown: ["tenantId"],
+    },
+    {
+      name: "detail",
+      event: {
+        rawPath: "/sessions/session-123",
+        path: "/sessions/session-123",
+        routeKey: "GET /sessions/{sessionId}",
+        requestContext: { http: { method: "GET", path: "/sessions/session-123" } },
+        pathParameters: { sessionId: "session-123" },
+        headers: { tenant_id: "spoofed" },
+      },
+      expectedUnknown: ["tenant_id"],
+    },
+    {
+      name: "export",
+      event: makeEvent({
+        routeKey: "GET /sessions/{sessionId}/pdf",
+        queryStringParameters: { "x-tenant-id": "spoofed" },
+      }),
+      expectedUnknown: ["x-tenant-id"],
+    },
+  ];
+
+  for (const current of cases) {
+    await assert.rejects(
+      () =>
+        inner({
+          event: current.event,
+          tenantCtx: makeTenantCtx(),
+          logger: makeLogger([]),
+        }),
+      (err) => {
+        assert.equal(err.code, "platform.bad_request", current.name);
+        assert.equal(err.httpStatus, 400, current.name);
+        assert.deepEqual(err.details, { unknown: current.expectedUnknown }, current.name);
+        return true;
+      }
+    );
+  }
 });
 
 test("POST /sessions/{sessionId}/feedback keeps the public { feedback } response shape", async () => {
@@ -282,7 +370,7 @@ test("POST /sessions/{sessionId}/feedback rejects client-supplied tenant scope i
   );
 });
 
-test("POST /sessions/{sessionId}/feedback returns 404 when session is not found", async () => {
+test("POST /sessions/{sessionId}/feedback returns 404 when session is missing or inaccessible", async () => {
   process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
@@ -400,6 +488,80 @@ test("GET /sessions/{sessionId}/pdf returns 404 when session is not found", asyn
   assert.deepEqual(calls, [{ tenantCtx: makeTenantCtx(), sessionId: "session-123" }]);
 });
 
+test("GET /sessions/{sessionId} returns 404 when session is inaccessible", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createSessionsInner({
+    getSessionRepoFn: () => ({
+      getSessionById: async () => null,
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: {
+          rawPath: "/sessions/session-123",
+          path: "/sessions/session-123",
+          routeKey: "GET /sessions/{sessionId}",
+          requestContext: { http: { method: "GET", path: "/sessions/session-123" } },
+          pathParameters: { sessionId: "session-123" },
+        },
+        tenantCtx: makeTenantCtx(),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "sessions.not_found");
+      assert.equal(err.httpStatus, 404);
+      return true;
+    }
+  );
+});
+
+test("GET /sessions/{sessionId} returns session detail for an admin", async () => {
+  process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const session = {
+    sessionId: "session-123",
+    createdAt: "2026-03-25T00:00:00.000Z",
+    createdBy: "other-user",
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 75,
+    objectiveTags: ["pressing"],
+    activities: [{ title: "Warm-up" }],
+  };
+  const calls = [];
+  const inner = createSessionsInner({
+    getSessionRepoFn: () => ({
+      getSessionById: async (tenantCtx, sessionId) => {
+        calls.push({ tenantCtx, sessionId });
+        return session;
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: {
+      rawPath: "/sessions/session-123",
+      path: "/sessions/session-123",
+      routeKey: "GET /sessions/{sessionId}",
+      requestContext: { http: { method: "GET", path: "/sessions/session-123" } },
+      pathParameters: { sessionId: "session-123" },
+    },
+    tenantCtx: makeTenantCtx({ role: "admin" }),
+    logger: makeLogger([]),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), { session });
+  assert.deepEqual(calls, [
+    { tenantCtx: makeTenantCtx({ role: "admin" }), sessionId: "session-123" },
+  ]);
+});
+
 test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from tenant context only", async () => {
   process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
   process.env.SIC_DOMAIN_TABLE = "domain-table";
@@ -449,8 +611,6 @@ test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from ten
 
   const response = await inner({
     event: makeEvent({
-      headers: { "x-tenant-id": "tenant_from_header" },
-      queryStringParameters: { tenant_id: "tenant_from_query" },
       routeKey: "GET /sessions/{sessionId}/pdf",
     }),
     tenantCtx,
@@ -491,12 +651,13 @@ test("GET /sessions/{sessionId}/pdf returns url and ttl and derives key from ten
   assert.equal(loggerEvents[0].eventType, "session_pdf_exported");
 });
 
-test("GET /sessions/{sessionId}/pdf keeps the public response shape while using the export stage", async () => {
+test("GET /sessions/{sessionId}/pdf lets an admin export a tenant session", async () => {
   process.env.TENANT_ENTITLEMENTS_TABLE = "entitlements-table";
   process.env.SIC_DOMAIN_TABLE = "domain-table";
   process.env.PDF_BUCKET_NAME = "pdf-bucket";
 
   const loggerEvents = [];
+  const tenantCtx = makeTenantCtx({ role: "admin" });
   const session = {
     sessionId: "session-123",
     createdAt: "2026-03-25T00:00:00.000Z",
@@ -510,8 +671,8 @@ test("GET /sessions/{sessionId}/pdf keeps the public response shape while using 
   const inner = createSessionsInner({
     getSessionRepoFn: () => ({
       getSessionById: async () => session,
-      writeSessionExportedEvent: async (tenantCtx, args) => {
-        assert.equal(tenantCtx.tenantId, "tenant_authoritative");
+      writeSessionExportedEvent: async (actualTenantCtx, args) => {
+        assert.equal(actualTenantCtx, tenantCtx);
         assert.deepEqual(args, {
           sessionId: "session-123",
           metadata: { exportFormat: "pdf" },
@@ -519,13 +680,13 @@ test("GET /sessions/{sessionId}/pdf keeps the public response shape while using 
       },
     }),
     exportPersistedSessionFn: async ({
-      tenantCtx,
+      tenantCtx: actualTenantCtx,
       persistedSession,
       sessionId,
       createSessionPdfBufferFn,
       sessionPdfStorage,
     }) => {
-      assert.equal(tenantCtx.tenantId, "tenant_authoritative");
+      assert.equal(actualTenantCtx, tenantCtx);
       assert.equal(persistedSession, session);
       assert.equal(sessionId, "session-123");
       assert.equal(typeof createSessionPdfBufferFn, "function");
@@ -542,7 +703,7 @@ test("GET /sessions/{sessionId}/pdf keeps the public response shape while using 
 
   const response = await inner({
     event: makeEvent({ routeKey: "GET /sessions/{sessionId}/pdf" }),
-    tenantCtx: makeTenantCtx(),
+    tenantCtx,
     logger: makeLogger(loggerEvents),
   });
 

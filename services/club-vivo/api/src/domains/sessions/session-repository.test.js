@@ -14,10 +14,11 @@ const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
 
 const { SessionRepository } = require("./session-repository");
 
-function makeTenantContext() {
+function makeTenantContext({ userId = "user-123", role = "coach" } = {}) {
   return {
     tenantId: "tenant_authoritative",
-    userId: "user-123",
+    userId,
+    role,
   };
 }
 
@@ -154,7 +155,7 @@ test("listSessions summary remains unchanged and does not include detail-only We
       ],
     };
   }, async () => {
-    const result = await repo.listSessions(makeTenantContext(), { limit: 10 });
+    const result = await repo.listSessions(makeTenantContext({ role: "admin" }), { limit: 10 });
 
     assert.equal(result.items.length, 1);
     assert.equal(result.items[0].sessionId, "session-123");
@@ -164,6 +165,217 @@ test("listSessions summary remains unchanged and does not include detail-only We
     assert.equal(Object.hasOwn(result.items[0], "tags"), false);
     assert.equal(Object.hasOwn(result.items[0], "sourceTemplateId"), false);
   });
+});
+
+test("listSessions returns only owned sessions for a coach and keeps scanning raw pages", async () => {
+  const repo = new SessionRepository({ tableName: "domain-table" });
+  const calls = [];
+  const firstPageKey = {
+    PK: { S: "TENANT#tenant_authoritative" },
+    SK: { S: "SESSION#2026-04-03T00:00:00.000Z#session-owner-1" },
+  };
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+    assert.equal(command instanceof QueryCommand, true);
+
+    if (calls.length === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "SESSION#2026-04-04T00:00:00.000Z#session-other",
+            sessionId: "session-other",
+            createdAt: "2026-04-04T00:00:00.000Z",
+            createdBy: "other-user",
+            sport: "soccer",
+            ageBand: "u14",
+            durationMin: 45,
+            objectiveTags: ["pressing"],
+            activities: [{ name: "Other", minutes: 10 }],
+          }),
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "SESSION#2026-04-03T00:00:00.000Z#session-owner-1",
+            sessionId: "session-owner-1",
+            createdAt: "2026-04-03T00:00:00.000Z",
+            createdBy: "user-123",
+            sport: "soccer",
+            ageBand: "u14",
+            durationMin: 45,
+            objectiveTags: ["finishing"],
+            activities: [{ name: "Own 1", minutes: 10 }],
+          }),
+        ],
+        LastEvaluatedKey: firstPageKey,
+      };
+    }
+
+    assert.deepEqual(command.input.ExclusiveStartKey, firstPageKey);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-02T00:00:00.000Z#session-legacy",
+          sessionId: "session-legacy",
+          createdAt: "2026-04-02T00:00:00.000Z",
+          sport: "soccer",
+          ageBand: "u14",
+          durationMin: 45,
+          objectiveTags: ["legacy"],
+          activities: [{ name: "Legacy", minutes: 10 }],
+        }),
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-01T00:00:00.000Z#session-owner-2",
+          sessionId: "session-owner-2",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          createdBy: "user-123",
+          sport: "soccer",
+          ageBand: "u14",
+          durationMin: 45,
+          objectiveTags: ["passing"],
+          activities: [{ name: "Own 2", minutes: 10 }],
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.listSessions(makeTenantContext(), { limit: 2 });
+
+    assert.deepEqual(
+      result.items.map((item) => item.sessionId),
+      ["session-owner-1", "session-owner-2"]
+    );
+    assert.equal(result.nextToken, undefined);
+  });
+
+  assert.equal(calls.length, 2);
+});
+
+test("listSessions returns all tenant sessions for an admin including legacy ownerless sessions", async () => {
+  const repo = new SessionRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-04T00:00:00.000Z#session-other",
+          sessionId: "session-other",
+          createdAt: "2026-04-04T00:00:00.000Z",
+          createdBy: "other-user",
+          sport: "soccer",
+          ageBand: "u14",
+          durationMin: 45,
+          objectiveTags: ["pressing"],
+          activities: [{ name: "Other", minutes: 10 }],
+        }),
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-02T00:00:00.000Z#session-legacy",
+          sessionId: "session-legacy",
+          createdAt: "2026-04-02T00:00:00.000Z",
+          sport: "soccer",
+          ageBand: "u14",
+          durationMin: 45,
+          objectiveTags: ["legacy"],
+          activities: [{ name: "Legacy", minutes: 10 }],
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.listSessions(makeTenantContext({ role: "admin" }), { limit: 10 });
+
+    assert.deepEqual(
+      result.items.map((item) => item.sessionId),
+      ["session-other", "session-legacy"]
+    );
+  });
+});
+
+test("getSessionById returns null for a non-owner coach", async () => {
+  const repo = new SessionRepository({ tableName: "domain-table" });
+  const commands = [];
+
+  await withMockedSend(async (command) => {
+    commands.push(command);
+
+    if (commands.length === 1) {
+      return {
+        Item: marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSIONLOOKUP#session-123",
+          targetPK: "TENANT#tenant_authoritative",
+          targetSK: "SESSION#2026-04-01T00:00:00.000Z#session-123",
+        }),
+      };
+    }
+
+    return {
+      Item: marshall({
+        PK: "TENANT#tenant_authoritative",
+        SK: "SESSION#2026-04-01T00:00:00.000Z#session-123",
+        type: "SESSION",
+        sessionId: "session-123",
+        createdAt: "2026-04-01T00:00:00.000Z",
+        createdBy: "other-user",
+        schemaVersion: 1,
+        sport: "soccer",
+        ageBand: "u14",
+        durationMin: 45,
+        objectiveTags: ["pressing"],
+        activities: [{ name: "Warm-up", minutes: 10, description: "Prep" }],
+      }),
+    };
+  }, async () => {
+    const session = await repo.getSessionById(makeTenantContext(), "session-123");
+    assert.equal(session, null);
+  });
+});
+
+test("getSessionById hides legacy ownerless sessions from coaches but returns them to admins", async () => {
+  const repo = new SessionRepository({ tableName: "domain-table" });
+
+  async function runGet(tenantContext) {
+    const commands = [];
+    return withMockedSend(async () => {
+      commands.push(true);
+
+      if (commands.length === 1) {
+        return {
+          Item: marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "SESSIONLOOKUP#session-legacy",
+            targetPK: "TENANT#tenant_authoritative",
+            targetSK: "SESSION#2026-04-01T00:00:00.000Z#session-legacy",
+          }),
+        };
+      }
+
+      return {
+        Item: marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-01T00:00:00.000Z#session-legacy",
+          type: "SESSION",
+          sessionId: "session-legacy",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          schemaVersion: 1,
+          sport: "soccer",
+          ageBand: "u14",
+          durationMin: 45,
+          objectiveTags: ["legacy"],
+          activities: [{ name: "Legacy", minutes: 10, description: "Prep" }],
+        }),
+      };
+    }, () => repo.getSessionById(tenantContext, "session-legacy"));
+  }
+
+  assert.equal(await runGet(makeTenantContext()), null);
+  assert.equal(
+    (await runGet(makeTenantContext({ role: "admin" }))).sessionId,
+    "session-legacy"
+  );
 });
 
 test("createSession persists Week 13 tags and sourceTemplateId", async () => {

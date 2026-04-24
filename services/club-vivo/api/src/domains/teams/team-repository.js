@@ -164,6 +164,19 @@ function normalizeSessionSummaryForAssignment(obj) {
   };
 }
 
+function canAccessSessionForUse(tenantContext, session) {
+  if (isAdminActor(tenantContext)) {
+    return true;
+  }
+
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    return false;
+  }
+
+  return session?.createdBy === userId.trim();
+}
+
 function requireTeamId(teamId) {
   if (typeof teamId !== "string" || !teamId.trim()) {
     const err = new Error("teamId is required");
@@ -437,7 +450,12 @@ class TeamRepository {
     const sessionItem = sessionRes.Items?.[0];
     if (!sessionItem) return null;
 
-    return normalizeSessionSummaryForAssignment(unmarshall(sessionItem));
+    const session = unmarshall(sessionItem);
+    if (!canAccessSessionForUse(tenantContext, session)) {
+      return null;
+    }
+
+    return normalizeSessionSummaryForAssignment(session);
   }
 
   async getAssignedSessionByIds(tenantContext, { teamId, sessionId }) {

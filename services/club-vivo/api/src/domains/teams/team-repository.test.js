@@ -586,6 +586,7 @@ test("getSessionSummaryForAssignment uses query-only lookup and returns a small 
           type: "SESSION",
           sessionId: "session-123",
           createdAt: "2026-04-01T00:00:00.000Z",
+          createdBy: "user-123",
           sport: "soccer",
           ageBand: "U14",
           durationMin: 45,
@@ -615,6 +616,92 @@ test("getSessionSummaryForAssignment uses query-only lookup and returns a small 
   assert.deepEqual(calls[1].input.ExpressionAttributeValues, {
     ":pk": { S: "TENANT#tenant_authoritative" },
     ":sk": { S: "SESSION#2026-04-01T00:00:00.000Z#session-123" },
+  });
+});
+
+test("getSessionSummaryForAssignment returns null for another coach's saved session", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  let calls = 0;
+
+  await withMockedSend(async () => {
+    calls += 1;
+
+    if (calls === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "SESSIONLOOKUP#session-123",
+            targetPK: "TENANT#tenant_authoritative",
+            targetSK: "SESSION#2026-04-01T00:00:00.000Z#session-123",
+          }),
+        ],
+      };
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-01T00:00:00.000Z#session-123",
+          type: "SESSION",
+          sessionId: "session-123",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          createdBy: "other-user",
+          sport: "soccer",
+          ageBand: "U14",
+          durationMin: 45,
+          objectiveTags: ["pressing"],
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getSessionSummaryForAssignment(makeTenantContext(), "session-123");
+    assert.equal(result, null);
+  });
+});
+
+test("getSessionSummaryForAssignment lets admins use legacy ownerless saved sessions", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  let calls = 0;
+
+  await withMockedSend(async () => {
+    calls += 1;
+
+    if (calls === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "SESSIONLOOKUP#session-legacy",
+            targetPK: "TENANT#tenant_authoritative",
+            targetSK: "SESSION#2026-04-01T00:00:00.000Z#session-legacy",
+          }),
+        ],
+      };
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-01T00:00:00.000Z#session-legacy",
+          type: "SESSION",
+          sessionId: "session-legacy",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          sport: "soccer",
+          ageBand: "U14",
+          durationMin: 45,
+          objectiveTags: ["legacy"],
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getSessionSummaryForAssignment(
+      makeTenantContext({ role: "admin" }),
+      "session-legacy"
+    );
+    assert.equal(result.sessionId, "session-legacy");
   });
 });
 

@@ -200,18 +200,6 @@ function TeamFormFields({
         </label>
 
         <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Status
-          <select
-            name="status"
-            defaultValue={team?.status || "active"}
-            className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-600"
-          >
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-          </select>
-        </label>
-
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
           Program type
           <select
             name="programType"
@@ -236,6 +224,18 @@ function TeamFormFields({
             defaultValue={team?.playerCount ?? ""}
             className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-600"
           />
+        </label>
+
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          Status
+          <select
+            name="status"
+            defaultValue={team?.status || "active"}
+            className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+          >
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
         </label>
 
         <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
@@ -433,6 +433,65 @@ export default async function TeamsPage({
         </section>
       ) : null}
 
+      <section
+        id="create-team"
+        className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur scroll-mt-24"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Team Manager
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">
+              Create and manage durable teams here
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Coaches create and manage their own teams on this page for the shared coach
+              workspace. Teams can carry a name, sport, age band, travel or OST program type,
+              player count, and the current level, notes, and status fields.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {isAdmin
+                ? "As an admin, you can also see and edit every tenant team returned by the backend."
+                : "You will only see and edit the teams you created here."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 lg:max-w-sm">
+            {[
+              "Team name",
+              "Sport",
+              "Age band",
+              "Program type",
+              "Player count",
+              "Level",
+              "Notes",
+              "Status"
+            ].map((label) => (
+              <span
+                key={label}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <h3 className="text-base font-semibold text-slate-900">Create a team</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Add durable team context for your planning flow. Program type and player count stay
+            optional so older teams remain valid, and <code>durationMin</code> still stays out of
+            Team.
+          </p>
+
+          <form action={createTeamAction} className="mt-6">
+            <TeamFormFields submitLabel="Create team" />
+          </form>
+        </div>
+      </section>
+
       <section className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -463,72 +522,30 @@ export default async function TeamsPage({
         </div>
       </section>
 
-      {isAdmin ? (
-        <section
-          id="create-team"
-          className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur scroll-mt-24"
-        >
-          <div className="max-w-3xl">
-            <h2 className="text-lg font-semibold text-slate-900">Create a team</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Keep the durable Team model small and practical. Team name, age band, optional player
-              count, optional travel or OST program type, and the current level, status, and notes
-              fields all help Session Builder and generation hints without turning Team into the
-              full session request.
-            </p>
-          </div>
-
-          <form action={createTeamAction} className="mt-6">
-            <TeamFormFields submitLabel="Create team" />
-          </form>
-        </section>
-      ) : (
-        <section className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur">
-          <h2 className="text-lg font-semibold text-slate-900">Team management</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Team create and edit actions stay admin-only in the current Team API. Coaches can still
-            view team context and select the active backend team here.
-          </p>
-        </section>
-      )}
-
       {teams.length === 0 ? (
         <section className="club-vivo-shell rounded-[2rem] border p-8 backdrop-blur">
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-8">
-            <h2 className="text-lg font-semibold text-slate-900">
-              No backend teams exist for this tenant yet
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-900">No teams exist for your current view yet</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              This page only shows tenant-scoped Team records returned by the current backend.
-              There is no fake demo team layer here, so this state usually means the signed-in
-              tenant does not have any saved teams in the current backend data.
+              This page only shows Team records returned by the backend for your current visibility.
+              There is no fake demo team layer here, so this state means there are not any saved
+              teams in view for you yet.
             </p>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
               Teams matter because Session Builder and generation hints can use durable age band,
               player count, and travel vs OST program context when a team is selected.
             </p>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              If you expected older teams, they are likely in a different tenant or a different
-              local backend dataset.
-            </p>
-
-            {isAdmin ? (
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <a
-                  href="#create-team"
-                  className="inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
-                >
-                  Create the first team
-                </a>
-                <p className="text-sm text-slate-600">
-                  Admins can create durable teams here and then select one as active context.
-                </p>
-              </div>
-            ) : (
-              <p className="mt-6 text-sm text-slate-600">
-                Team creation stays admin-only, so ask an admin to add the first tenant team.
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <a
+                href="#create-team"
+                className="inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
+              >
+                Create your first team
+              </a>
+              <p className="text-sm text-slate-600">
+                Use the create form above, then come back here to select the active team context.
               </p>
-            )}
+            </div>
           </div>
         </section>
       ) : (
@@ -588,20 +605,18 @@ export default async function TeamsPage({
                     </form>
                   </div>
 
-                  {isAdmin ? (
-                    <details
-                      open={isEditingThisTeam}
-                      className="rounded-3xl border border-slate-200 bg-white/70 p-4"
-                    >
-                      <summary className="cursor-pointer list-none text-sm font-medium text-slate-700">
-                        Edit team
-                      </summary>
-                      <form action={updateTeamAction} className="mt-4">
-                        <input type="hidden" name="teamId" value={team.teamId} />
-                        <TeamFormFields team={team} submitLabel="Save changes" />
-                      </form>
-                    </details>
-                  ) : null}
+                  <details
+                    open={isEditingThisTeam}
+                    className="rounded-3xl border border-slate-200 bg-white/70 p-4"
+                  >
+                    <summary className="cursor-pointer list-none text-sm font-medium text-slate-700">
+                      Edit team
+                    </summary>
+                    <form action={updateTeamAction} className="mt-4">
+                      <input type="hidden" name="teamId" value={team.teamId} />
+                      <TeamFormFields team={team} submitLabel="Save changes" />
+                    </form>
+                  </details>
                 </div>
               </article>
             );

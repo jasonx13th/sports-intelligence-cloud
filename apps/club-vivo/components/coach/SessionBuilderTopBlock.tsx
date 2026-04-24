@@ -106,6 +106,7 @@ export function SessionBuilderTopBlock({
 
       <input type="hidden" name="sport" value={sport} />
       <input type="hidden" name="ageBand" value={ageBand} />
+      <input type="hidden" name="teamId" value={selectedTeamId} />
       <input type="hidden" name="teamName" value={selectedTeamName} />
       <input type="hidden" name="confirmedProfileJson" value={confirmedProfileJson} />
 
@@ -236,7 +237,7 @@ export function SessionBuilderTopBlock({
 
       <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-6 text-slate-600">
-          Generate session options, then save the one you want to keep.
+          Generate one session option, then save it when it fits today.
         </p>
         <div>{actions}</div>
       </div>

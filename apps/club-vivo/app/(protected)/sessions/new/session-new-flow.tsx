@@ -116,7 +116,7 @@ function GenerateButton() {
       className="inline-flex rounded-full border border-transparent bg-teal-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending}
     >
-      {pending ? "Generating..." : "Generate sessions"}
+      {pending ? "Generating..." : "Generate session"}
     </button>
   );
 }
@@ -137,13 +137,11 @@ function SaveButton() {
 
 function CandidateCard({
   candidate,
-  index,
   origin,
   saveFormAction,
   sessionTitleContext
 }: {
   candidate: GeneratedSession;
-  index: number;
   origin: "full_session" | "quick_drill";
   saveFormAction: SaveFormDispatch;
   sessionTitleContext: {
@@ -163,7 +161,7 @@ function CandidateCard({
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Session option {index + 1}
+            Generated session
           </p>
           <h3 className="mt-2 text-lg font-semibold text-slate-900">
             {sessionLabel}
@@ -565,10 +563,9 @@ export function NewSessionFlow({
       <section className="rounded-3xl border border-slate-200 bg-white/70 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Choose a session</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Review your session</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Review the session options below, choose the one that fits today best, and save it
-              to continue.
+              Review the generated session below, then save it to continue.
             </p>
           </div>
 
@@ -588,11 +585,10 @@ export function NewSessionFlow({
 
         {generateState.pack ? (
           <div className="mt-6 grid gap-5">
-            {generateState.pack.sessions.map((candidate, index) => (
+            {generateState.pack.sessions.slice(0, 1).map((candidate, index) => (
               <CandidateCard
                 key={`${generateState.pack?.packId}-${index}`}
                 candidate={candidate}
-                index={index}
                 origin={workspaceMode === "quick_drill" ? "quick_drill" : "full_session"}
                 saveFormAction={saveFormAction}
                 sessionTitleContext={{
@@ -607,7 +603,7 @@ export function NewSessionFlow({
           <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
             <h3 className="text-base font-semibold text-slate-900">No session options yet</h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Generate a session above to see coach-ready options here.
+              Generate a session above to see a coach-ready plan here.
             </p>
           </div>
         )}

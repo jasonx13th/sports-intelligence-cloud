@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
@@ -155,6 +156,9 @@ export async function saveGeneratedSessionAction(
       );
     }
   }
+
+  revalidatePath("/home");
+  revalidatePath("/sessions");
 
   redirect(`/sessions/${sessionId}`);
 }

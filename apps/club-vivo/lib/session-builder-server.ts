@@ -200,9 +200,21 @@ export async function getSessionBuilderMethodologyDisplay(): Promise<Methodology
   };
 }
 
-export async function generateSessionPackForWorkspace(input: GenerateSessionPackInput) {
+export async function generateSessionPackForWorkspace(input: GenerateSessionPackInput, selectedTeamId?: string) {
   const currentUser = await getCurrentUser();
-  const selectedTeam = await getValidatedSelectedTeam(currentUser);
+  let selectedTeam: TeamRecord | null = null;
+
+  if (selectedTeamId?.trim()) {
+    try {
+      selectedTeam = await getTeam(selectedTeamId.trim());
+    } catch (error) {
+      if (!(error instanceof TeamApiError && error.status === 404)) {
+        throw error;
+      }
+    }
+  } else {
+    selectedTeam = await getValidatedSelectedTeam(currentUser);
+  }
 
   const pipelineResult = await processSessionPackRequest(input, {
     ...(selectedTeam

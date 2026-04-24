@@ -163,6 +163,7 @@ export async function generateSessionPackAction(
   const ageBand = String(formData.get("ageBand") || "").trim();
   const durationMin = String(formData.get("durationMin") || "").trim();
   const environment = String(formData.get("environment") || "").trim();
+  const teamId = String(formData.get("teamId") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
   const constraints = String(formData.get("constraints") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
@@ -210,9 +211,10 @@ export async function generateSessionPackAction(
         environment,
         constraints
       }),
+      sessionsCount: 1,
       ...(equipment ? { equipment: parseEquipment(equipment) } : {}),
       ...(confirmedProfile ? { confirmedProfile } : {})
-    });
+    }, teamId || undefined);
 
     return {
       values,

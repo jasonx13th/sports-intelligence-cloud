@@ -136,12 +136,14 @@ function getMissingEquipmentForActivities(activities, equipment) {
   if (!Array.isArray(equipment) || equipment.length === 0) return [];
 
   const provided = new Set(equipment.map(normalizeEquipmentName));
+  const hasGoalEquipment =
+    provided.has("goals") || provided.has("mini goals") || provided.has("pug goals");
   const missing = new Set();
 
   for (const activity of activities || []) {
     const activityName = normalizeEquipmentName(activity?.name);
 
-    if (GOALS_REQUIRED_KEYWORDS.some((keyword) => activityName.includes(keyword)) && !provided.has("goals")) {
+    if (GOALS_REQUIRED_KEYWORDS.some((keyword) => activityName.includes(keyword)) && !hasGoalEquipment) {
       missing.add("goals");
     }
   }

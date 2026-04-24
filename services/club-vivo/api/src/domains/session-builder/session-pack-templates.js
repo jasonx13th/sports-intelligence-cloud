@@ -96,6 +96,7 @@ function isControlThemeSegment(segment) {
 function extractPromptSignals(theme) {
   const rawTheme = String(theme || "").trim();
   const segments = splitThemeSegments(rawTheme);
+  const playerCountMatch = rawTheme.match(/\b(\d{1,2})\s+players?\b/i);
   const primaryObjective =
     extractDelimitedValue(rawTheme, "Primary session objective") ||
     segments.find((segment) => !isControlThemeSegment(segment)) ||
@@ -114,6 +115,7 @@ function extractPromptSignals(theme) {
     teamContext: teamContext || null,
     environment: environment || null,
     coachNotes: coachNotes || null,
+    playerCount: playerCountMatch?.[1] ? Number.parseInt(playerCountMatch[1], 10) : null,
     sessionMode: segments.some((segment) => isQuickSessionSegment(segment)) ? "quick" : null,
   };
 }
@@ -123,14 +125,27 @@ function buildPromptInfluenceSentences(promptSignals) {
   const environment = String(promptSignals?.environment || "").trim();
   const coachNotes = String(promptSignals?.coachNotes || "").trim();
   const teamContext = String(promptSignals?.teamContext || "").trim();
+  const playerCount =
+    typeof promptSignals?.playerCount === "number" && Number.isInteger(promptSignals.playerCount)
+      ? `${promptSignals.playerCount} players`
+      : String(objective.match(/\b\d{1,2}\s+players?\b/i)?.[0] || "").trim();
 
   return {
     first: [
       objective ? `Today's focus: ${objective}.` : "",
       environment ? `Set the area to fit the available ${environment}.` : "",
+      "Setup: show the first rotation before adding pressure.",
     ].filter(Boolean),
-    middle: [coachNotes ? `Coach note: ${coachNotes}.` : ""].filter(Boolean),
-    last: [teamContext ? `Keep the final detail appropriate for ${teamContext}.` : ""].filter(Boolean),
+    middle: [
+      coachNotes ? `Coach note: ${coachNotes}.` : "",
+      "Scoring: reward the action that matches the focus.",
+      "Cue: scan early, support quickly, then play with purpose.",
+    ].filter(Boolean),
+    last: [
+      playerCount ? `Keep numbers close to ${playerCount}.` : "",
+      teamContext ? `Keep the final detail appropriate for ${teamContext}.` : "",
+      "Progression: reduce time or touches.",
+    ].filter(Boolean),
   };
 }
 
@@ -205,6 +220,62 @@ function mergeUniqueStrings(...groups) {
   }
 
   return result;
+}
+
+function inferFocusTagsFromText(value) {
+  const normalized = ` ${normalizeTheme(value)} `;
+  const tags = [];
+
+  const add = (tag, patterns) => {
+    if (patterns.some((pattern) => pattern.test(normalized)) && !tags.includes(tag)) {
+      tags.push(tag);
+    }
+  };
+
+  add("attacking", [/\battack(?:ing)?\b/, /\bcreate chances\b/, /\bgoing forward\b/]);
+  add("defending", [/\bdefend(?:ing)?\b/, /\bdefensive\b/, /\bdeny\b/]);
+  add("transition", [/\btransition(?:s)?\b/, /\bcounter(?: attack|attack|ing)?\b/, /\bregain\b/]);
+  add("possession", [/\bpossession\b/, /\bkeep(?:ing)? the ball\b/, /\brondo\b/]);
+  add("pressing", [/\bpress(?:ing)?\b/]);
+  add("pressure", [/\bpressure\b/, /\bpressur(?:e|ing)\b/]);
+  add("finishing", [/\bfinish(?:ing)?\b/, /\bshoot(?:ing)?\b/, /\bscore\b/, /\bgoals?\b/]);
+  add("passing", [/\bpass(?:ing)?\b/, /\bcombination(?:s)?\b/, /\bsupport angles?\b/]);
+  add("dribbling", [/\bdribbl(?:e|ing)\b/, /\bball mastery\b/, /\btake players on\b/]);
+  add("1v1", [/\b1\s*v\s*1\b/, /\bone[\s-]?v[\s-]?one\b/]);
+
+  const overloads = normalized.match(/\b\d+\s*v\s*\d+\b/g) || [];
+  for (const overload of overloads.map((item) => item.replace(/\s+/g, ""))) {
+    if (!tags.includes(overload)) {
+      tags.push(overload);
+    }
+  }
+
+  if (overloads.some((overload) => overload.replace(/\s+/g, "") !== "1v1") && !tags.includes("overloads")) {
+    tags.push("overloads");
+  }
+
+  return tags.slice(0, 8);
+}
+
+function applyPromptFocusTagsToSession(session, promptSignals) {
+  const sourceText = promptSignals?.primaryObjective || "";
+  const promptTags = inferFocusTagsFromText(sourceText);
+
+  if (promptTags.length < 1) {
+    return session;
+  }
+
+  const existingTags =
+    Array.isArray(session.objectiveTags) &&
+    session.objectiveTags.length === 1 &&
+    normalizeTheme(session.objectiveTags[0]) === "theme"
+      ? []
+      : session.objectiveTags;
+
+  return {
+    ...session,
+    objectiveTags: mergeUniqueStrings(promptTags, existingTags).slice(0, 12),
+  };
 }
 
 function displayAgeGroup(ageBand) {
@@ -316,9 +387,9 @@ function applySessionModeInfluenceToSession(session, promptSignals) {
 
 function templatePassingShape({ sport, ageBand, durationMin, equipment }) {
   const activities = [
-    { name: "Dynamic warmup + ball mastery", minutes: 10, description: "Dynamic movement, then touches." },
-    { name: "Rondo (numbers up)", minutes: 15, description: "Emphasis: angles, scanning, first touch." },
-    { name: "Passing pattern to goals", minutes: 20, description: "Progression: add passive, then active pressure." },
+    { name: "Dynamic warmup + ball mastery", minutes: 10, description: "Set a small grid, pair movement with touches, and cue players to check shoulders before receiving." },
+    { name: "Rondo (numbers up)", minutes: 15, description: "Score by splitting defenders or completing a target number of passes. Cue angles, scanning, and first touch away from pressure." },
+    { name: "Passing pattern to goals", minutes: 20, description: "Build from unopposed pattern to passive pressure, then active pressure. Reward timing, support angle, and clean final pass." },
   ];
 
   return baseSession({
@@ -336,17 +407,17 @@ function templateFutSoccerPassing({ sport, ageBand, durationMin, equipment }) {
     {
       name: "Reduced-space ball mastery warmup",
       minutes: 10,
-      description: "Fast feet, close control, and quick turns in a tight area.",
+      description: "Use a tight grid with quick turns and close control. Cue players to look up before changing direction.",
     },
     {
       name: "Tight-space rondo waves",
       minutes: 15,
-      description: "Short passing, scanning, and quick support angles under immediate pressure.",
+      description: "Score by escaping pressure into the next support angle. Cue short passing, scanning, and quick body shape.",
     },
     {
       name: "Build-up under pressure lanes",
       minutes: 20,
-      description: "Play out through narrow lanes with quick rotations and limited equipment.",
+      description: "Play through narrow lanes with quick rotations. Progress by limiting touches or shrinking the escape lane.",
     },
   ];
 
@@ -362,9 +433,9 @@ function templateFutSoccerPassing({ sport, ageBand, durationMin, equipment }) {
 
 function templateFinishing({ sport, ageBand, durationMin, equipment }) {
   const activities = [
-    { name: "Warmup: finishing technique", minutes: 10, description: "Inside foot, laces, both feet." },
-    { name: "1v1 to goal", minutes: 15, description: "Decision: early shot vs take a touch." },
-    { name: "Combination play to finish", minutes: 20, description: "Wall pass / overlap into finish." },
+    { name: "Warmup: finishing technique", minutes: 10, description: "Set two short shooting lines and rehearse inside foot, laces, and both feet. Cue balanced body shape before contact." },
+    { name: "1v1 to goal", minutes: 15, description: "Attack a goal quickly and score within a short time window. Coach the choice between early shot and one touch to separate." },
+    { name: "Combination play to finish", minutes: 20, description: "Use a wall pass or overlap into finish. Award extra points for first-time finishes or rebounds followed in." },
   ];
 
   return baseSession({
@@ -379,9 +450,9 @@ function templateFinishing({ sport, ageBand, durationMin, equipment }) {
 
 function templatePressingTransition({ sport, ageBand, durationMin, equipment }) {
   const activities = [
-    { name: "Warmup: reaction & acceleration", minutes: 10, description: "Short bursts + quick stops/starts." },
-    { name: "3v3+2 transition game", minutes: 20, description: "Win it -> immediate counter / regain shape." },
-    { name: "Pressing cues in small-sided game", minutes: 20, description: "Triggers: bad touch, back pass, sideline." },
+    { name: "Warmup: reaction & acceleration", minutes: 10, description: "Use short races and stop-start reactions. Cue first three steps, quick braking, and immediate recovery shape." },
+    { name: "3v3+2 transition game", minutes: 20, description: "Score quickly after a regain or keep the ball for a point. Cue first pass forward, support underneath, and recovery runs." },
+    { name: "Pressing cues in small-sided game", minutes: 20, description: "Press on bad touch, back pass, or sideline trap. Progress by adding a countdown after each trigger." },
   ];
 
   return baseSession({
@@ -399,17 +470,17 @@ function templateFutSoccerPressing({ sport, ageBand, durationMin, equipment }) {
     {
       name: "Quick-feet pressure warmup",
       minutes: 10,
-      description: "Short accelerations, recoveries, and quick reactions in reduced space.",
+      description: "Use short accelerations, recoveries, and reaction cues in reduced space. Emphasize first step and balance.",
     },
     {
       name: "2v2+1 pressure-cover rotations",
       minutes: 20,
-      description: "Press together, cover quickly, and rotate fast after each regain or escape.",
+      description: "Score by forcing a turnover or escaping pressure. Cue first defender pressure and second defender cover.",
     },
     {
       name: "Reduced-space pressing game",
       minutes: 20,
-      description: "Immediate pressure-and-cover cues in a tight game with fast restarts.",
+      description: "Use fast restarts and a compact field. Progress by shrinking recovery time after each regain.",
     },
   ];
 
@@ -425,9 +496,9 @@ function templateFutSoccerPressing({ sport, ageBand, durationMin, equipment }) {
 
 function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
   const activities = [
-    { name: "Ball mastery arrival game", minutes: 10, description: "Dynamic movement, plenty of touches, and an easy scoring target to get the group moving." },
-    { name: `Theme challenge: ${theme}`, minutes: 20, description: "Coach the main theme with clear rules, obvious scoring, and repeatable success moments." },
-    { name: "Play-to-goal game", minutes: 20, description: "Use game-like constraints tied to the main theme so the players can solve the problem in play." },
+    { name: "Ball mastery arrival game", minutes: 10, description: "Set a simple grid, give each player a ball where possible, and add an easy scoring target to get the group moving." },
+    { name: `Theme challenge: ${theme}`, minutes: 20, description: "Create one clear rule tied to the theme. Score the desired action and pause briefly to name the coaching cue." },
+    { name: "Play-to-goal game", minutes: 20, description: "Use game-like constraints tied to the main theme. Progress by changing space, numbers, or touch limits." },
   ];
 
   return baseSession({
@@ -444,9 +515,14 @@ function pickTemplate(themeKey) {
   // very simple matching
   if (themeKey.includes("pass")) return "passing";
   if (themeKey.includes("shape")) return "passing";
+  if (themeKey.includes("possession")) return "passing";
   if (themeKey.includes("finish")) return "finishing";
+  if (themeKey.includes("shoot")) return "finishing";
+  if (themeKey.includes("score")) return "finishing";
   if (themeKey.includes("press")) return "pressing";
+  if (themeKey.includes("pressure")) return "pressing";
   if (themeKey.includes("transition")) return "pressing";
+  if (themeKey.includes("defend")) return "pressing";
   return "fallback";
 }
 
@@ -493,12 +569,14 @@ function generateSessionFromTheme({
                   equipment,
                 });
 
-  return applyMethodologyInfluenceToSession(
+  const sessionWithPromptTags = applyPromptFocusTagsToSession(session, promptSignals);
+
+  return applyPromptInfluenceToSession(
     applySessionModeInfluenceToSession(
-      applyPromptInfluenceToSession(session, promptSignals),
+      applyMethodologyInfluenceToSession(sessionWithPromptTags, methodologyInfluence),
       promptSignals
     ),
-    methodologyInfluence
+    promptSignals
   );
 }
 

@@ -9,7 +9,10 @@ import {
   parseQuickSessionTitleHints,
   withQuickSessionTitleHint
 } from "../../../../lib/quick-session-title-hints";
-import { buildQuickSessionTitle } from "../../../../lib/quick-session-intent";
+import {
+  buildQuickSessionFocusSummary,
+  buildQuickSessionTitle
+} from "../../../../lib/quick-session-intent";
 import {
   SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
   buildBuilderSessionDetailTitle,
@@ -125,6 +128,9 @@ export default async function SessionDetailPage({
       })
     : null;
   const displayQuickSessionTitle = quickSessionTitle || derivedQuickSessionTitle || "Quick Session";
+  const quickSessionFocusSummary = isQuickSession
+    ? buildQuickSessionFocusSummary(session)
+    : null;
   const builderContext = builderContexts[sessionId];
   const coachIdentity = await getCurrentUserIdentity();
   const createdByLabel =
@@ -470,7 +476,9 @@ export default async function SessionDetailPage({
               {isQuickSession ? (
                 <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Session Focus</h2>
-                  <p className="mt-2 text-sm text-slate-800">{displayQuickSessionTitle}</p>
+                  <p className="mt-2 text-sm text-slate-800">
+                    {quickSessionFocusSummary || displayQuickSessionTitle}
+                  </p>
                 </article>
               ) : null}
 

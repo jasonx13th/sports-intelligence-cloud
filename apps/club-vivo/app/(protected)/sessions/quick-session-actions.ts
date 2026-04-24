@@ -10,8 +10,7 @@ import {
   serializeQuickSessionPayload
 } from "../../../lib/quick-session-payload";
 import {
-  buildQuickSessionTheme,
-  extractQuickSessionDuration,
+  buildQuickSessionIntent,
   QUICK_SESSION_DEFAULT_DURATION_MIN
 } from "../../../lib/quick-session-intent";
 
@@ -121,8 +120,7 @@ export async function createQuickSessionAction(
   "use server";
 
   const prompt = String(formData.get("prompt") || "").trim();
-  const quickSessionTheme = buildQuickSessionTheme(prompt);
-  const quickSessionDuration = extractQuickSessionDuration(prompt);
+  const quickSessionIntent = buildQuickSessionIntent(prompt);
 
   if (!prompt) {
     return {
@@ -134,8 +132,9 @@ export async function createQuickSessionAction(
     const pack = await generateSessionPack({
       sport: QUICK_SESSION_DEFAULTS.sport,
       ageBand: QUICK_SESSION_DEFAULTS.ageBand,
-      durationMin: quickSessionDuration.durationMin,
-      theme: quickSessionTheme
+      durationMin: quickSessionIntent.durationMin,
+      theme: quickSessionIntent.theme,
+      ...(quickSessionIntent.equipment.length ? { equipment: quickSessionIntent.equipment } : {})
     });
 
     const cookieStore = await cookies();
@@ -145,8 +144,9 @@ export async function createQuickSessionAction(
         pack,
         values: {
           ...QUICK_SESSION_DEFAULTS,
-          durationMin: String(quickSessionDuration.durationMin),
-          theme: quickSessionTheme
+          durationMin: String(quickSessionIntent.durationMin),
+          theme: quickSessionIntent.theme,
+          equipment: quickSessionIntent.equipment.join(", ")
         },
         notes: prompt
       }),

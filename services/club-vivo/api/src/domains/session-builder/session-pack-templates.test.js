@@ -221,6 +221,47 @@ test("generatePack applies a quick-session bias that feels playful and easy to r
   );
 });
 
+test("generatePack derives useful quick-session tags, equipment, and coaching detail from compact prompt theme", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | attacking transition 4v3 | 7 players",
+    sessionsCount: 1,
+    equipment: ["mini goals", "flat cones", "balls"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.deepEqual(pack.equipment, ["mini goals", "flat cones", "balls"]);
+  assert.deepEqual(session.equipment, ["mini goals", "flat cones", "balls"]);
+  assert.deepEqual(session.objectiveTags.slice(0, 4), [
+    "attacking",
+    "transition",
+    "4v3",
+    "overloads",
+  ]);
+  assert.match(session.activities[0].description, /Cue first three steps/);
+  assert.match(session.activities[1].description, /Scoring:/);
+  assert.match(session.activities[2].description, /Progression:/);
+});
+
+test("generatePack uses pressure and possession prompt words instead of falling back to theme-only tags", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 50,
+    theme: "quick | possession under pressure",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.objectiveTags.includes("theme"), false);
+  assert.equal(session.objectiveTags.includes("possession"), true);
+  assert.equal(session.objectiveTags.includes("pressure"), true);
+});
+
 test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {
   const pack = generatePack({
     sport: "soccer",

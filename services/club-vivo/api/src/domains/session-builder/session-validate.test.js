@@ -64,6 +64,17 @@ test("validateCreateSession rejects incompatible equipment with stable reason", 
   );
 });
 
+test("validateCreateSession treats mini goals as goal equipment", () => {
+  const result = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "flat cones", "mini goals"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
+  );
+
+  assert.deepEqual(result.equipment, ["balls", "flat cones", "mini goals"]);
+});
+
 test("validateCreateSession preserves duration total rule with stable reason", () => {
   assert.throws(
     () =>

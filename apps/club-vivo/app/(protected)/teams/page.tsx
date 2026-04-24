@@ -412,7 +412,7 @@ export default async function TeamsPage({
       <CoachPageHeader
         badge="Teams"
         title="Teams"
-        description="Choose one durable backend team to keep as the current server-owned team context for this workspace. Admins can also manage the small durable Team fields used across the shared coach app, including optional program type and player count."
+        description="Teams are durable backend context for Session Builder and generation hints. Travel vs OST program type changes the planning bias, and age band plus player count help the planner stay grounded while today’s request still owns session details."
       />
 
       {teamStatus === "created" ? (
@@ -464,12 +464,17 @@ export default async function TeamsPage({
       </section>
 
       {isAdmin ? (
-        <section className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur">
+        <section
+          id="create-team"
+          className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur scroll-mt-24"
+        >
           <div className="max-w-3xl">
             <h2 className="text-lg font-semibold text-slate-900">Create a team</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Keep the durable Team model small and practical. Program type and player count are
-              optional. Older teams can continue without them.
+              Keep the durable Team model small and practical. Team name, age band, optional player
+              count, optional travel or OST program type, and the current level, status, and notes
+              fields all help Session Builder and generation hints without turning Team into the
+              full session request.
             </p>
           </div>
 
@@ -489,12 +494,41 @@ export default async function TeamsPage({
 
       {teams.length === 0 ? (
         <section className="club-vivo-shell rounded-[2rem] border p-8 backdrop-blur">
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-8 text-center">
-            <h2 className="text-lg font-semibold text-slate-900">No durable backend teams yet</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Team selection stays tied to tenant-scoped backend teams only. Once teams exist in
-              the Team API, you will be able to select one here.
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-8">
+            <h2 className="text-lg font-semibold text-slate-900">
+              No backend teams exist for this tenant yet
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              This page only shows tenant-scoped Team records returned by the current backend.
+              There is no fake demo team layer here, so this state usually means the signed-in
+              tenant does not have any saved teams in the current backend data.
             </p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              Teams matter because Session Builder and generation hints can use durable age band,
+              player count, and travel vs OST program context when a team is selected.
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              If you expected older teams, they are likely in a different tenant or a different
+              local backend dataset.
+            </p>
+
+            {isAdmin ? (
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <a
+                  href="#create-team"
+                  className="inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
+                >
+                  Create the first team
+                </a>
+                <p className="text-sm text-slate-600">
+                  Admins can create durable teams here and then select one as active context.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-6 text-sm text-slate-600">
+                Team creation stays admin-only, so ask an admin to add the first tenant team.
+              </p>
+            )}
           </div>
         </section>
       ) : (

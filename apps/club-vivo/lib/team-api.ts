@@ -97,12 +97,13 @@ async function requestJson<T>(path: string, init?: RequestInit) {
     ...init,
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      ...(init?.body ? { "content-type": "application/json" } : {}),
       ...(init?.headers || {})
     },
     cache: "no-store"
   });
 
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     redirect("/logout");
   }
 

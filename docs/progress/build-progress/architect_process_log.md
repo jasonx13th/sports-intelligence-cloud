@@ -955,153 +955,122 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 
 ### Goals
 - Reframe Week 21 around Coach Workspace hardening instead of a generic release pass.
-- Keep one shared coach-facing app while making coach entry, creation, and review flows more practical.
+- Keep one shared coach-facing app while making coach entry, team management, creation, and review flows more practical.
 - Separate fast prompt-based Quick Session usage from the more detailed Session Builder flow without widening backend or platform scope.
-- Align the Session Builder backend and shared coach workspace around server-owned planning context, methodology ownership, and safe selected-team handling without widening the public API.
+- Align the Session Builder backend and shared coach workspace around server-owned planning context, team context, and methodology ownership without widening the public API.
 
 ### Work completed
-- Day 1 kept source-of-truth/product alignment in place across the Week 21 docs.
-- The shared protected Club Vivo shell was hardened around a clearer coach-facing nav:
-  - Home
-  - Session Builder
-  - Profile
-  - Equipment
-  - Sessions
-- Public and protected entry flow was tightened:
-  - `/` behaves as the simpler public coach entry page
-  - post-login lands in the shared coach workspace
-- Home now works as a real workspace entry surface instead of only a handoff page.
-- Home now supports a fast Quick Session prompt path.
-- The detailed Session Builder path remains at `/sessions/new`.
-- The Sessions page now exposes two clear creation entries:
-  - New Session Builder
-  - Quick Session
-- A dedicated protected quick-entry route now exists:
-  - `/sessions/quick`
-- A dedicated protected quick-review route now exists:
-  - `/sessions/quick-review`
-- Quick Session now works as:
-  - prompt
-  - generate
-  - review
-  - edit prompt or save
-- Quick Session review was narrowed to one generated option instead of the builder-style three-option flow.
-- Edit from quick review now returns the coach to `/sessions/quick` with the prompt prefilled.
-- Save from quick review now redirects correctly into saved session detail.
-- Quick prompt mapping now respects explicit duration requests like `50 minute` instead of always defaulting to 60.
-- Session Builder remains the detailed setup path and still owns the builder-style multi-option generation flow.
-- Day 4 completed a narrow backend and workspace alignment slice across five areas:
-  - request-owned duration rule frozen
-  - Methodology v1 groundwork and first implementation
-  - server-owned generation context and resolution groundwork
-  - real optional lookup groundwork plus frozen safe `teamId` source
-  - selected-team server context and Session Builder visibility work in Club Vivo
-- The request-owned duration rule was frozen:
-  - Team must not own duration
-  - `durationMin` remains request-owned
-  - Quick Session duration comes from the coach prompt
-  - Session Builder duration comes from the current builder request
-  - regression protection and contract clarifications were added
-- Methodology v1 groundwork and first implementation were completed:
-  - Methodology v1 contract
-  - validator and focused tests
-  - admin-only text-only routes:
-    - `GET /methodology/{scope}`
-    - `PUT /methodology/{scope}`
-    - `POST /methodology/{scope}/publish`
-  - protected Club Vivo methodology page at `/methodology`
-  - coach read-only behavior
-  - coach-admin save draft and publish behavior
-- Server-owned Session Builder context work was completed:
-  - Generation Context v1 contract/helper/tests
-  - Resolved Generation Context v1 contract/resolver/tests
-  - pipeline now builds and carries:
-    - `generationContext`
-    - `resolvedGenerationContext`
-  - public `POST /session-packs` contract and handler response remained unchanged
-- Real optional lookup groundwork was completed:
-  - lookup loader for tenant-scoped team context
-  - published-only methodology loader
-  - internal-only pipeline support for optional lookup inputs
-- A narrow durable Team-model slice was completed after the initial Week 21 grounding:
-  - Team now supports optional `programType`
-  - Team now supports optional `playerCount`
-  - backward compatibility was maintained because both fields are optional
-  - `durationMin` remained excluded from Team
-  - Team contract/docs and focused Team tests were updated
-  - this creates safer durable context for future team-aware Session Builder work without widening the public Session Builder API
-- The first safe internal `teamId` source was frozen and implemented:
-  - `teamId` must not be added to public `POST /session-packs`
-  - browser-local team objects are not trusted
-  - first safe source is server-validated selected-team context stored server-side
-  - signed HttpOnly cookie is the accepted first implementation direction
-- Club Vivo selected-team server context and Session Builder visibility were completed:
-  - durable backend team selection in Club Vivo
-  - signed HttpOnly selected-team cookie helper
-  - selection validated against durable backend teams only
-  - `/sessions/new` now reads selected-team context server-side and passes `teamId` internally into the existing pipeline path
-  - `/sessions/new` now visibly shows:
-    - active selected team when present
-    - neutral no-team-selected state otherwise
-  - first safe internal methodology influence pass added:
-    - internal-only
-    - deterministic
-    - limited to wording/style bias
-    - does not override `durationMin`, `theme`, `equipment`, or safety rules
-  - `/sessions/new` now shows a read-only methodology context panel:
-    - methodology in use when applied
-    - applied scopes
-    - active selected team when present
-    - resolved program direction when available
-    - neutral standard-generation-path state otherwise
-- `apps/club-vivo` passed `npx tsc --noEmit` during the implemented Week 21 frontend slices.
+- Day 1 through Day 4 established the Week 21 foundation:
+  - source-of-truth and product-boundary alignment
+  - shared app/nav hardening
+  - request-owned duration rules
+  - Methodology v1 groundwork and shared workspace page
+  - internal generation-context and resolved-generation-context seams
+  - selected-team server context for internal Session Builder use
+  - narrow durable Team support for optional `programType` and `playerCount`
+- Day 5 continued the finish pass and moved Teams from admin-only creation to coach-owned creation:
+  - any authenticated coach can create teams
+  - a team belongs to the creating user through `createdBy`
+  - regular coaches can only see and edit their own teams
+  - admin coaches can see and edit all teams in the tenant
+  - non-owner Team access now returns `404`
+  - tenant identity remains server-derived
+- The Team ownership slice was deployed successfully to the dev API stack:
+  - `SicApiStack-Dev` deployed successfully
+  - the API URL stayed the same:
+    - `https://ekth4bq6ze.execute-api.us-east-1.amazonaws.com/`
+  - this deployment mattered because the local frontend was calling the deployed API rather than a local Team backend
+- The Teams page now works as the real coach-facing team management surface:
+  - existing teams render on the left
+  - create team form renders on the right
+  - team creation now works for regular coaches after the API deploy
+  - created teams appear on the Teams page in the current owner-scoped view
+- Teams UI was simplified to the current durable generation-context inputs:
+  - team name
+  - age band
+  - program type
+  - player count
+- Team age band is now a controlled dropdown with:
+  - `U5` through `U23`
+  - `Adults`
+  - `Mixed age`
+- Existing/legacy Team records with older free-text age bands remain safe to render and edit.
+- Team context now carries clearer product meaning for generation:
+  - `programType=ost` biases sessions toward playful, simpler, game-like, easy-to-follow activities
+  - `programType=travel` biases sessions toward more structured, progression-based activities with sharper decision-making
+  - `Adults` is treated as adult / older-than-`U23` team context
+  - `Mixed age` is treated as a younger mixed group around `U7-U10` for internal consistency helpers
+- Quick Session was stabilized as a real narrow coach workflow inside the shared app:
+  - Home keeps the brainstorm box
+  - create from Home now generates and lands directly on `/sessions/quick-review`
+  - edit from quick review returns to `/sessions/quick`
+  - save from quick review lands on saved session detail
+  - saved session detail shows PDF export
+  - back to sessions works
+- Saved session detail now surfaces PDF export intentionally in the Next UI using the existing backend export capability.
+- Session Builder output quality was improved without widening the public `POST /session-packs` contract:
+  - generated session titles are more specific
+  - saved-session detail metadata is clearer
+  - brainstorm/prompt influence is more visible in the generated result
+- The local `/sessions/new` runtime crash was fixed:
+  - local dev now uses a webpack fallback
+  - a server-only runtime loader avoids bundler interception of backend Session Builder modules
+  - `/`, `/home`, `/sessions`, and `/sessions/new` render again in local dev
+- Public entry, login, and Home were simplified into a more intentional coach-facing entry flow.
+- Team create flow regressions were fixed on the Next side:
+  - `NEXT_REDIRECT` is no longer shown as a user-facing Team error
+  - `403` no longer logs the coach out during Team create/update attempts
 
 ### Current repo/product state
-- Quick Session and Session Builder are now distinct coach-facing flows inside one shared app.
-- Quick Session is still implemented as a narrow app-layer reuse of the shared generation and save paths.
-- Session Builder remains the more detailed setup path.
-- Equipment is still placeholder-level product surface only.
-- Builder and quick flows still share persistence, but the display layer is beginning to diverge.
-- The shared app now also has:
-  - explicit methodology ownership in the shared coach workspace
-  - a server-owned selected-team context for internal Session Builder use
-  - internal generation-context and resolved-generation-context boundaries
-  - a bounded first methodology influence pass that stays inside internal generation planning
+- One shared coach-facing app remains the Week 21 direction.
+- `/home` is the protected workspace landing page.
+- `/sessions/new` remains the current shared Session Builder generation path.
+- Quick Session and Session Builder are now distinct coach-facing flows inside the same app:
+  - Quick Session is fast, prompt-first, playful, and narrow
+  - Session Builder is more structured, detailed, and controlled
+- Teams are now durable backend context for Session Builder and generation hints.
+- Team durable context currently includes:
+  - `name`
+  - `ageBand`
+  - optional `programType`
+  - optional `playerCount`
+  - existing supported Team metadata such as `sport`, `status`, `level`, and `notes`
+- Team context is now meaningful to generation without widening the public API:
+  - `programType` influences style bias
+  - `playerCount` is available as a helper signal
+  - `ageBand` is available as a consistency/helper signal
+- `durationMin` remains request-owned and is still excluded from Team.
+- `theme` remains request-owned.
+- `equipment` remains request-owned.
+- Export PDF is now visible on saved session detail in the web app.
+- Team create/list/edit flows are now working in the current coach-owned model.
+- Local Session Builder development remains stable through the webpack dev fallback plus the server-only runtime loader.
 
 ### What still needs work
-- Quick Session review page still needs one more cleanup pass:
-  - remove extra summary tiles like theme / quick result / home prompt
-- Quick Session review card still needs simplification:
-  - remove Focus
-  - remove Equipment
-  - keep generated activities as the main review surface
-- Saved detail rendering still needs to become flow-aware:
-  - Quick Session saved detail should not look like the detailed Session Builder detail page
-- Quick Session saved detail still needs a narrower presentation:
-  - title direction like Quick Session #<n>
-  - remove builder-style metadata/sections such as sport, age band, duration, schema version, objective tags, equipment
-  - keep activities and feedback
-- Stronger methodology influence and later Step 5 work remain intentionally deferred.
+- Session ownership is still remaining work:
+  - regular coach users should see only their own saved sessions
+  - admin users should be able to see all tenant sessions
+  - this has not been completed yet
+- Methodology page clarity and polish are still remaining work.
+- Team Manager polish can continue later, but the current Team create/list/edit flow works.
 - Durable Team context is still intentionally narrow:
-  - Team now supports optional `programType`
-  - Team now supports optional `playerCount`
-  - Team does not yet durably own methodology linkage/defaulting
   - Team does not own `durationMin`
+  - Team does not yet durably own methodology linkage/defaulting
+- The broader image-assisted intake / Rekognition-style expansion remains a parking-lot idea for later rather than Week 21 shipped scope.
+- Week 21 should not yet be described as fully complete.
 
 ### Tenancy/security checks
-- Week 21 started frontend-first, and Day 4 added narrow backend/domain alignment work without widening the public Session Builder contract.
-- Day 4 introduced backend implementation work, but the public Session Builder API contract remained unchanged.
-- No auth-boundary redesign was introduced.
-- No tenancy-boundary changes were introduced.
-- No entitlements-model changes were introduced.
-- No IAM or CDK widening was introduced beyond the narrow methodology route wiring that was verified in dev.
-- No client-trusted tenant identity was introduced.
-- Tenant scope remains server-derived from verified auth plus authoritative entitlements.
-- One shared app direction remained explicit throughout; no separate Travel, OST, or coach-admin app path was introduced.
-- No `teamId` was added to public `POST /session-packs`.
-- No query-param or header workaround was introduced for `teamId`.
-- Browser-local team objects remain untrusted for backend context.
-- Selected team is validated in tenant scope before being stored server-side.
+- Week 21 kept tenancy server-derived throughout.
+- No `tenant_id`, `tenantId`, or `x-tenant-id` was accepted from client input.
+- Team ownership is now backend-enforced, not frontend-only.
+- Team access rules are now:
+  - regular coach users can create and edit their own teams
+  - regular coach users can only see their own teams
+  - admin coaches can see and edit all teams in the tenant
+  - non-owner Team access returns `404`
+- Session Builder public contracts remained unchanged:
+  - no `teamId` was added to public `POST /session-packs`
+  - no query-param or header workaround was introduced for `teamId`
 - Request-owned fields remained request-owned:
   - `durationMin`
   - `theme`
@@ -1109,20 +1078,17 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Team public contract widening stayed narrow and explicit:
   - optional `programType`
   - optional `playerCount`
-- No public Session Builder contract widening was introduced.
+- No auth-boundary redesign, entitlements-model change, IAM widening, or CDK scope expansion was introduced as part of the Day 5 finish pass.
 
 ### Observability notes
 - No new observability subsystem was introduced in the Week 21 slice.
 - Existing route-level logging, metrics, alarms, and feedback logging remain unchanged.
 - Current Week 21 evidence is primarily:
-  - documented frontend implementation
-  - successful `npx tsc --noEmit` in `apps/club-vivo`
   - focused backend/domain tests
-  - focused Team validator/repository/handler tests for the durable Team slice
-  - methodology route dev verification
-  - current repo/worktree route and flow shaping
-- No dashboard, alarm, or metric expansion was introduced as part of this frontend/product work.
-- One Windows Node focused test run hit sandboxed `spawn EPERM`, and the same command was rerun outside the sandbox; final focused test results passed.
+  - frontend typecheck
+  - local/browser workflow validation
+  - dev-stack deployment evidence where needed
+- No new dashboard, alarm, or metric expansion was introduced as part of the Day 5 product pass.
 
 ### Evidence
 - `docs/progress/week_21/day1-scope-lock.md`
@@ -1130,27 +1096,38 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - `docs/progress/week_21/day2-closeout-summary.md`
 - `docs/progress/week_21/day3-closeout-summary.md`
 - `docs/progress/week_21/day4-closeout-summary.md`
+- `docs/progress/week_21/day5-closeout-summary.md`
 - `docs/progress/week_21/closeout-summary.md`
 - `docs/product/sic-coach-lite/coach-workspace-v1.md`
 - `docs/product/sic-coach-lite/ksc-program-types-and-methodology-v1.md`
 - `docs/product/sic-coach-lite/sic-session-builder.md`
 - `docs/vision.md`
 - `docs/progress/build-progress/roadmap-vnext.md`
-- Day 4 implementation evidence included:
-  - methodology validator tests passed
-  - methodology service and handler tests passed
-  - methodology dev verification passed:
-    - `cdk synth`
-    - `cdk diff`
-    - `cdk deploy`
-    - smoke checks for `404`, `400`, `403`, save draft, publish, and read-after-publish
-  - focused generation-context, resolver, lookup, and pipeline tests passed
-  - `apps/club-vivo` `tsc --noEmit` passed for methodology page, selected-team, and Session Builder visibility work
+- Day 5 validation evidence included:
+  - Team backend tests passed:
+    - `team-validate.test.js`
+    - `team-repository.test.js`
+    - `teams/handler.test.js`
+  - Session Builder tests passed:
+    - `session-pack-templates.test.js`
+    - `session-builder-pipeline.test.js`
+  - `apps/club-vivo` passed `cmd /c npx tsc --noEmit`
+  - browser validation recorded:
+    - public entry works
+    - login flow works
+    - Home Quick Session to quick review works
+    - quick review edit/save flow works
+    - saved session detail and PDF export are reachable
+    - Teams create works after API deploy
+    - created teams appear on the Teams page
+  - deployment evidence recorded:
+    - `SicApiStack-Dev` deployed successfully
+    - API URL unchanged:
+      - `https://ekth4bq6ze.execute-api.us-east-1.amazonaws.com/`
 
 ### Next steps
-- Keep refining the coach-facing pages inside the shared shell without widening backend or platform scope.
-- Keep `/profile` lightweight until backend-backed setup surfaces for teams, environment, and equipment actually exist.
-- Continue treating `Quick Drill` as product direction unless and until an explicit backend/runtime slice is approved.
-- Continue holding the line on auth, tenancy, entitlements, IAM, and CDK boundaries while Week 21 frontend work continues.
-- Use the now-frozen server-owned planning boundaries as the base for later Step 5 work instead of widening the public Session Builder contract.
-- Keep stronger methodology influence and broader planning defaults as explicit future slices rather than backfilling them into the completed Week 21 work.
+- Implement the still-remaining session ownership model so saved sessions follow the same owner/admin visibility rule as Teams.
+- Continue methodology page clarity and coach-facing polish without widening product scope.
+- Keep Team Manager polish narrow and product-first while preserving the current working create/list/edit flow.
+- Keep image-assisted intake / Rekognition-style expansion explicitly deferred.
+- Continue holding the line on auth, tenancy, entitlements, IAM, and CDK boundaries while the remaining Week 21 cleanup is completed.

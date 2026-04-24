@@ -249,6 +249,32 @@ test("programType team context can bias generated sessions while keeping request
   assert.deepEqual(resolvedResult.validatedPack.equipment, rawInput.equipment);
 });
 
+test("team ageBand helper treats Mixed age as a u7-u10 youth context without changing request-owned pack fields", async () => {
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u8",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+
+  const resolvedResult = await processSessionPackRequest(rawInput, {
+    teamContext: {
+      ageBand: "Mixed age",
+      playerCount: 12,
+    },
+  });
+
+  assert.equal(resolvedResult.resolvedGenerationContext.teamContextUsed, true);
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBand, "mixed_age");
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBandConsistentWithRequest, true);
+  assert.equal(resolvedResult.resolvedGenerationContext.ageBand, rawInput.ageBand);
+  assert.equal(resolvedResult.validatedPack.ageBand, rawInput.ageBand);
+  assert.equal(resolvedResult.validatedPack.durationMin, rawInput.durationMin);
+  assert.equal(resolvedResult.validatedPack.theme, rawInput.theme);
+});
+
 test("optional internal methodologyRecords influence only resolvedGenerationContext", async () => {
   const rawInput = {
     sport: "soccer",

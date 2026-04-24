@@ -119,6 +119,34 @@ test("resolveGenerationContext uses team playerCount and ageBand as helper hints
   assert.deepEqual(resolvedContext.equipment, ["cones", "balls"]);
 });
 
+test("resolveGenerationContext treats Adults as adult team context", () => {
+  const resolvedContext = resolveGenerationContext({
+    generationContext: makeBaseGenerationContext({ ageBand: "adult" }),
+    teamContext: {
+      ageBand: "Adults",
+    },
+  });
+
+  assert.equal(resolvedContext.teamContextUsed, true);
+  assert.equal(resolvedContext.teamAgeBand, "adult");
+  assert.equal(resolvedContext.teamAgeBandConsistentWithRequest, true);
+  assert.equal(resolvedContext.ageBand, "adult");
+});
+
+test("resolveGenerationContext treats Mixed age as a youth mixed group around u7-u10", () => {
+  const resolvedContext = resolveGenerationContext({
+    generationContext: makeBaseGenerationContext({ ageBand: "u8" }),
+    teamContext: {
+      ageBand: "Mixed age",
+    },
+  });
+
+  assert.equal(resolvedContext.teamContextUsed, true);
+  assert.equal(resolvedContext.teamAgeBand, "mixed_age");
+  assert.equal(resolvedContext.teamAgeBandConsistentWithRequest, true);
+  assert.equal(resolvedContext.ageBand, "u8");
+});
+
 test("resolveGenerationContext applies shared methodology alone", () => {
   const resolvedContext = resolveGenerationContext({
     generationContext: makeBaseGenerationContext(),

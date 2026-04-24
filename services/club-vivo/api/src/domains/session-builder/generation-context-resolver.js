@@ -21,6 +21,23 @@ function resolvePlayerCount(teamContext) {
 function normalizeAgeBandSignal(value) {
   const normalized = String(value || "").trim().toLowerCase();
 
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === "adult" || normalized === "adults") {
+    return "adult";
+  }
+
+  if (normalized === "mixed age" || normalized === "mixed-age" || normalized === "mixed") {
+    return "mixed_age";
+  }
+
+  const youthMatch = normalized.match(/^u(\d{1,2})$/);
+  if (youthMatch) {
+    return `u${Number.parseInt(youthMatch[1], 10)}`;
+  }
+
   return normalized || null;
 }
 
@@ -28,11 +45,30 @@ function resolveTeamAgeBand(teamContext) {
   return normalizeAgeBandSignal(teamContext?.ageBand);
 }
 
+function isYouthBandInRange(ageBand, minInclusive, maxInclusive) {
+  const youthMatch = String(ageBand || "").match(/^u(\d{1,2})$/);
+
+  if (!youthMatch) {
+    return false;
+  }
+
+  const numericAge = Number.parseInt(youthMatch[1], 10);
+  return numericAge >= minInclusive && numericAge <= maxInclusive;
+}
+
 function resolveTeamAgeBandConsistency({ generationContext, teamAgeBand }) {
   const requestAgeBand = normalizeAgeBandSignal(generationContext?.ageBand);
 
   if (!teamAgeBand || !requestAgeBand) {
     return null;
+  }
+
+  if (teamAgeBand === "adult") {
+    return requestAgeBand === "adult";
+  }
+
+  if (teamAgeBand === "mixed_age") {
+    return isYouthBandInRange(requestAgeBand, 7, 10);
   }
 
   return teamAgeBand === requestAgeBand;

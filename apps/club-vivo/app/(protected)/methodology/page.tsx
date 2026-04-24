@@ -110,8 +110,8 @@ export default async function MethodologyPage() {
     <div className="grid gap-6">
       <CoachPageHeader
         badge="Methodology"
-        title="Club Vivo Methodology"
-        description="Read the current methodology direction by scope, and let coach-admin users maintain the text-only draft and publish flow inside the shared workspace."
+        title="KSC Club Methodology"
+        description="This is the club-facing methodology guide for the current tenant. Coaches can read published KSC guidance here; when available, SIC should use the club philosophy as influence for session generation. Today this workspace supports draft and published text, with a path toward combining general sport knowledge with club-specific guidance, or using club-only guidance when configured."
       />
 
       <MethodologyWorkspace

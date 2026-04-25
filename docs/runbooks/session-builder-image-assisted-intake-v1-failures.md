@@ -310,7 +310,7 @@ fields @timestamp, level, eventType, message, tenantId, userId, requestId, corre
 ## Related docs
 
 - `docs/architecture/session-builder-image-assisted-intake-v1.md`
-- `docs/product/sic-coach-lite/image-assisted-intake-v1-scope.md`
+- `docs/product/club-vivo/future/image-assisted-intake-v1-scope.md`
 - `docs/progress/week_18/week18-day1-scope-lock.md`
 - `docs/runbooks/auth-failures.md`
 - `docs/runbooks/entitlement-failures.md`

@@ -112,7 +112,7 @@ Start here:
 - Tenant claim contract: [`docs/architecture/tenant-claim-contract.md`](docs/architecture/tenant-claim-contract.md)
 - Repo structure: [`docs/architecture/repo-structure.md`](docs/architecture/repo-structure.md)
 - Architecture diagrams: [`docs/architecture/architecture-diagrams.md`](docs/architecture/architecture-diagrams.md)
-- Product spec: [`docs/product/sic-coach-lite/sic-session-builder.md`](docs/product/sic-coach-lite/sic-session-builder.md)
+- Product spec: [`docs/product/club-vivo/session-builder.md`](docs/product/club-vivo/session-builder.md)
 - Active roadmap: [`docs/progress/build-progress/roadmap-vnext.md`](docs/progress/build-progress/roadmap-vnext.md)
 
 ---

@@ -5,11 +5,12 @@ const assert = require("node:assert/strict");
 
 const { validateSessionFeedback } = require("./session-feedback-validate");
 
-test("validateSessionFeedback accepts valid input and trims missingFeatures", () => {
+test("validateSessionFeedback accepts valid input and trims optional favoriteActivity", () => {
   const result = validateSessionFeedback({
     sessionQuality: 4,
     drillUsefulness: 5,
     imageAnalysisAccuracy: "medium",
+    favoriteActivity: "  Activity 2 because the scoring rule made players compete.  ",
     missingFeatures: "  Wanted easier drill editing.  ",
     flowMode: "setup_to_drill",
   });
@@ -18,8 +19,26 @@ test("validateSessionFeedback accepts valid input and trims missingFeatures", ()
     sessionQuality: 4,
     drillUsefulness: 5,
     imageAnalysisAccuracy: "medium",
+    favoriteActivity: "Activity 2 because the scoring rule made players compete.",
     missingFeatures: "Wanted easier drill editing.",
     flowMode: "setup_to_drill",
+  });
+});
+
+test("validateSessionFeedback omits blank optional favoriteActivity", () => {
+  const result = validateSessionFeedback({
+    sessionQuality: 4,
+    drillUsefulness: 5,
+    imageAnalysisAccuracy: "not_used",
+    favoriteActivity: "   ",
+    missingFeatures: "Wanted easier drill editing.",
+  });
+
+  assert.deepEqual(result, {
+    sessionQuality: 4,
+    drillUsefulness: 5,
+    imageAnalysisAccuracy: "not_used",
+    missingFeatures: "Wanted easier drill editing.",
   });
 });
 
@@ -70,6 +89,24 @@ test("validateSessionFeedback rejects invalid imageAnalysisAccuracy", () => {
     (err) => {
       assert.equal(err.code, "invalid_field");
       assert.equal(err.details.field, "imageAnalysisAccuracy");
+      return true;
+    }
+  );
+});
+
+test("validateSessionFeedback rejects too-long favoriteActivity", () => {
+  assert.throws(
+    () =>
+      validateSessionFeedback({
+        sessionQuality: 3,
+        drillUsefulness: 4,
+        imageAnalysisAccuracy: "not_used",
+        favoriteActivity: "x".repeat(281),
+        missingFeatures: "Wanted more export options.",
+      }),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.field, "favoriteActivity");
       return true;
     }
   );

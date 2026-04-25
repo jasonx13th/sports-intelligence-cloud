@@ -30,6 +30,13 @@ The first product focus is helping coaches create and run sessions under real-wo
 
 This entry point is the **Session Builder**.
 
+Near-term, this expands into a lightweight **Coach Workspace** direction where:
+
+- first-time coaches set up once
+- returning coaches enter a fast session-builder landing flow
+- team context carries practical defaults
+- KSC-like program and methodology differences stay inside one shared app
+
 ### Stage 2 — Team workflows
 Once coaches can reliably create and reuse sessions, SIC expands into lightweight team workflows such as:
 
@@ -37,6 +44,13 @@ Once coaches can reliably create and reuse sessions, SIC expands into lightweigh
 - attendance
 - session history
 - simple planning views
+
+This stage increasingly depends on the team carrying the right product context, such as:
+
+- program type
+- age context
+- methodology defaults
+- planning continuity across repeat usage
 
 ### Stage 3 — Club and academy workflows
 As usage grows, SIC expands into organization-level workflows such as:
@@ -46,6 +60,8 @@ As usage grows, SIC expands into organization-level workflows such as:
 - club templates
 - organization-owned history
 - basic governance and continuity
+
+This includes a narrow coach-admin direction for visibility and methodology governance, without widening the underlying tenant-safe platform model.
 
 ### Stage 4 — Sports Organization OS
 Long term, SIC can evolve into a broader platform for clubs, academies, NGOs, schools, and sports programs that need one operational system across coaching, planning, reporting, and organizational processes.
@@ -125,6 +141,19 @@ Its job is simple:
 - later connect that work to teams and clubs
 
 This wedge matters because it creates immediate value for coaches while also laying the data foundation for future SIC features.
+
+Week 21 keeps Session Builder as the active wedge, but freezes the next product step as **Coach Workspace Hardening for KSC**.
+
+That means SIC should improve the product direction around:
+
+- first-time coach setup
+- returning-coach speed
+- team-level Travel vs OST context
+- team-level methodology defaults
+- Full Session vs Quick Drill direction
+- coach-admin governance direction
+
+This is still one shared app and one shared tenant-safe product path.
 
 ---
 

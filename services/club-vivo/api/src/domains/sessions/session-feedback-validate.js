@@ -5,6 +5,7 @@ const { requireFields, validationError } = require("../../platform/validation/va
 const IMAGE_ANALYSIS_ACCURACY_VALUES = ["not_used", "low", "medium", "high"];
 const FLOW_MODE_VALUES = ["session_builder", "environment_profile", "setup_to_drill"];
 const MISSING_FEATURES_MAX = 280;
+const FAVORITE_ACTIVITY_MAX = 280;
 
 function rejectUnknownFields(body, allowed) {
   const unknown = Object.keys(body || {}).filter((key) => !allowed.includes(key));
@@ -80,12 +81,41 @@ function requireTrimmedString(body, field, { max }) {
   return trimmed;
 }
 
+function optionalTrimmedString(body, field, { max }) {
+  const value = body?.[field];
+
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    throw validationError("invalid_field", `${field} must be a string`, {
+      field,
+    });
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (max && trimmed.length > max) {
+    throw validationError("invalid_field", `${field} is too long`, {
+      field,
+      max,
+    });
+  }
+
+  return trimmed;
+}
+
 function validateSessionFeedback(body) {
   const safeBody = body || {};
   const allowed = [
     "sessionQuality",
     "drillUsefulness",
     "imageAnalysisAccuracy",
+    "favoriteActivity",
     "missingFeatures",
     "flowMode",
   ];
@@ -108,6 +138,9 @@ function validateSessionFeedback(body) {
   const missingFeatures = requireTrimmedString(safeBody, "missingFeatures", {
     max: MISSING_FEATURES_MAX,
   });
+  const favoriteActivity = optionalTrimmedString(safeBody, "favoriteActivity", {
+    max: FAVORITE_ACTIVITY_MAX,
+  });
   const flowMode =
     safeBody?.flowMode === undefined
       ? undefined
@@ -117,6 +150,7 @@ function validateSessionFeedback(body) {
     sessionQuality,
     drillUsefulness,
     imageAnalysisAccuracy,
+    ...(favoriteActivity !== undefined ? { favoriteActivity } : {}),
     missingFeatures,
     ...(flowMode !== undefined ? { flowMode } : {}),
   };

@@ -1,5 +1,5 @@
 # SIC Architecture Roadmap vNext
-## Weeks 11–20 (Product-First, Low-Cost, Solo Builder Mode)
+## Weeks 11–21 (Product-First, Low-Cost, Solo Builder Mode)
 
 This roadmap continues the existing SIC architecture after Week 10.
 
@@ -342,31 +342,37 @@ Prepare SIC for a real Kensington Soccer Club coach pilot with Fut-Soccer and Ge
 
 ---
 
-## Week 21 — Production Lite Release
+## Week 21 — Coach Workspace Hardening for KSC
 
 ### Goal
-Ship the first stable version of SIC with Session Builder, Fut-Soccer support, and GenAI image-assisted intake.
+Freeze Week 21 as a Coach Workspace hardening week for KSC so the current authenticated Session Builder flow can evolve into a more realistic coach workspace without widening platform boundaries.
 
 ### Tasks
 
 #### Day 1
-- End-to-end smoke testing
-- Validate:
-  - auth
-  - session generation
-  - Fut-Soccer flow
-  - image upload flow
-  - export flow
-  - team assignment path if included
+- Freeze first-time coach setup direction
+- Freeze returning-coach Session Builder landing block
+- Freeze team-level KSC rules for:
+  - `programType = travel | ost`
+  - age context
+  - default duration
+- Freeze team-level methodology defaulting direction
+- Freeze Full Session vs Quick Drill product direction
+- Freeze coach-admin methodology and governance direction
 
 #### Day 2
-- Review AWS costs
-- Implement budget alarms
-- Review Bedrock usage and guardrails
-- Confirm logging and latency signals are usable
+- Harden Coach Workspace frontend direction for:
+  - first-time setup
+  - returning-coach landing flow
+  - team-aware session creation
+  - visible mode selection
+- Keep `/sessions/new` as the current shared generation path
+- Keep one shared coach-facing app
 
 #### Day 3
-- Publish release notes
-- Record final product demo
-- Capture portfolio screenshots and architecture evidence
-- Write launch-ready summary of what SIC now does
+- Freeze docs and product boundaries for:
+  - coach workspace direction
+  - methodology ownership
+  - coach-admin visibility direction
+  - realistic next-step implementation slices
+- Capture closeout summary and architecture evidence without widening auth, tenancy, entitlements, IAM, or CDK scope

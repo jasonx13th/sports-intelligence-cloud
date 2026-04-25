@@ -123,6 +123,24 @@ test("validateCreateSessionPack rejects incompatible finishing theme equipment",
   );
 });
 
+test("validateCreateSessionPack treats pug and mini goals as goal equipment", () => {
+  const miniGoalResult = validateCreateSessionPack(
+    makeValidPackRequest({
+      theme: "Finishing",
+      equipment: ["balls", "mini goals"],
+    })
+  );
+  const pugGoalResult = validateCreateSessionPack(
+    makeValidPackRequest({
+      theme: "Finishing",
+      equipment: ["balls", "pug goals"],
+    })
+  );
+
+  assert.deepEqual(miniGoalResult.equipment, ["balls", "mini goals"]);
+  assert.deepEqual(pugGoalResult.equipment, ["balls", "pug goals"]);
+});
+
 test("validateCreateSessionPack does not fail equipment compatibility when equipment is omitted", () => {
   const result = validateCreateSessionPack(
     makeValidPackRequest({

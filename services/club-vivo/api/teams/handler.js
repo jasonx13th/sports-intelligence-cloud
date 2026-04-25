@@ -3,7 +3,7 @@
 const { withPlatform } = require("../src/platform/http/with-platform");
 const { parseJsonBody } = require("../src/platform/http/parse-body");
 const { TeamRepository } = require("../src/domains/teams/team-repository");
-const { validateCreateTeam } = require("../src/domains/teams/team-validate");
+const { validateCreateTeam, validateUpdateTeam } = require("../src/domains/teams/team-validate");
 const {
   validateAssignSession,
 } = require("../src/domains/teams/team-session-assignment-validate");
@@ -16,7 +16,6 @@ const {
 } = require("../src/domains/teams/team-weekly-planning-validate");
 const {
   BadRequestError,
-  ForbiddenError,
   NotFoundError,
   ConflictError,
   InternalError,
@@ -103,6 +102,12 @@ function isGetTeamByIdRoute(event) {
   return /^GET \/teams\/[^/]+$/.test(rk);
 }
 
+function isUpdateTeamRoute(event) {
+  const rk = routeKey(event);
+  if (rk === "PUT /teams/{teamId}") return true;
+  return /^PUT \/teams\/[^/]+$/.test(rk);
+}
+
 function isListAssignedSessionsRoute(event) {
   const rk = routeKey(event);
   if (rk === "GET /teams/{teamId}/sessions") return true;
@@ -131,16 +136,6 @@ function isCreateAttendanceRoute(event) {
   const rk = routeKey(event);
   if (rk === "POST /teams/{teamId}/attendance") return true;
   return /^POST \/teams\/[^/]+\/attendance$/.test(rk);
-}
-
-function requireAdminRole(tenantCtx) {
-  if (tenantCtx?.role !== "admin") {
-    throw new ForbiddenError({
-      code: "teams.admin_required",
-      message: "Forbidden",
-      details: { requiredRole: "admin" },
-    });
-  }
 }
 
 function rethrowTeamDomainError(err) {
@@ -176,6 +171,7 @@ function rethrowTeamDomainError(err) {
 function createTeamsInner({
   getTeamRepoFn = getTeamRepo,
   validateCreateTeamFn = validateCreateTeam,
+  validateUpdateTeamFn = validateUpdateTeam,
   validateAssignSessionFn = validateAssignSession,
   validateCreateAttendanceFn = validateCreateAttendance,
   validateListAttendanceQueryFn = validateListAttendanceQuery,
@@ -187,7 +183,6 @@ function createTeamsInner({
     const rk = routeKey(event);
 
     if (rk === "POST /teams") {
-      requireAdminRole(tenantCtx);
       assertNoClientTenantInputs(event);
 
       let body;
@@ -224,6 +219,47 @@ function createTeamsInner({
 
       logger.info("team_listed", "teams listed", {
         http: { statusCode: 200 },
+      });
+
+      return json(200, result);
+    }
+
+    if (isUpdateTeamRoute(event)) {
+      assertNoClientTenantInputs(event);
+
+      const teamId = event?.pathParameters?.teamId;
+      if (!teamId) {
+        throw new BadRequestError({
+          code: "platform.bad_request",
+          message: "Bad request",
+          details: { missing: ["teamId"] },
+        });
+      }
+
+      let body;
+      try {
+        body = parseJsonBody(event);
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      let teamInput;
+      try {
+        teamInput = validateUpdateTeamFn(body);
+      } catch (e) {
+        throw toBadRequest(e);
+      }
+
+      let result;
+      try {
+        result = await getTeamRepoFn().updateTeam(tenantCtx, teamId, teamInput);
+      } catch (err) {
+        rethrowTeamDomainError(err);
+      }
+
+      logger.info("team_updated", "team updated", {
+        http: { statusCode: 200 },
+        resource: { entityType: "TEAM", entityId: result.team?.teamId },
       });
 
       return json(200, result);

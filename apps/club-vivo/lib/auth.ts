@@ -3,8 +3,10 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 export const ACCESS_COOKIE = "sic_access_token";
+export const IDENTITY_COOKIE = "sic_identity_token";
 export const AUTH_STATE_COOKIE = "sic_auth_state";
 export const PKCE_VERIFIER_COOKIE = "sic_pkce_verifier";
+const HOSTED_AUTH_SCOPE = "openid email aws.cognito.signin.user.admin";
 
 type AuthConfig = {
   apiUrl: string;
@@ -21,6 +23,7 @@ type ExchangeCodeOptions = {
 
 type TokenExchangeResult = {
   accessToken: string;
+  idToken?: string;
   expiresIn?: number;
 };
 
@@ -59,17 +62,42 @@ export function getRequiredAuthConfig(): AuthConfig {
 
 export function buildAuthorizeUrl({
   state,
+  codeChallenge,
+  mode = "signin"
+}: {
+  state: string;
+  codeChallenge: string;
+  mode?: "signin" | "signup";
+}) {
+  const config = getRequiredAuthConfig();
+  const path = mode === "signup" ? "signup" : "oauth2/authorize";
+  const url = new URL(path, config.cognitoDomain);
+
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", config.webClientId);
+  url.searchParams.set("redirect_uri", config.redirectUri);
+  url.searchParams.set("scope", HOSTED_AUTH_SCOPE);
+  url.searchParams.set("state", state);
+  url.searchParams.set("code_challenge_method", "S256");
+  url.searchParams.set("code_challenge", codeChallenge);
+
+  return url;
+}
+
+export function buildFreshSignInUrl({
+  state,
   codeChallenge
 }: {
   state: string;
   codeChallenge: string;
 }) {
   const config = getRequiredAuthConfig();
-  const url = new URL("oauth2/authorize", config.cognitoDomain);
+  const url = new URL("logout", config.cognitoDomain);
 
-  url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", config.webClientId);
+  url.searchParams.set("response_type", "code");
   url.searchParams.set("redirect_uri", config.redirectUri);
+  url.searchParams.set("scope", HOSTED_AUTH_SCOPE);
   url.searchParams.set("state", state);
   url.searchParams.set("code_challenge_method", "S256");
   url.searchParams.set("code_challenge", codeChallenge);
@@ -105,6 +133,7 @@ export async function exchangeAuthorizationCode({
 
   const payload = (await response.json()) as {
     access_token?: string;
+    id_token?: string;
     expires_in?: number;
   };
 
@@ -114,6 +143,9 @@ export async function exchangeAuthorizationCode({
 
   return {
     accessToken: payload.access_token,
+    ...(typeof payload.id_token === "string" && payload.id_token.length > 0
+      ? { idToken: payload.id_token }
+      : {}),
     expiresIn: typeof payload.expires_in === "number" ? payload.expires_in : undefined
   };
 }
@@ -161,8 +193,37 @@ export function setAccessTokenCookie(
   });
 }
 
+export function setIdentityTokenCookie(
+  response: NextResponse,
+  {
+    idToken,
+    expiresIn
+  }: {
+    idToken: string;
+    expiresIn?: number;
+  }
+) {
+  response.cookies.set({
+    name: IDENTITY_COOKIE,
+    value: idToken,
+    ...(typeof expiresIn === "number" ? { maxAge: expiresIn } : {}),
+    ...getCookieOptions()
+  });
+}
+
+export function clearSessionCookies(response: NextResponse) {
+  for (const cookieName of [ACCESS_COOKIE, IDENTITY_COOKIE]) {
+    response.cookies.set({
+      name: cookieName,
+      value: "",
+      maxAge: 0,
+      ...getCookieOptions()
+    });
+  }
+}
+
 export function clearAuthCookies(response: NextResponse) {
-  for (const cookieName of [ACCESS_COOKIE, AUTH_STATE_COOKIE, PKCE_VERIFIER_COOKIE]) {
+  for (const cookieName of [ACCESS_COOKIE, IDENTITY_COOKIE, AUTH_STATE_COOKIE, PKCE_VERIFIER_COOKIE]) {
     response.cookies.set({
       name: cookieName,
       value: "",
@@ -181,4 +242,56 @@ export function clearTemporaryAuthCookies(response: NextResponse) {
       ...getCookieOptions()
     });
   }
+}
+
+function decodeJwtPayload(token: string) {
+  const [, payload] = token.split(".");
+
+  if (!payload) {
+    return null;
+  }
+
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const decoded = Buffer.from(padded, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded);
+
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readTextClaim(claims: Record<string, unknown> | null, key: string) {
+  const value = claims?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function getDisplayNameFromEmail(email: string | null) {
+  if (!email) {
+    return null;
+  }
+
+  const atIndex = email.indexOf("@");
+  const localPart = atIndex > 0 ? email.slice(0, atIndex).trim() : "";
+
+  return localPart.length > 0 ? localPart : null;
+}
+
+export function getDisplayIdentityFromAccessToken(accessToken: string) {
+  return getDisplayIdentityFromJwt(accessToken);
+}
+
+export function getDisplayIdentityFromJwt(token: string) {
+  const claims = decodeJwtPayload(token);
+  const email = readTextClaim(claims, "email");
+
+  return (
+    getDisplayNameFromEmail(email) ||
+    email ||
+    readTextClaim(claims, "username") ||
+    readTextClaim(claims, "cognito:username") ||
+    readTextClaim(claims, "sub")
+  );
 }

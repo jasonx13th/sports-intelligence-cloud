@@ -36,3 +36,6 @@ infra/cdk/git
 .workspace/
 repo-export/
 *.local.md
+.tmp-methodology-smoke/
+infra/cdk/cdk.out.methodology-verify-deploy/
+infra/cdk/cdk.out.methodology-verify-synth/

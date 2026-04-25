@@ -7,7 +7,7 @@ const {
 } = require("@aws-sdk/client-dynamodb");
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
 const crypto = require("crypto");
-const { validateCreateTeam } = require("./team-validate");
+const { validateCreateTeam, validateUpdateTeam } = require("./team-validate");
 
 const ddb = new DynamoDBClient({});
 
@@ -20,6 +20,17 @@ function requireTenantId(tenantContext) {
     throw err;
   }
   return tenantId;
+}
+
+function requireUserId(tenantContext) {
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    const err = new Error("Missing userId in tenantContext");
+    err.code = "missing_user_context";
+    err.statusCode = 500;
+    throw err;
+  }
+  return userId.trim();
 }
 
 function newTeamId() {
@@ -78,10 +89,40 @@ function normalizeTeam(obj) {
     ageBand: obj.ageBand,
     ...(obj.level ? { level: obj.level } : {}),
     ...(obj.notes ? { notes: obj.notes } : {}),
+    ...(obj.programType ? { programType: obj.programType } : {}),
+    ...(obj.playerCount !== undefined ? { playerCount: obj.playerCount } : {}),
     status: obj.status,
     createdAt: obj.createdAt,
     updatedAt: obj.updatedAt,
-    createdBy: obj.createdBy,
+    createdBy: obj.createdBy ?? null,
+  };
+}
+
+function isAdminActor(tenantContext) {
+  return tenantContext?.role === "admin";
+}
+
+function canAccessTeam(tenantContext, team) {
+  if (isAdminActor(tenantContext)) {
+    return true;
+  }
+
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    return false;
+  }
+
+  return team?.createdBy === userId.trim();
+}
+
+function toItemKey(item) {
+  if (!item?.PK || !item?.SK) {
+    return undefined;
+  }
+
+  return {
+    PK: item.PK,
+    SK: item.SK,
   };
 }
 
@@ -121,6 +162,19 @@ function normalizeSessionSummaryForAssignment(obj) {
     durationMin: obj.durationMin,
     objectiveTags: obj.objectiveTags || [],
   };
+}
+
+function canAccessSessionForUse(tenantContext, session) {
+  if (isAdminActor(tenantContext)) {
+    return true;
+  }
+
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    return false;
+  }
+
+  return session?.createdBy === userId.trim();
 }
 
 function requireTeamId(teamId) {
@@ -266,24 +320,64 @@ class TeamRepository {
   async listTeams(tenantContext, { limit, nextToken } = {}) {
     const tenantId = requireTenantId(tenantContext);
     const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
-    const exclusiveStartKey = decodeNextToken(nextToken);
+    let exclusiveStartKey = decodeNextToken(nextToken);
 
-    const res = await ddb.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
-        ExpressionAttributeValues: {
-          ":pk": { S: `TENANT#${tenantId}` },
-          ":skPrefix": { S: "TEAM#" },
-        },
-        Limit: safeLimit,
-        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
-      })
-    );
+    const queryPage = async (startKey) =>
+      ddb.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": { S: `TENANT#${tenantId}` },
+            ":skPrefix": { S: "TEAM#" },
+          },
+          Limit: safeLimit,
+          ...(startKey ? { ExclusiveStartKey: startKey } : {}),
+        })
+      );
+
+    if (isAdminActor(tenantContext)) {
+      const res = await queryPage(exclusiveStartKey);
+
+      return {
+        items: (res.Items ?? []).map((item) => normalizeTeam(unmarshall(item))),
+        nextToken: encodeNextToken(res.LastEvaluatedKey),
+      };
+    }
+
+    const visibleItems = [];
+    let nextVisibleTokenKey;
+
+    while (visibleItems.length < safeLimit) {
+      const res = await queryPage(exclusiveStartKey);
+      const pageItems = res.Items ?? [];
+
+      for (let index = 0; index < pageItems.length; index += 1) {
+        const item = pageItems[index];
+        const normalizedTeam = normalizeTeam(unmarshall(item));
+        if (!canAccessTeam(tenantContext, normalizedTeam)) {
+          continue;
+        }
+
+        visibleItems.push(normalizedTeam);
+
+        if (visibleItems.length === safeLimit) {
+          const hasMoreRawItems = index < pageItems.length - 1 || Boolean(res.LastEvaluatedKey);
+          nextVisibleTokenKey = hasMoreRawItems ? toItemKey(item) : undefined;
+          break;
+        }
+      }
+
+      if (visibleItems.length === safeLimit || !res.LastEvaluatedKey) {
+        break;
+      }
+
+      exclusiveStartKey = res.LastEvaluatedKey;
+    }
 
     return {
-      items: (res.Items ?? []).map((item) => normalizeTeam(unmarshall(item))),
-      nextToken: encodeNextToken(res.LastEvaluatedKey),
+      items: visibleItems,
+      nextToken: encodeNextToken(nextVisibleTokenKey),
     };
   }
 
@@ -306,8 +400,13 @@ class TeamRepository {
     const item = res.Items?.[0];
     if (!item) return null;
 
+    const normalizedTeam = normalizeTeam(unmarshall(item));
+    if (!canAccessTeam(tenantContext, normalizedTeam)) {
+      return null;
+    }
+
     return {
-      team: normalizeTeam(unmarshall(item)),
+      team: normalizedTeam,
     };
   }
 
@@ -351,7 +450,12 @@ class TeamRepository {
     const sessionItem = sessionRes.Items?.[0];
     if (!sessionItem) return null;
 
-    return normalizeSessionSummaryForAssignment(unmarshall(sessionItem));
+    const session = unmarshall(sessionItem);
+    if (!canAccessSessionForUse(tenantContext, session)) {
+      return null;
+    }
+
+    return normalizeSessionSummaryForAssignment(session);
   }
 
   async getAssignedSessionByIds(tenantContext, { teamId, sessionId }) {
@@ -668,6 +772,7 @@ class TeamRepository {
 
   async createTeam(tenantContext, input) {
     const tenantId = requireTenantId(tenantContext);
+    const createdBy = requireUserId(tenantContext);
     const teamInput = validateCreateTeam(input);
 
     const now = new Date().toISOString();
@@ -683,10 +788,12 @@ class TeamRepository {
       ageBand: teamInput.ageBand,
       ...(teamInput.level !== undefined ? { level: teamInput.level } : {}),
       ...(teamInput.notes !== undefined ? { notes: teamInput.notes } : {}),
+      ...(teamInput.programType !== undefined ? { programType: teamInput.programType } : {}),
+      ...(teamInput.playerCount !== undefined ? { playerCount: teamInput.playerCount } : {}),
       status: teamInput.status,
       createdAt: now,
       updatedAt: now,
-      createdBy: tenantContext?.userId || null,
+      createdBy,
     };
 
     await ddb.send(
@@ -699,6 +806,55 @@ class TeamRepository {
 
     return {
       team: normalizeTeam(teamItem),
+    };
+  }
+
+  async updateTeam(tenantContext, teamId, input) {
+    const tenantId = requireTenantId(tenantContext);
+    const safeTeamId = requireTeamId(teamId);
+    const teamInput = validateUpdateTeam(input);
+    const existing = await this.getTeamById(tenantContext, safeTeamId);
+
+    if (!existing?.team) {
+      const err = new Error("Team not found");
+      err.code = "teams.not_found";
+      err.statusCode = 404;
+      err.details = {
+        entityType: "TEAM",
+        teamId: safeTeamId,
+      };
+      throw err;
+    }
+
+    const currentTeam = existing.team;
+    const updatedItem = {
+      PK: `TENANT#${tenantId}`,
+      SK: `TEAM#${safeTeamId}`,
+      type: "TEAM",
+      teamId: safeTeamId,
+      tenantId,
+      name: teamInput.name,
+      sport: teamInput.sport,
+      ageBand: teamInput.ageBand,
+      ...(teamInput.level !== undefined ? { level: teamInput.level } : {}),
+      ...(teamInput.notes !== undefined ? { notes: teamInput.notes } : {}),
+      ...(teamInput.programType !== undefined ? { programType: teamInput.programType } : {}),
+      ...(teamInput.playerCount !== undefined ? { playerCount: teamInput.playerCount } : {}),
+      status: teamInput.status,
+      createdAt: currentTeam.createdAt,
+      updatedAt: new Date().toISOString(),
+      createdBy: currentTeam.createdBy ?? null,
+    };
+
+    await ddb.send(
+      new PutItemCommand({
+        TableName: this.tableName,
+        Item: marshall(updatedItem),
+      })
+    );
+
+    return {
+      team: normalizeTeam(updatedItem),
     };
   }
 }

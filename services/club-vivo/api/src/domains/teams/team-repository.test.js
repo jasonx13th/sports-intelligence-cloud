@@ -8,11 +8,22 @@ const { unmarshall, marshall } = require("@aws-sdk/util-dynamodb");
 
 const { TeamRepository } = require("./team-repository");
 
-function makeTenantContext() {
+function makeTenantContext({
+  tenantId = "tenant_authoritative",
+  userId = "user-123",
+  role = "coach",
+} = {}) {
   return {
-    tenantId: "tenant_authoritative",
-    userId: "user-123",
+    tenantId,
+    userId,
+    role,
   };
+}
+
+function decodeToken(nextToken) {
+  return nextToken
+    ? JSON.parse(Buffer.from(nextToken, "base64").toString("utf8"))
+    : undefined;
 }
 
 function withMockedSend(sendImpl, fn) {
@@ -37,7 +48,7 @@ function withMockedUuid(uuid, fn) {
     });
 }
 
-test("createTeam persists Team v1 fields and defaults status to active", async () => {
+test("createTeam persists Team ownership, optional durable context, and defaults status to active", async () => {
   const repo = new TeamRepository({ tableName: "domain-table" });
   const calls = [];
 
@@ -47,12 +58,14 @@ test("createTeam persists Team v1 fields and defaults status to active", async (
       assert.equal(command instanceof PutItemCommand, true);
       return {};
     }, async () => {
-      const result = await repo.createTeam(makeTenantContext(), {
+      const result = await repo.createTeam(makeTenantContext({ role: "coach" }), {
         name: " U14 Blue ",
         sport: " soccer ",
         ageBand: " U14 ",
         level: " competitive ",
         notes: "  Strong group  ",
+        programType: "travel",
+        playerCount: 18,
       });
 
       assert.deepEqual(result, {
@@ -64,6 +77,8 @@ test("createTeam persists Team v1 fields and defaults status to active", async (
           ageBand: "U14",
           level: "competitive",
           notes: "Strong group",
+          programType: "travel",
+          playerCount: 18,
           status: "active",
           createdAt: result.team.createdAt,
           updatedAt: result.team.updatedAt,
@@ -83,9 +98,11 @@ test("createTeam persists Team v1 fields and defaults status to active", async (
   assert.equal(written.ageBand, "U14");
   assert.equal(written.level, "competitive");
   assert.equal(written.notes, "Strong group");
+  assert.equal(written.programType, "travel");
+  assert.equal(written.playerCount, 18);
 });
 
-test("getTeamById uses a tenant-scoped exact-key query and returns the team", async () => {
+test("getTeamById returns an owned team for a coach via a tenant-scoped exact-key query", async () => {
   const repo = new TeamRepository({ tableName: "domain-table" });
   const calls = [];
 
@@ -103,6 +120,8 @@ test("getTeamById uses a tenant-scoped exact-key query and returns the team", as
           name: "U14 Blue",
           sport: "soccer",
           ageBand: "U14",
+          programType: "travel",
+          playerCount: 18,
           status: "active",
           createdAt: "2026-04-10T00:00:00.000Z",
           updatedAt: "2026-04-10T00:00:00.000Z",
@@ -111,7 +130,7 @@ test("getTeamById uses a tenant-scoped exact-key query and returns the team", as
       ],
     };
   }, async () => {
-    const result = await repo.getTeamById(makeTenantContext(), "team-123");
+    const result = await repo.getTeamById(makeTenantContext({ role: "coach" }), "team-123");
     assert.deepEqual(result, {
       team: {
         teamId: "team-123",
@@ -119,6 +138,8 @@ test("getTeamById uses a tenant-scoped exact-key query and returns the team", as
         name: "U14 Blue",
         sport: "soccer",
         ageBand: "U14",
+        programType: "travel",
+        playerCount: 18,
         status: "active",
         createdAt: "2026-04-10T00:00:00.000Z",
         updatedAt: "2026-04-10T00:00:00.000Z",
@@ -147,7 +168,83 @@ test("getTeamById returns null when the team is missing in the tenant scope", as
   });
 });
 
-test("listTeams remains query-based and normalizes Team v1 fields", async () => {
+test("getTeamById returns null for a non-owner coach and 404 can be enforced at the handler layer", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-123",
+          type: "TEAM",
+          teamId: "team-123",
+          tenantId: "tenant_authoritative",
+          name: "U14 Blue",
+          sport: "soccer",
+          ageBand: "U14",
+          status: "active",
+          createdAt: "2026-04-10T00:00:00.000Z",
+          updatedAt: "2026-04-10T00:00:00.000Z",
+          createdBy: "user-999",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getTeamById(makeTenantContext({ role: "coach" }), "team-123");
+    assert.equal(result, null);
+  });
+});
+
+test("getTeamById lets an admin fetch another coach's team", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-123",
+          type: "TEAM",
+          teamId: "team-123",
+          tenantId: "tenant_authoritative",
+          name: "U14 Blue",
+          sport: "soccer",
+          ageBand: "U14",
+          notes: "Strong group",
+          programType: "ost",
+          playerCount: 12,
+          status: "active",
+          createdAt: "2026-04-10T00:00:00.000Z",
+          updatedAt: "2026-04-10T00:00:00.000Z",
+          createdBy: "user-999",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getTeamById(makeTenantContext({ role: "admin" }), "team-123");
+    assert.deepEqual(result, {
+      team: {
+        teamId: "team-123",
+        tenantId: "tenant_authoritative",
+        name: "U14 Blue",
+        sport: "soccer",
+        ageBand: "U14",
+        notes: "Strong group",
+        programType: "ost",
+        playerCount: 12,
+        status: "active",
+        createdAt: "2026-04-10T00:00:00.000Z",
+        updatedAt: "2026-04-10T00:00:00.000Z",
+        createdBy: "user-999",
+      },
+    });
+  });
+});
+
+test("listTeams keeps admin visibility tenant-wide", async () => {
   const repo = new TeamRepository({ tableName: "domain-table" });
 
   await withMockedSend(async (command) => {
@@ -165,15 +262,31 @@ test("listTeams remains query-based and normalizes Team v1 fields", async () => 
           sport: "soccer",
           ageBand: "U14",
           notes: "Strong group",
+          programType: "ost",
+          playerCount: 12,
           status: "active",
           createdAt: "2026-04-10T00:00:00.000Z",
           updatedAt: "2026-04-10T00:00:00.000Z",
           createdBy: "user-123",
         }),
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-456",
+          type: "TEAM",
+          teamId: "team-456",
+          tenantId: "tenant_authoritative",
+          name: "U12 White",
+          sport: "soccer",
+          ageBand: "U12",
+          status: "active",
+          createdAt: "2026-04-11T00:00:00.000Z",
+          updatedAt: "2026-04-11T00:00:00.000Z",
+          createdBy: "user-999",
+        }),
       ],
     };
   }, async () => {
-    const result = await repo.listTeams(makeTenantContext(), { limit: 10 });
+    const result = await repo.listTeams(makeTenantContext({ role: "admin" }), { limit: 10 });
     assert.deepEqual(result, {
       items: [
         {
@@ -183,14 +296,264 @@ test("listTeams remains query-based and normalizes Team v1 fields", async () => 
           sport: "soccer",
           ageBand: "U14",
           notes: "Strong group",
+          programType: "ost",
+          playerCount: 12,
           status: "active",
           createdAt: "2026-04-10T00:00:00.000Z",
           updatedAt: "2026-04-10T00:00:00.000Z",
           createdBy: "user-123",
         },
+        {
+          teamId: "team-456",
+          tenantId: "tenant_authoritative",
+          name: "U12 White",
+          sport: "soccer",
+          ageBand: "U12",
+          status: "active",
+          createdAt: "2026-04-11T00:00:00.000Z",
+          updatedAt: "2026-04-11T00:00:00.000Z",
+          createdBy: "user-999",
+        },
       ],
       nextToken: undefined,
     });
+  });
+});
+
+test("listTeams returns only owner-visible teams and keeps filtered pagination correct", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+    assert.equal(command instanceof QueryCommand, true);
+
+    if (calls.length === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "TEAM#team-100",
+            type: "TEAM",
+            teamId: "team-100",
+            tenantId: "tenant_authoritative",
+            name: "Hidden One",
+            sport: "soccer",
+            ageBand: "U10",
+            status: "active",
+            createdAt: "2026-04-10T00:00:00.000Z",
+            updatedAt: "2026-04-10T00:00:00.000Z",
+            createdBy: "user-999",
+          }),
+        ],
+        LastEvaluatedKey: marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-100",
+        }),
+      };
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-200",
+          type: "TEAM",
+          teamId: "team-200",
+          tenantId: "tenant_authoritative",
+          name: "Owned One",
+          sport: "soccer",
+          ageBand: "U12",
+          status: "active",
+          createdAt: "2026-04-11T00:00:00.000Z",
+          updatedAt: "2026-04-11T00:00:00.000Z",
+          createdBy: "user-123",
+        }),
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-201",
+          type: "TEAM",
+          teamId: "team-201",
+          tenantId: "tenant_authoritative",
+          name: "Owned Two",
+          sport: "soccer",
+          ageBand: "U13",
+          status: "active",
+          createdAt: "2026-04-12T00:00:00.000Z",
+          updatedAt: "2026-04-12T00:00:00.000Z",
+          createdBy: "user-123",
+        }),
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-202",
+          type: "TEAM",
+          teamId: "team-202",
+          tenantId: "tenant_authoritative",
+          name: "Owned Three",
+          sport: "soccer",
+          ageBand: "U14",
+          status: "active",
+          createdAt: "2026-04-13T00:00:00.000Z",
+          updatedAt: "2026-04-13T00:00:00.000Z",
+          createdBy: "user-123",
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.listTeams(makeTenantContext({ role: "coach" }), { limit: 2 });
+    assert.deepEqual(result.items, [
+      {
+        teamId: "team-200",
+        tenantId: "tenant_authoritative",
+        name: "Owned One",
+        sport: "soccer",
+        ageBand: "U12",
+        status: "active",
+        createdAt: "2026-04-11T00:00:00.000Z",
+        updatedAt: "2026-04-11T00:00:00.000Z",
+        createdBy: "user-123",
+      },
+      {
+        teamId: "team-201",
+        tenantId: "tenant_authoritative",
+        name: "Owned Two",
+        sport: "soccer",
+        ageBand: "U13",
+        status: "active",
+        createdAt: "2026-04-12T00:00:00.000Z",
+        updatedAt: "2026-04-12T00:00:00.000Z",
+        createdBy: "user-123",
+      },
+    ]);
+    assert.deepEqual(decodeToken(result.nextToken), {
+      PK: { S: "TENANT#tenant_authoritative" },
+      SK: { S: "TEAM#team-201" },
+    });
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].input.ExclusiveStartKey, undefined);
+  assert.deepEqual(calls[1].input.ExclusiveStartKey, {
+    PK: { S: "TENANT#tenant_authoritative" },
+    SK: { S: "TEAM#team-100" },
+  });
+});
+
+test("updateTeam persists edited Team fields and optional durable context for an owning coach", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  const calls = [];
+
+  await withMockedSend(async (command) => {
+    calls.push(command);
+
+    if (calls.length === 1) {
+      assert.equal(command instanceof QueryCommand, true);
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "TEAM#team-123",
+            type: "TEAM",
+            teamId: "team-123",
+            tenantId: "tenant_authoritative",
+            name: "U14 Blue",
+            sport: "soccer",
+            ageBand: "U14",
+            status: "active",
+            createdAt: "2026-04-10T00:00:00.000Z",
+            updatedAt: "2026-04-10T00:00:00.000Z",
+            createdBy: "user-123",
+          }),
+        ],
+      };
+    }
+
+    assert.equal(command instanceof PutItemCommand, true);
+    return {};
+  }, async () => {
+    const result = await repo.updateTeam(makeTenantContext({ role: "coach" }), "team-123", {
+      name: " U14 Blue East ",
+      sport: " soccer ",
+      ageBand: " U14 ",
+      level: " competitive ",
+      notes: "  Strong group  ",
+      status: "archived",
+      programType: "travel",
+      playerCount: 18,
+    });
+
+    assert.deepEqual(result, {
+      team: {
+        teamId: "team-123",
+        tenantId: "tenant_authoritative",
+        name: "U14 Blue East",
+        sport: "soccer",
+        ageBand: "U14",
+        level: "competitive",
+        notes: "Strong group",
+        status: "archived",
+        programType: "travel",
+        playerCount: 18,
+        createdAt: "2026-04-10T00:00:00.000Z",
+        updatedAt: result.team.updatedAt,
+        createdBy: "user-123",
+      },
+    });
+  });
+
+  assert.equal(calls.length, 2);
+  const written = unmarshall(calls[1].input.Item);
+  assert.equal(written.PK, "TENANT#tenant_authoritative");
+  assert.equal(written.SK, "TEAM#team-123");
+  assert.equal(written.type, "TEAM");
+  assert.equal(written.name, "U14 Blue East");
+  assert.equal(written.programType, "travel");
+  assert.equal(written.playerCount, 18);
+  assert.equal(written.createdAt, "2026-04-10T00:00:00.000Z");
+  assert.equal(written.createdBy, "user-123");
+});
+
+test("updateTeam returns 404 when a coach tries to update a team they do not own", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+
+  await withMockedSend(async (command) => {
+    assert.equal(command instanceof QueryCommand, true);
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "TEAM#team-404",
+          type: "TEAM",
+          teamId: "team-404",
+          tenantId: "tenant_authoritative",
+          name: "U14 Blue",
+          sport: "soccer",
+          ageBand: "U14",
+          status: "active",
+          createdAt: "2026-04-10T00:00:00.000Z",
+          updatedAt: "2026-04-10T00:00:00.000Z",
+          createdBy: "user-999",
+        }),
+      ],
+    };
+  }, async () => {
+    await assert.rejects(
+      () =>
+        repo.updateTeam(makeTenantContext({ role: "coach" }), "team-404", {
+          name: "U14 Blue",
+          sport: "soccer",
+          ageBand: "U14",
+        }),
+      (err) => {
+        assert.equal(err.code, "teams.not_found");
+        assert.equal(err.statusCode, 404);
+        assert.deepEqual(err.details, {
+          entityType: "TEAM",
+          teamId: "team-404",
+        });
+        return true;
+      }
+    );
   });
 });
 
@@ -223,6 +586,7 @@ test("getSessionSummaryForAssignment uses query-only lookup and returns a small 
           type: "SESSION",
           sessionId: "session-123",
           createdAt: "2026-04-01T00:00:00.000Z",
+          createdBy: "user-123",
           sport: "soccer",
           ageBand: "U14",
           durationMin: 45,
@@ -252,6 +616,92 @@ test("getSessionSummaryForAssignment uses query-only lookup and returns a small 
   assert.deepEqual(calls[1].input.ExpressionAttributeValues, {
     ":pk": { S: "TENANT#tenant_authoritative" },
     ":sk": { S: "SESSION#2026-04-01T00:00:00.000Z#session-123" },
+  });
+});
+
+test("getSessionSummaryForAssignment returns null for another coach's saved session", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  let calls = 0;
+
+  await withMockedSend(async () => {
+    calls += 1;
+
+    if (calls === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "SESSIONLOOKUP#session-123",
+            targetPK: "TENANT#tenant_authoritative",
+            targetSK: "SESSION#2026-04-01T00:00:00.000Z#session-123",
+          }),
+        ],
+      };
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-01T00:00:00.000Z#session-123",
+          type: "SESSION",
+          sessionId: "session-123",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          createdBy: "other-user",
+          sport: "soccer",
+          ageBand: "U14",
+          durationMin: 45,
+          objectiveTags: ["pressing"],
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getSessionSummaryForAssignment(makeTenantContext(), "session-123");
+    assert.equal(result, null);
+  });
+});
+
+test("getSessionSummaryForAssignment lets admins use legacy ownerless saved sessions", async () => {
+  const repo = new TeamRepository({ tableName: "domain-table" });
+  let calls = 0;
+
+  await withMockedSend(async () => {
+    calls += 1;
+
+    if (calls === 1) {
+      return {
+        Items: [
+          marshall({
+            PK: "TENANT#tenant_authoritative",
+            SK: "SESSIONLOOKUP#session-legacy",
+            targetPK: "TENANT#tenant_authoritative",
+            targetSK: "SESSION#2026-04-01T00:00:00.000Z#session-legacy",
+          }),
+        ],
+      };
+    }
+
+    return {
+      Items: [
+        marshall({
+          PK: "TENANT#tenant_authoritative",
+          SK: "SESSION#2026-04-01T00:00:00.000Z#session-legacy",
+          type: "SESSION",
+          sessionId: "session-legacy",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          sport: "soccer",
+          ageBand: "U14",
+          durationMin: 45,
+          objectiveTags: ["legacy"],
+        }),
+      ],
+    };
+  }, async () => {
+    const result = await repo.getSessionSummaryForAssignment(
+      makeTenantContext({ role: "admin" }),
+      "session-legacy"
+    );
+    assert.equal(result.sessionId, "session-legacy");
   });
 });
 

@@ -180,6 +180,129 @@ test("generatePack applies a deterministic fut-soccer pressing bias without chan
   ]);
 });
 
+test("generatePack applies compact builder prompt notes and environment to activity descriptions", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing | notes:first pass after regain | env:turf",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.match(session.activities[0].description, /Today's focus: pressing\./i);
+  assert.match(session.activities[0].description, /available turf\./i);
+  assert.match(session.activities[1].description, /Coach note: first pass after regain\./i);
+});
+
+test("generatePack applies a quick-session bias that feels playful and easy to run", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 60,
+    theme: "quick | finishing | notes:small teams | env:grass",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.match(
+    session.activities[0].description,
+    /Keep the setup easy to run and let the players get into the activity quickly\./
+  );
+  assert.match(
+    session.activities[1].description,
+    /Use playful competition and simple rules so the session stays fun and game-like\./
+  );
+  assert.match(
+    session.activities[2].description,
+    /Finish with a free-flowing game that lets the players solve problems and enjoy the session\./
+  );
+});
+
+test("generatePack derives useful quick-session tags, equipment, and coaching detail from compact prompt theme", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | attacking transition 4v3 | 7 players",
+    sessionsCount: 1,
+    equipment: ["mini goals", "flat cones", "balls"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.deepEqual(pack.equipment, ["mini goals", "flat cones", "balls"]);
+  assert.deepEqual(session.equipment, ["mini goals", "flat cones", "balls"]);
+  assert.deepEqual(session.objectiveTags.slice(0, 4), [
+    "attacking",
+    "transition",
+    "4v3",
+    "overloads",
+  ]);
+  assert.match(session.activities[0].description, /Cue first three steps/);
+  assert.match(session.activities[1].description, /Scoring:/);
+  assert.match(session.activities[2].description, /Progression:/);
+});
+
+test("generatePack uses pressure and possession prompt words instead of falling back to theme-only tags", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 50,
+    theme: "quick | possession under pressure",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.objectiveTags.includes("theme"), false);
+  assert.equal(session.objectiveTags.includes("possession"), true);
+  assert.equal(session.objectiveTags.includes("pressure"), true);
+});
+
+test("generatePack keeps default quick sessions at 60 minutes with exact activity totals", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | dribbling creativity | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(pack.durationMin, 60);
+  assert.equal(session.durationMin, 60);
+  assert.equal(minutesSum(session.activities), 60);
+  assert.deepEqual(session.equipment, ["cones", "pinnies"]);
+});
+
+test("generatePack creates a valid compact one-drill quick plan under 25 minutes", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 25,
+    theme: "quick | format:one_drill | 1v1 dribbling creativity | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.durationMin, 25);
+  assert.equal(session.activities.length, 1);
+  assert.equal(minutesSum(session.activities), 25);
+  assert.equal(session.activities[0].minutes, 25);
+  assert.equal(session.objectiveTags.includes("1v1"), true);
+  assert.equal(session.objectiveTags.includes("dribbling"), true);
+  assert.match(session.activities[0].description, /Setup:/);
+  assert.match(session.activities[0].description, /Scoring:/);
+  assert.match(session.activities[0].description, /Progression:/);
+});
+
 test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {
   const pack = generatePack({
     sport: "soccer",
@@ -204,4 +327,19 @@ test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite dr
   );
   assert.equal(Object.hasOwn(draft, "tenantId"), false);
   assert.equal(Object.hasOwn(draft, "tenant_id"), false);
+});
+
+test("buildCoachLiteDraftFromPack uses the primary objective rather than control segments in internal titles", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | pressing | notes:first pass after regain",
+    sessionsCount: 1,
+  });
+
+  const draft = buildCoachLiteDraftFromPack(pack);
+
+  assert.equal(draft.title, "U14 Pressing Session");
+  assert.equal(draft.objective, "Focus on pressing, transition.");
 });

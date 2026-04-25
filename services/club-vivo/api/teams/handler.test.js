@@ -62,12 +62,12 @@ function makeTenantCtx({
   return { tenantId, userId, role, tier };
 }
 
-test("POST /teams creates a team for an admin with normalized Team v1 fields", async () => {
+test("POST /teams allows a coach to create a team with normalized optional Team context", async () => {
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
   const calls = [];
   const loggerEvents = [];
-  const tenantCtx = makeTenantCtx();
+  const tenantCtx = makeTenantCtx({ role: "coach" });
   const inner = createTeamsInner({
     getTeamRepoFn: () => ({
       createTeam: async (actualTenantCtx, input) => {
@@ -81,6 +81,8 @@ test("POST /teams creates a team for an admin with normalized Team v1 fields", a
             ageBand: input.ageBand,
             level: input.level,
             notes: input.notes,
+            programType: input.programType,
+            playerCount: input.playerCount,
             status: input.status,
             createdAt: "2026-03-28T00:00:00.000Z",
             updatedAt: "2026-03-28T00:00:00.000Z",
@@ -100,6 +102,8 @@ test("POST /teams creates a team for an admin with normalized Team v1 fields", a
         ageBand: " U14 ",
         level: " competitive ",
         notes: "  Strong group  ",
+        programType: " Travel ",
+        playerCount: 18,
       },
       headers: {},
       queryStringParameters: {},
@@ -118,6 +122,8 @@ test("POST /teams creates a team for an admin with normalized Team v1 fields", a
       ageBand: "U14",
       level: "competitive",
       notes: "Strong group",
+      programType: "travel",
+      playerCount: 18,
       status: "active",
       createdAt: "2026-03-28T00:00:00.000Z",
       updatedAt: "2026-03-28T00:00:00.000Z",
@@ -133,6 +139,8 @@ test("POST /teams creates a team for an admin with normalized Team v1 fields", a
         ageBand: "U14",
         level: "competitive",
         notes: "Strong group",
+        programType: "travel",
+        playerCount: 18,
         status: "active",
       },
     },
@@ -176,38 +184,6 @@ test("POST /teams returns 400 when tenant scope is supplied from body query or h
   );
 });
 
-test("POST /teams returns 403 for non-admin users and does not call the repo", async () => {
-  process.env.SIC_DOMAIN_TABLE = "domain-table";
-
-  let repoCalled = false;
-  const inner = createTeamsInner({
-    getTeamRepoFn: () => ({
-      createTeam: async () => {
-        repoCalled = true;
-        throw new Error("repo should not be called");
-      },
-    }),
-  });
-
-  await assert.rejects(
-    () =>
-      inner({
-        event: makeEvent({
-          method: "POST",
-          body: { name: "U14 Blue", sport: "soccer", ageBand: "U14" },
-        }),
-        tenantCtx: makeTenantCtx({ role: "coach" }),
-        logger: makeLogger([]),
-      }),
-    (err) => {
-      assert.equal(err.code, "teams.admin_required");
-      assert.equal(err.httpStatus, 403);
-      assert.equal(repoCalled, false);
-      return true;
-    }
-  );
-});
-
 test("GET /teams returns 200 with items and uses tenantCtx only", async () => {
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
@@ -225,6 +201,8 @@ test("GET /teams returns 200 with items and uses tenantCtx only", async () => {
               name: "U14 Blue",
               sport: "soccer",
               ageBand: "U14",
+              programType: "travel",
+              playerCount: 18,
               status: "active",
               createdAt: "2026-03-28T00:00:00.000Z",
               updatedAt: "2026-03-28T00:00:00.000Z",
@@ -257,6 +235,8 @@ test("GET /teams returns 200 with items and uses tenantCtx only", async () => {
         name: "U14 Blue",
         sport: "soccer",
         ageBand: "U14",
+        programType: "travel",
+        playerCount: 18,
         status: "active",
         createdAt: "2026-03-28T00:00:00.000Z",
         updatedAt: "2026-03-28T00:00:00.000Z",
@@ -345,6 +325,8 @@ test("GET /teams/{teamId} returns 200 with the tenant-scoped team detail", async
             ageBand: "U14",
             level: "competitive",
             notes: "Strong group",
+            programType: "ost",
+            playerCount: 12,
             status: "active",
             createdAt: "2026-03-28T00:00:00.000Z",
             updatedAt: "2026-03-28T00:00:00.000Z",
@@ -378,6 +360,8 @@ test("GET /teams/{teamId} returns 200 with the tenant-scoped team detail", async
       ageBand: "U14",
       level: "competitive",
       notes: "Strong group",
+      programType: "ost",
+      playerCount: 12,
       status: "active",
       createdAt: "2026-03-28T00:00:00.000Z",
       updatedAt: "2026-03-28T00:00:00.000Z",
@@ -387,7 +371,7 @@ test("GET /teams/{teamId} returns 200 with the tenant-scoped team detail", async
   assert.deepEqual(calls, [{ actualTenantCtx: tenantCtx, teamId: "team-123" }]);
 });
 
-test("GET /teams/{teamId} returns 404 when the team is not found in tenant scope", async () => {
+test("GET /teams/{teamId} returns 404 when a coach requests a team they do not own", async () => {
   process.env.SIC_DOMAIN_TABLE = "domain-table";
 
   const inner = createTeamsInner({
@@ -405,6 +389,181 @@ test("GET /teams/{teamId} returns 404 when the team is not found in tenant scope
           routeKey: "GET /teams/{teamId}",
           headers: {},
           queryStringParameters: {},
+        }),
+        tenantCtx: makeTenantCtx({ role: "coach" }),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "teams.not_found");
+      assert.equal(err.httpStatus, 404);
+      return true;
+    }
+  );
+});
+
+test("PUT /teams/{teamId} lets an owning coach update editable Team fields", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const calls = [];
+  const loggerEvents = [];
+  const tenantCtx = makeTenantCtx({ role: "coach" });
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      updateTeam: async (actualTenantCtx, teamId, input) => {
+        calls.push({ actualTenantCtx, teamId, input });
+        return {
+          team: {
+            teamId,
+            tenantId: actualTenantCtx.tenantId,
+            name: input.name,
+            sport: input.sport,
+            ageBand: input.ageBand,
+            level: input.level,
+            notes: input.notes,
+            status: input.status,
+            programType: input.programType,
+            playerCount: input.playerCount,
+            createdAt: "2026-03-28T00:00:00.000Z",
+            updatedAt: "2026-04-23T00:00:00.000Z",
+            createdBy: actualTenantCtx.userId,
+          },
+        };
+      },
+    }),
+  });
+
+  const response = await inner({
+    event: makeEvent({
+      rawPath: "/teams/team-123",
+      method: "PUT",
+      routeKey: "PUT /teams/{teamId}",
+      pathParameters: { teamId: "team-123" },
+      headers: {},
+      queryStringParameters: {},
+      body: {
+        name: " U14 Blue East ",
+        sport: " soccer ",
+        ageBand: " U14 ",
+        level: " competitive ",
+        notes: "  Strong group  ",
+        status: "archived",
+        programType: " Travel ",
+        playerCount: 18,
+      },
+    }),
+    tenantCtx,
+    logger: makeLogger(loggerEvents),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), {
+    team: {
+      teamId: "team-123",
+      tenantId: "tenant_authoritative",
+      name: "U14 Blue East",
+      sport: "soccer",
+      ageBand: "U14",
+      level: "competitive",
+      notes: "Strong group",
+      status: "archived",
+      programType: "travel",
+      playerCount: 18,
+      createdAt: "2026-03-28T00:00:00.000Z",
+      updatedAt: "2026-04-23T00:00:00.000Z",
+      createdBy: "user-123",
+    },
+  });
+  assert.deepEqual(calls, [
+    {
+      actualTenantCtx: tenantCtx,
+      teamId: "team-123",
+      input: {
+        name: "U14 Blue East",
+        sport: "soccer",
+        ageBand: "U14",
+        level: "competitive",
+        notes: "Strong group",
+        status: "archived",
+        programType: "travel",
+        playerCount: 18,
+      },
+    },
+  ]);
+  assert.equal(loggerEvents[0].eventType, "team_updated");
+});
+
+test("PUT /teams/{teamId} returns 400 when tenant scope is supplied from body query or headers", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      updateTeam: async () => {
+        throw new Error("repo should not be called");
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-123",
+          method: "PUT",
+          routeKey: "PUT /teams/{teamId}",
+          pathParameters: { teamId: "team-123" },
+          body: {
+            name: "U14 Blue",
+            sport: "soccer",
+            ageBand: "U14",
+            tenantId: "tenant_from_body",
+          },
+          headers: { "x-tenant-id": "tenant_from_header" },
+          queryStringParameters: { tenant_id: "tenant_from_query" },
+        }),
+        tenantCtx: makeTenantCtx(),
+        logger: makeLogger([]),
+      }),
+    (err) => {
+      assert.equal(err.code, "platform.bad_request");
+      assert.equal(err.httpStatus, 400);
+      return true;
+    }
+  );
+});
+
+test("PUT /teams/{teamId} returns 404 when a coach tries to update a team they do not own", async () => {
+  process.env.SIC_DOMAIN_TABLE = "domain-table";
+
+  const inner = createTeamsInner({
+    getTeamRepoFn: () => ({
+      updateTeam: async () => {
+        const err = new Error("missing");
+        err.code = "teams.not_found";
+        err.statusCode = 404;
+        err.details = {
+          entityType: "TEAM",
+          teamId: "team-404",
+        };
+        throw err;
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () =>
+      inner({
+        event: makeEvent({
+          rawPath: "/teams/team-404",
+          method: "PUT",
+          routeKey: "PUT /teams/{teamId}",
+          pathParameters: { teamId: "team-404" },
+          headers: {},
+          queryStringParameters: {},
+          body: {
+            name: "U14 Blue",
+            sport: "soccer",
+            ageBand: "U14",
+          },
         }),
         tenantCtx: makeTenantCtx({ role: "coach" }),
         logger: makeLogger([]),

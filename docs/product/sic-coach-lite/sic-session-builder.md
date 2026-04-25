@@ -1,4 +1,4 @@
-# SIC Coach Chatbot — Product & Architecture Specification (High-Level)
+# SIC Session Builder — Product & Architecture Specification (High-Level)
 
 **Status:** Living document (Knowledge + design brief)
 **Primary goal:** Make the SIC platform immediately useful to coaches by generating training sessions tailored to real-world constraints, while collecting structured signals to power SIC’s long-term intelligence.
@@ -7,8 +7,17 @@
 
 ## 1) Executive Summary
 
-SIC’s intro product is a **Coach Training Session Chatbot** that converts a coach’s **environment + constraints** into a **ready-to-run session pack** (and optionally a PDF).
-Even though it feels like “a chatbot per organization,” SIC should implement **one chatbot platform capability** with **tenant-scoped configuration + tenant-scoped knowledge**, so every organization experiences a “unique bot” without separate deployments.
+SIC’s intro product is the **Session Builder**, a coach-facing generation surface that converts a coach’s **environment + constraints** into a **ready-to-run session pack** (and optionally a PDF).
+Even though it may feel like “a unique tool per organization,” SIC should implement **one shared coach-facing platform capability** with **tenant-scoped configuration + tenant-scoped knowledge**, so every organization experiences the right workflow without separate deployments.
+
+Week 21 keeps Session Builder as the active wedge, but hardens the product direction toward a more complete **Coach Workspace** shape:
+
+- first-time coach setup
+- returning-coach fast entry into session creation
+- team-level program context
+- team-level methodology defaults
+- visible Full Session vs Quick Drill direction
+- coach-admin governance direction
 
 **Wedge message:**
 > “Tell us what you have today (players, space, cones, balls, time, goal). We’ll design a session you can run now.”
@@ -28,7 +37,8 @@ Even though it feels like “a chatbot per organization,” SIC should implement
 2) **Iterate**: “Make it easier/harder”, “switch to finishing”, “weather is bad”.
 3) **Export**: printable PDF/session pack.
 4) **Save**: store sessions per team/coach (tenant-scoped).
-5) **Feedback loop** (later): “We ran it; here’s what worked.”
+5) **Feedback loop**: “We ran it; here’s what worked.”
+6) **Coach Workspace direction**: guide first-time setup, then let returning coaches start from a team-aware session-builder flow.
 
 ---
 
@@ -98,15 +108,30 @@ SIC should return a **deterministic, structured plan** that is easy to run, with
 ## 5) Conversation Design (Intake Flow)
 
 ### Default flow (fast)
-1) Coach provides a single sentence constraints prompt.
-2) Bot asks **only missing essentials** (max 3 questions).
-3) Bot generates the session pack.
-4) Bot offers quick edits:
+1) Returning coach lands in the Session Builder area.
+2) Coach selects team and confirms today’s constraints.
+3) SIC asks **only missing essentials** (max 3 questions).
+4) SIC generates the session pack.
+5) SIC offers quick edits:
    - “Harder/easier”
    - “More small-sided”
    - “Add finishing”
    - “Indoor version”
-5) Coach saves + exports.
+6) Coach saves + exports.
+
+### First-time coach direction
+
+When the coach does not yet have workspace context, SIC should guide a one-time setup flow before normal repeat usage.
+
+That setup direction should stay lightweight and focus on:
+
+- coach setup basics
+- one or more teams
+- team-level program context
+- age context
+- practical defaults such as environment and equipment, while duration stays request-owned per generation request
+
+This remains product direction for Week 21, not a claim that all of those durable surfaces are already shipped.
 
 ### Question set (when info missing)
 - Sport?
@@ -139,6 +164,26 @@ SIC runs **one bot platform**, with these tenant-scoped customizations:
 - `branding` (logo/colors for exports, later)
 - `knowledgeSources` (allowed docs; tenant-scoped)
 
+### Team-level workspace direction
+
+Within the tenant, Session Builder should increasingly use team context as the main product lever for tenant-specific behavior. KSC is the current pilot/example tenant, not shared platform truth.
+
+Near-term Coach Workspace direction:
+
+- `programType = travel | ost`
+- optional `playerCount`
+- team-level methodology defaulting
+- team-level age context
+
+Current repo grounding:
+
+- Team now supports optional durable `programType` and optional durable `playerCount`
+- selected-team server context already exists for internal Session Builder lookup/resolution
+- public `POST /session-packs` remains unchanged
+- `durationMin` remains request-owned and is not inherited from Team
+
+This should happen inside the existing shared app and shared tenant-safe product path.
+
 ### Tenant Knowledge (RAG)
 - club playbook, philosophy, drill library
 - field availability and facility constraints
@@ -165,16 +210,16 @@ All stored/queryable **within tenant boundary**.
 ## 8) SIC Architecture (High-Level)
 
 ### Design principle
-**One chatbot capability** in the SIC platform with:
+**One shared coach-facing capability** in the SIC platform with:
 - **Tenant-scoped auth context** → **tenant-scoped data access** → **tenant-scoped knowledge**.
-- The chatbot never trusts tenant identifiers from the client.
+- The product never trusts tenant identifiers from the client.
 
 ---
 
 ## 9) Reference Architecture (Logical Components)
 
 ### A) Client / UI
-- **Coach Portal** (web): login → chat/intake form → session output → save/export
+- **Coach Portal** (web): login → session-builder intake → session output → save/export
 - Optional: mobile later
 
 ### B) API Layer (SIC platform)
@@ -235,6 +280,8 @@ All stored/queryable **within tenant boundary**.
 
 **Critical rule:** Tenant scoping is never derived from request body/query/headers.
 
+**Duration ownership rule:** `durationMin` remains request-owned. Quick Session duration comes from the coach prompt, and Session Builder duration comes from the current builder request. Team may carry durable context such as `programType` and `playerCount`, but not duration.
+
 ---
 
 ## 11) API Surface (Suggested)
@@ -251,6 +298,12 @@ All stored/queryable **within tenant boundary**.
 - `POST /clubs`, `GET /clubs`
 - `POST /teams`, `GET /teams`
 - Membership endpoints (next phase)
+
+Coach-admin direction remains intentionally narrow:
+
+- methodology ownership and updates should remain controlled
+- coach-admin capability should stay inside the shared tenant-scoped app direction
+- Week 21 should document this direction without implying a full admin workspace is already shipped
 
 ---
 
@@ -295,9 +348,19 @@ Examples:
 
 ## 15) Roadmap Fit
 
-The Coach Chatbot sits on SIC’s core:
+Session Builder sits on SIC's core:
 - Auth + entitlements → clubs/teams/membership/RBAC → session generation → exports → analytics
+
 It is the adoption surface that makes SIC valuable immediately while building the structured data foundation.
+
+Week 21 keeps that foundation intact while moving the product direction from narrow Session Builder toward a more realistic Coach Workspace:
+
+- first-time setup once
+- faster returning-coach entry
+- team-aware generation context
+- methodology-aware defaults
+- Full Session vs Quick Drill direction
+- coach-admin governance direction
 
 ---
 

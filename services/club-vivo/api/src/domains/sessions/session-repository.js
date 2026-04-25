@@ -72,6 +72,46 @@ function requireTenantId(tenantContext) {
   return tenantId;
 }
 
+function requireUserId(tenantContext) {
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    const err = new Error("Missing userId in tenantContext");
+    err.code = "missing_user_context";
+    err.statusCode = 500;
+    throw err;
+  }
+
+  return userId.trim();
+}
+
+function isAdminActor(tenantContext) {
+  return tenantContext?.role === "admin";
+}
+
+function canAccessSession(tenantContext, session) {
+  if (isAdminActor(tenantContext)) {
+    return true;
+  }
+
+  const userId = tenantContext?.userId;
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    return false;
+  }
+
+  return session?.createdBy === userId.trim();
+}
+
+function toItemKey(item) {
+  if (!item?.PK || !item?.SK) {
+    return undefined;
+  }
+
+  return {
+    PK: item.PK,
+    SK: item.SK,
+  };
+}
+
 function normalizeSession(obj, { includeActivities }) {
   // obj is unmarshalled item
   const base = {
@@ -115,6 +155,7 @@ function normalizeSessionFeedback(obj) {
     sessionQuality: obj.sessionQuality,
     drillUsefulness: obj.drillUsefulness,
     imageAnalysisAccuracy: obj.imageAnalysisAccuracy,
+    ...(obj.favoriteActivity !== undefined ? { favoriteActivity: obj.favoriteActivity } : {}),
     missingFeatures: obj.missingFeatures,
     ...(obj.flowMode !== undefined ? { flowMode: obj.flowMode } : {}),
     schemaVersion: obj.schemaVersion,
@@ -203,6 +244,7 @@ class SessionRepository {
    */
   async createSession(tenantContext, sessionInput, options = {}) {
     const tenantId = requireTenantId(tenantContext);
+    const createdBy = requireUserId(tenantContext);
 
     if (!sessionInput || typeof sessionInput !== "object") {
       const err = new Error("Missing session input");
@@ -224,7 +266,7 @@ class SessionRepository {
       type: "SESSION",
       sessionId,
       createdAt: now,
-      createdBy: tenantContext?.userId || null,
+      createdBy,
       schemaVersion: 1,
 
       // domain fields (already validated upstream)
@@ -303,31 +345,71 @@ class SessionRepository {
     const tenantId = requireTenantId(tenantContext);
 
     const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
-    const exclusiveStartKey = decodeNextToken(nextToken);
+    let exclusiveStartKey = decodeNextToken(nextToken);
 
-    const cmd = new QueryCommand({
-      TableName: this.tableName,
-      KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
-      ExpressionAttributeValues: {
-        ":pk": { S: `TENANT#${tenantId}` },
-        ":skPrefix": { S: "SESSION#" },
-      },
-      // newest first
-      ScanIndexForward: false,
-      Limit: safeLimit,
-      ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
-    });
+    const queryPage = async (startKey) =>
+      ddb.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": { S: `TENANT#${tenantId}` },
+            ":skPrefix": { S: "SESSION#" },
+          },
+          // newest first
+          ScanIndexForward: false,
+          Limit: safeLimit,
+          ...(startKey ? { ExclusiveStartKey: startKey } : {}),
+        })
+      );
 
-    const res = await ddb.send(cmd);
+    if (isAdminActor(tenantContext)) {
+      const res = await queryPage(exclusiveStartKey);
 
-    const items = (res.Items ?? []).map((it) => {
-      const obj = unmarshall(it);
-      return normalizeSession(obj, { includeActivities: false });
-    });
+      const items = (res.Items ?? []).map((it) => {
+        const obj = unmarshall(it);
+        return normalizeSession(obj, { includeActivities: false });
+      });
+
+      return {
+        items,
+        nextToken: encodeNextToken(res.LastEvaluatedKey),
+      };
+    }
+
+    const visibleItems = [];
+    let nextVisibleTokenKey;
+
+    while (visibleItems.length < safeLimit) {
+      const res = await queryPage(exclusiveStartKey);
+      const pageItems = res.Items ?? [];
+
+      for (let index = 0; index < pageItems.length; index += 1) {
+        const item = pageItems[index];
+        const obj = unmarshall(item);
+        if (!canAccessSession(tenantContext, obj)) {
+          continue;
+        }
+
+        visibleItems.push(normalizeSession(obj, { includeActivities: false }));
+
+        if (visibleItems.length === safeLimit) {
+          const hasMoreRawItems = index < pageItems.length - 1 || Boolean(res.LastEvaluatedKey);
+          nextVisibleTokenKey = hasMoreRawItems ? toItemKey(item) : undefined;
+          break;
+        }
+      }
+
+      if (visibleItems.length === safeLimit || !res.LastEvaluatedKey) {
+        break;
+      }
+
+      exclusiveStartKey = res.LastEvaluatedKey;
+    }
 
     return {
-      items,
-      nextToken: encodeNextToken(res.LastEvaluatedKey),
+      items: visibleItems,
+      nextToken: encodeNextToken(nextVisibleTokenKey),
     };
   }
 
@@ -368,6 +450,10 @@ class SessionRepository {
     if (!sessionRes.Item) return null;
 
     const obj = unmarshall(sessionRes.Item);
+    if (!canAccessSession(tenantContext, obj)) {
+      return null;
+    }
+
     return normalizeSession(obj, { includeActivities: true });
   }
 
@@ -468,6 +554,9 @@ class SessionRepository {
       sessionQuality: feedbackInput.sessionQuality,
       drillUsefulness: feedbackInput.drillUsefulness,
       imageAnalysisAccuracy: feedbackInput.imageAnalysisAccuracy,
+      ...(feedbackInput.favoriteActivity !== undefined
+        ? { favoriteActivity: feedbackInput.favoriteActivity }
+        : {}),
       missingFeatures: feedbackInput.missingFeatures,
       ...(feedbackInput.flowMode !== undefined ? { flowMode: feedbackInput.flowMode } : {}),
     };

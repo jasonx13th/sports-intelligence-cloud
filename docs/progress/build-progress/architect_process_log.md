@@ -950,47 +950,110 @@ Week 6 closes the “domain” groundwork and tees up lake ingestion.
 - Run the walkthrough and capture separate evidence rather than implying it from the current runtime checks.
 - Continue holding the line on auth, tenancy, entitlements, and infra boundaries as pilot feedback comes in.
 
-
-## Week 21 - Week 20 Drift Alignment and Audit-Doc Cleanup
+## Week 21 - Coach Workspace Hardening for KSC
 
 ### Goals
-- Record a narrow audit-oriented Week 21 follow-up for Week 20 drift alignment only.
-- Bring coach-facing and operator-facing wording into line with the already-shipped Week 20 app and doc behavior.
-- Preserve the existing Week 20 product, auth, tenancy, entitlements, and infra boundaries without widening scope.
+- Harden the shared protected Club Vivo coach workspace for KSC without turning Week 21 into a platform redesign.
+- Keep one shared coach-facing app as the product direction while improving public entry, login, Home, Sessions, Session Builder, Teams, Equipment/Essentials, Methodology, and saved-session detail.
+- Split Quick Session from Session Builder as a fast shared-app lane while keeping Session Builder as the deliberate shared generation path.
+- Move Teams and saved sessions to coach-owned backend behavior with admin tenant-wide visibility where implemented.
+- Add internal server-owned planning boundaries for team and methodology context without widening public `POST /session-packs`.
 
 ### Work completed
-- Aligned the saved sessions page copy in `apps/club-vivo/app/sessions/page.tsx` to Week 20 KSC pilot wording and removed the stale Week 12 scaffold reference.
-- Aligned the saved session detail page copy in `apps/club-vivo/app/sessions/[sessionId]/page.tsx` to Week 20 KSC pilot wording and removed the stale Week 12 scaffold reference.
-- Updated `docs/progress/week_20/operator-checklist.md` so the feedback checklist matches the shipped contract and treats `missingFeatures` as required rather than optional.
-- Updated `docs/progress/week_20/login-entry-path.md` to clarify that the shipped successful auth path lands on `/sessions/new` and that the current `next` parameter is narrow fail-closed route context, not a general return-to-origin contract.
-- Updated `docs/progress/week_20/coach-quick-start.md` so the described `/sessions/new` flow matches the currently shipped session form inputs rather than implying unshipped player-count, space, or similar fields.
-- Updated `docs/progress/week_20/walkthrough-script.md` so the suggested session-start inputs and review expectations match the currently shipped `/sessions/new` flow rather than implying unshipped player-count, space, or similar fields.
+- Shared Club Vivo app shell and key coach routes were hardened:
+  - public entry and login were cleaned up
+  - `/home` became the protected coach workspace entry
+  - `/sessions`, `/sessions/new`, `/teams`, `/equipment`, `/methodology`, and saved-session detail were improved inside the shared app
+- Quick Session became a distinct fast lane inside the shared app:
+  - dedicated prompt and review routes
+  - one generated candidate
+  - edit/save continuity into saved-session detail
+  - better duration and short one-drill prompt handling
+- Session Builder remained the deliberate shared generation path:
+  - `/sessions/new` remained the detailed setup path
+  - Start Here team selection stayed the team context source
+  - review was simplified to one candidate
+  - Quick Drill remained product direction / mode language, not a separate backend product
+- Teams moved to a coach-owned backend model:
+  - authenticated coaches can create teams
+  - regular coaches see/edit their own teams
+  - admin coaches retain tenant-wide visibility where implemented
+  - non-owner Team access returns `404`
+- Saved sessions moved to a coach-owned backend model:
+  - regular coaches see/use their own saved sessions
+  - admin coaches retain tenant-wide visibility where implemented
+  - non-owner session detail, export, and feedback access return `404`
+- Methodology v1 was introduced as a narrow text-only shared-app management path:
+  - scoped methodology records
+  - coach read access
+  - admin-only draft save and publish
+  - no upload/source-mode implementation
+- Generation Context v1 and Resolved Generation Context v1 were added as internal server-owned Session Builder planning boundaries.
+- Selected-team server context was added through validated server-owned context, not public request body, query params, or headers.
+- Saved-session detail was polished into a more coach-ready field-plan output:
+  - clearer Quick Session vs Session Builder origin
+  - clearer activity run order, timing windows, duration, and delivery guidance
+  - Back to sessions remained visible
+- PDF export action was surfaced and improved as a coach handout action, while deeper PDF document design remained future work.
+- Feedback language was tightened around field-tested coach evidence, including favorite-activity feedback and clearer rating prompts.
+- Day 7 walkthrough script was added for final Week 21 walkthrough readiness.
 
 ### Tenancy/security checks
-- This Week 21 follow-up remained docs-and-copy-only.
-- Tenant scope remains server-derived from verified auth plus authoritative entitlements.
-- No `tenant_id`, `tenantId`, or `x-tenant-id` handling changed.
-- No auth-boundary, tenancy-boundary, entitlements-model, IAM, or CDK change was introduced.
-- No client-trusted tenant identity was introduced.
+- Tenant identity remained server-derived throughout Week 21.
+- No client tenant input path was added; `tenant_id`, `tenantId`, and `x-tenant-id` remained rejected/not accepted from client input.
+- Public `POST /session-packs` was not widened.
+- `teamId` was not added to public Session Builder request body, query params, or headers.
+- Request-owned generation fields remained request-owned, including `durationMin`, `theme`, and `equipment`.
+- Team and saved-session ownership are now backend-enforced where implemented.
+- Admin users retain tenant-wide visibility for teams and sessions where implemented; regular coaches are owner-scoped.
+- Non-owner team/session access returns `404` where ownership applies.
+- No auth redesign, tenancy redesign, entitlement redesign, broad IAM redesign, or broad CDK redesign was introduced.
+- One shared coach-facing app remains the product direction; no separate admin app was created.
 
 ### Observability notes
-- No observability behavior changed in this follow-up.
-- Existing Week 20 route-level logging and narrow feedback log enrichment remained unchanged.
-- This slice updated wording only and did not add dashboards, alarms, metrics, or new telemetry.
+- Week 21 did not introduce a new observability subsystem, dashboard, alarm set, or analytics layer.
+- Evidence remained intentionally audit-oriented:
+  - focused backend/domain tests
+  - frontend typecheck
+  - browser/manual workflow checks
+  - dev-stack deployment evidence where routes/API behavior changed
+  - closeout and walkthrough docs
+- Feedback submission and route-level behavior continued to use existing logging/handling patterns; no broader telemetry program was added.
 
 ### Evidence
-- Updated files:
-  - `apps/club-vivo/app/sessions/page.tsx`
-  - `apps/club-vivo/app/sessions/[sessionId]/page.tsx`
-  - `docs/progress/week_20/operator-checklist.md`
-  - `docs/progress/week_20/login-entry-path.md`
-  - `docs/progress/week_20/coach-quick-start.md`
-  - `docs/progress/week_20/walkthrough-script.md`
-- Validation remained narrow and honest:
-  - `apps/club-vivo` passed TypeScript `tsc --noEmit`
-  - no auth, tenancy, entitlements, IAM, or CDK changes were made
+- Source and closeout docs:
+  - `docs/progress/week_21/closeout-summary.md`
+  - `docs/progress/week_21/day1-closeout-summary.md`
+  - `docs/progress/week_21/day2-closeout-summary.md`
+  - `docs/progress/week_21/day3-closeout-summary.md`
+  - `docs/progress/week_21/day4-closeout-summary.md`
+  - `docs/progress/week_21/day5-closeout-summary.md`
+  - `docs/progress/week_21/day6-closeout-summary.md`
+  - `docs/progress/week_21/day7-closeout-summary.md`
+  - `docs/progress/week_21/day7-walkthrough-script.md`
+- Deployment evidence captured during Week 21:
+  - Day 4 methodology route dev verification passed with `cdk synth`, `cdk diff`, `cdk deploy`, and live smoke checks for not found, bad request, admin required, save draft, publish, and read-after-publish behavior
+  - Day 5 `SicApiStack-Dev` deployed successfully for Team ownership behavior
+  - deployed API URL remained `https://ekth4bq6ze.execute-api.us-east-1.amazonaws.com/`
+- Validation evidence captured across Days 4-7:
+  - `apps/club-vivo` frontend typecheck passed with `cmd /c npx tsc --noEmit`
+  - focused backend/domain tests passed for methodology validator/service/handler work
+  - focused Session Builder tests passed for generation context, resolved generation context, lookup loader, templates, pipeline, session validation, and pack validation
+  - focused Teams tests passed for validation, repository, and handler behavior
+  - focused Sessions tests passed for repository, handler, feedback service, and feedback validation behavior
+  - Day 6 and Day 7 `git diff --check` passed
+- Browser/manual evidence recorded during the week:
+  - public entry and login flow
+  - Home Quick Session to quick review
+  - quick review edit/save flow
+  - saved-session detail and PDF export reachability
+  - Teams create after API deploy with created teams appearing on the Teams page
 
 ### Next steps
-- Keep the Week 20 pilot docs and coach-facing copy aligned to the real shipped flow as further narrow pilot fixes land.
-- If future work changes the actual session-start inputs or login redirect behavior, update the affected Week 20 pilot docs and app copy together.
-- Continue treating broader auth, tenancy, entitlements, IAM, CDK, and product-scope changes as separate approved slices rather than drift cleanup.
+- Run the final Week 21 walkthrough from `docs/progress/week_21/day7-walkthrough-script.md` and capture operator evidence if not already captured.
+- Improve actual exported PDF document design separately from the now-visible coach handout action.
+- Continue generation-quality work through internal generation context, especially team/program/methodology influence, without widening public `POST /session-packs`.
+- Decide the next durable methodology management step before implementing upload, source-mode, attachments, version history, or RAG/vector ingestion.
+- Improve saved-session library/search/reuse around coach-owned sessions.
+- Keep Quick Session as a fast shared-app lane and Session Builder as the deliberate shared-app lane.
+- Keep image-assisted intake parked until explicitly rescoped.

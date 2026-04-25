@@ -15,6 +15,14 @@ const {
   exportPersistedSession,
 } = require("./session-builder-pipeline");
 
+function stripPackIdentity(pack) {
+  return {
+    ...pack,
+    packId: undefined,
+    createdAt: undefined,
+  };
+}
+
 test("normalizeSessionPackInput returns canonical request shape", () => {
   const normalizedInput = normalizeSessionPackInput({
     sport: "soccer",
@@ -37,8 +45,8 @@ test("normalizeSessionPackInput returns canonical request shape", () => {
   });
 });
 
-test("processSessionPackRequest keeps sportPackId in normalized input while preserving the public pack shape", () => {
-  const result = processSessionPackRequest({
+test("processSessionPackRequest keeps sportPackId in normalized input while preserving the public pack shape", async () => {
+  const result = await processSessionPackRequest({
     sport: "soccer",
     sportPackId: "fut-soccer",
     ageBand: "u14",
@@ -49,6 +57,8 @@ test("processSessionPackRequest keeps sportPackId in normalized input while pres
   });
 
   assert.equal(result.normalizedInput.sportPackId, "fut-soccer");
+  assert.equal(result.generationContext.sportPackId, "fut-soccer");
+  assert.equal(result.resolvedGenerationContext.sportPackId, "fut-soccer");
   assert.equal(Object.hasOwn(result.validatedPack, "sportPackId"), false);
   assert.equal(result.validatedPack.sport, "soccer");
 });
@@ -100,8 +110,8 @@ test("validateGeneratedPack enforces exact generated duration invariants", () =>
   assert.equal(validatedPack.sessions[0].durationMin, 60);
 });
 
-test("processSessionPackRequest returns explicit pipeline stages", () => {
-  const result = processSessionPackRequest({
+test("processSessionPackRequest returns explicit pipeline stages", async () => {
+  const result = await processSessionPackRequest({
     sport: "soccer",
     ageBand: "u14",
     durationMin: 60,
@@ -111,14 +121,31 @@ test("processSessionPackRequest returns explicit pipeline stages", () => {
   });
 
   assert.deepEqual(result.normalizedInput.equipment, ["cones", "balls"]);
+  assert.deepEqual(result.generationContext.equipment, ["cones", "balls"]);
+  assert.equal(result.generationContext.durationMin, 60);
+  assert.equal(result.generationContext.sources.durationMinSource, "request");
+  assert.equal(result.generationContext.methodologyScope, null);
+  assert.equal(result.generationContext.teamContextUsed, false);
+  assert.deepEqual(result.resolvedGenerationContext.equipment, ["cones", "balls"]);
+  assert.equal(result.resolvedGenerationContext.durationMin, 60);
+  assert.equal(result.resolvedGenerationContext.sources.durationMinSource, "request");
+  assert.equal(result.resolvedGenerationContext.resolvedProgramType, null);
+  assert.equal(result.resolvedGenerationContext.resolvedMethodologyScope, null);
+  assert.deepEqual(result.methodologyInfluence, {
+    styleBias: "default",
+    methodologyApplied: false,
+    guidanceSnippets: [],
+  });
   assert.ok(result.generatedPack.packId);
   assert.ok(result.validatedPack.packId);
   assert.equal(result.coachLiteDraft.specVersion, "session-pack.v2");
   assert.equal(result.validatedCoachLiteDraft.specVersion, "session-pack.v2");
   assert.deepEqual(result.validatedPack.sessions[0].equipment, ["cones", "balls"]);
+  assert.equal(Object.hasOwn(result.validatedPack, "generationContext"), false);
+  assert.equal(Object.hasOwn(result.validatedPack, "resolvedGenerationContext"), false);
 });
 
-test("processSessionPackRequest uses confirmed setup profile only after confirmation and keeps pack shape unchanged", () => {
+test("processSessionPackRequest uses confirmed setup profile only after confirmation and keeps pack shape unchanged", async () => {
   const confirmedProfile = {
     mode: "setup_to_drill",
     schemaVersion: 1,
@@ -137,7 +164,7 @@ test("processSessionPackRequest uses confirmed setup profile only after confirma
     analysisConfidence: "medium",
   };
 
-  const result = processSessionPackRequest({
+  const result = await processSessionPackRequest({
     sport: "soccer",
     ageBand: "u14",
     durationMin: 60,
@@ -147,10 +174,464 @@ test("processSessionPackRequest uses confirmed setup profile only after confirma
   });
 
   assert.deepEqual(result.normalizedInput.confirmedProfile, confirmedProfile);
+  assert.deepEqual(result.generationContext.confirmedProfile, confirmedProfile);
+  assert.deepEqual(result.resolvedGenerationContext.confirmedProfile, confirmedProfile);
   assert.equal(result.validatedPack.sessions[0].activities[0].name, "Passing Support");
   assert.match(result.validatedPack.sessions[0].activities[0].description, /Layout: box\./);
   assert.deepEqual(result.validatedPack.sessions[0].equipment, ["cones", "mini-goals"]);
   assert.equal(Object.hasOwn(result.validatedPack, "confirmedProfile"), false);
+});
+
+test("processSessionPackRequest keeps existing single-argument usage and default pack output unchanged", async () => {
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+
+  const resultWithoutOptions = await processSessionPackRequest(rawInput);
+  const resultWithEmptyOptions = await processSessionPackRequest(rawInput, {});
+
+  assert.deepEqual(
+    stripPackIdentity(resultWithoutOptions.validatedPack),
+    stripPackIdentity(resultWithEmptyOptions.validatedPack)
+  );
+  assert.equal(resultWithoutOptions.generationContext.durationMin, 60);
+  assert.equal(resultWithoutOptions.resolvedGenerationContext.durationMin, 60);
+  assert.equal(resultWithoutOptions.resolvedGenerationContext.resolvedProgramType, null);
+});
+
+test("programType team context can bias generated sessions while keeping request-owned fields authoritative", async () => {
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+
+  const baseResult = await processSessionPackRequest(rawInput);
+  const resolvedResult = await processSessionPackRequest(rawInput, {
+    teamContext: {
+      programType: "travel",
+      ageBand: "u15",
+      playerCount: 16,
+    },
+  });
+
+  assert.equal(resolvedResult.generationContext.teamContextUsed, false);
+  assert.equal(resolvedResult.resolvedGenerationContext.teamContextUsed, true);
+  assert.equal(resolvedResult.resolvedGenerationContext.resolvedProgramType, "travel");
+  assert.equal(resolvedResult.resolvedGenerationContext.resolvedPlayerCount, 16);
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBand, "u15");
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBandConsistentWithRequest, false);
+  assert.equal(resolvedResult.generationContext.durationMin, 60);
+  assert.equal(resolvedResult.resolvedGenerationContext.durationMin, 60);
+  assert.deepEqual(resolvedResult.methodologyInfluence, {
+    styleBias: "travel",
+    methodologyApplied: false,
+    guidanceSnippets: ["travel-tempo", "travel-competitive-repetition"],
+  });
+  assert.notDeepEqual(
+    stripPackIdentity(baseResult.validatedPack),
+    stripPackIdentity(resolvedResult.validatedPack)
+  );
+  assert.match(
+    resolvedResult.validatedPack.sessions[0].activities[0].description,
+    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
+  );
+  assert.equal(resolvedResult.validatedPack.durationMin, rawInput.durationMin);
+  assert.equal(resolvedResult.validatedPack.theme, rawInput.theme);
+  assert.deepEqual(resolvedResult.validatedPack.equipment, rawInput.equipment);
+});
+
+test("team ageBand helper treats Mixed age as a u7-u10 youth context without changing request-owned pack fields", async () => {
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u8",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+
+  const resolvedResult = await processSessionPackRequest(rawInput, {
+    teamContext: {
+      ageBand: "Mixed age",
+      playerCount: 12,
+    },
+  });
+
+  assert.equal(resolvedResult.resolvedGenerationContext.teamContextUsed, true);
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBand, "mixed_age");
+  assert.equal(resolvedResult.resolvedGenerationContext.teamAgeBandConsistentWithRequest, true);
+  assert.equal(resolvedResult.resolvedGenerationContext.ageBand, rawInput.ageBand);
+  assert.equal(resolvedResult.validatedPack.ageBand, rawInput.ageBand);
+  assert.equal(resolvedResult.validatedPack.durationMin, rawInput.durationMin);
+  assert.equal(resolvedResult.validatedPack.theme, rawInput.theme);
+});
+
+test("optional internal methodologyRecords influence only resolvedGenerationContext", async () => {
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+
+  const baseResult = await processSessionPackRequest(rawInput);
+  const resolvedResult = await processSessionPackRequest(rawInput, {
+    teamContext: {
+      programType: "travel",
+    },
+    methodologyRecords: {
+      shared: {
+        scope: "shared",
+        title: "Shared principles",
+        content: "Shared methodology guidance.",
+        status: "published",
+      },
+      travel: {
+        scope: "travel",
+        title: "Travel principles",
+        content: "Travel methodology guidance.",
+        status: "published",
+      },
+    },
+  });
+
+  assert.equal(resolvedResult.generationContext.methodologyScope, null);
+  assert.equal(resolvedResult.resolvedGenerationContext.resolvedMethodologyScope, "travel");
+  assert.deepEqual(resolvedResult.methodologyInfluence, {
+    styleBias: "travel",
+    methodologyApplied: true,
+    guidanceSnippets: ["travel-tempo", "travel-competitive-repetition"],
+  });
+  assert.deepEqual(resolvedResult.resolvedGenerationContext.appliedMethodologyScopes, [
+    "shared",
+    "travel",
+  ]);
+  assert.match(resolvedResult.resolvedGenerationContext.methodologyGuidance, /Shared principles/);
+  assert.match(resolvedResult.resolvedGenerationContext.methodologyGuidance, /Travel principles/);
+  assert.equal(resolvedResult.generationContext.durationMin, 60);
+  assert.equal(resolvedResult.resolvedGenerationContext.durationMin, 60);
+  assert.equal(resolvedResult.validatedPack.durationMin, rawInput.durationMin);
+  assert.equal(resolvedResult.validatedPack.theme, rawInput.theme);
+  assert.deepEqual(resolvedResult.validatedPack.equipment, rawInput.equipment);
+  assert.notDeepEqual(
+    stripPackIdentity(baseResult.validatedPack),
+    stripPackIdentity(resolvedResult.validatedPack)
+  );
+  assert.match(
+    resolvedResult.validatedPack.sessions[0].activities[0].description,
+    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
+  );
+  assert.equal(Object.hasOwn(resolvedResult.validatedPack, "resolvedMethodologyScope"), false);
+  assert.equal(Object.hasOwn(resolvedResult.validatedPack, "methodologyInfluence"), false);
+});
+
+test("processSessionPackRequest carries compact builder notes and environment into generated session detail without changing the public shape", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing | notes:first pass after regain | env:turf",
+    sessionsCount: 1,
+  });
+
+  assert.match(result.validatedPack.sessions[0].activities[0].description, /Today's focus: pressing\./i);
+  assert.match(result.validatedPack.sessions[0].activities[0].description, /available turf\./i);
+  assert.match(
+    result.validatedPack.sessions[0].activities[1].description,
+    /Coach note: first pass after regain\./i
+  );
+  assert.equal(result.validatedPack.theme, "pressing | notes:first pass after regain | env:turf");
+  assert.equal(Object.hasOwn(result.validatedPack, "promptSignals"), false);
+});
+
+test("lookup path loads teamContext and published methodology records when tenant inputs and repositories are supplied", async () => {
+  const tenantCtx = {
+    tenantId: "tenant-123",
+    userId: "user-123",
+  };
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+  const calls = [];
+
+  const result = await processSessionPackRequest(rawInput, {
+    tenantCtx,
+    teamId: "team-123",
+    teamRepository: {
+      getTeamById: async (...args) => {
+        calls.push({ type: "team", args });
+        return {
+          team: {
+            teamId: "team-123",
+            ageBand: "U14",
+            playerCount: 14,
+          },
+        };
+      },
+    },
+    methodologyRepository: {
+      getMethodologyByScope: async (...args) => {
+        calls.push({ type: "methodology", args });
+        const scope = args[1];
+
+        if (scope === "shared") {
+          return {
+            methodology: {
+              scope: "shared",
+              title: "Shared principles",
+              content: "Shared methodology guidance.",
+              status: "published",
+            },
+          };
+        }
+
+        if (scope === "travel") {
+          return {
+            methodology: {
+              scope: "travel",
+              title: "Travel draft",
+              content: "Should not apply.",
+              status: "draft",
+            },
+          };
+        }
+
+        return null;
+      },
+    },
+  });
+
+  assert.deepEqual(result.resolvedGenerationContext.teamContextUsed, true);
+  assert.equal(result.resolvedGenerationContext.resolvedProgramType, null);
+  assert.equal(result.resolvedGenerationContext.resolvedPlayerCount, 14);
+  assert.equal(result.resolvedGenerationContext.teamAgeBand, "u14");
+  assert.equal(result.resolvedGenerationContext.teamAgeBandConsistentWithRequest, true);
+  assert.equal(result.resolvedGenerationContext.resolvedMethodologyScope, "shared");
+  assert.deepEqual(result.resolvedGenerationContext.appliedMethodologyScopes, ["shared"]);
+  assert.match(result.resolvedGenerationContext.methodologyGuidance, /Shared principles/);
+  assert.equal(result.generationContext.durationMin, 60);
+  assert.equal(result.resolvedGenerationContext.durationMin, 60);
+  assert.equal(Object.hasOwn(result.validatedPack, "resolvedGenerationContext"), false);
+  assert.deepEqual(calls, [
+    { type: "team", args: [tenantCtx, "team-123"] },
+    { type: "methodology", args: [tenantCtx, "shared"] },
+    { type: "methodology", args: [tenantCtx, "travel"] },
+    { type: "methodology", args: [tenantCtx, "ost"] },
+  ]);
+});
+
+test("lookup path can resolve missing team programType and published travel methodology without leaking public fields", async () => {
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+
+  const result = await processSessionPackRequest(rawInput, {
+    tenantCtx: {
+      tenantId: "tenant-123",
+      userId: "user-123",
+    },
+    teamId: "team-789",
+    teamRepository: {
+      getTeamById: async () => ({
+        team: {
+          teamId: "team-789",
+          programType: "travel",
+          ageBand: "U15",
+          playerCount: 18,
+        },
+      }),
+    },
+    methodologyRepository: {
+      getMethodologyByScope: async (_tenantCtx, scope) => {
+        if (scope === "shared") {
+          return {
+            methodology: {
+              scope: "shared",
+              title: "Shared principles",
+              content: "Shared methodology guidance.",
+              status: "published",
+            },
+          };
+        }
+
+        if (scope === "travel") {
+          return {
+            methodology: {
+              scope: "travel",
+              title: "Travel principles",
+              content: "Travel methodology guidance.",
+              status: "published",
+            },
+          };
+        }
+
+        return null;
+      },
+    },
+  });
+
+  assert.equal(result.generationContext.teamContextUsed, false);
+  assert.equal(result.resolvedGenerationContext.teamContextUsed, true);
+  assert.equal(result.resolvedGenerationContext.resolvedProgramType, "travel");
+  assert.equal(result.resolvedGenerationContext.resolvedPlayerCount, 18);
+  assert.equal(result.resolvedGenerationContext.teamAgeBand, "u15");
+  assert.equal(result.resolvedGenerationContext.teamAgeBandConsistentWithRequest, false);
+  assert.equal(result.resolvedGenerationContext.sources.durationMinSource, "request");
+  assert.deepEqual(result.methodologyInfluence, {
+    styleBias: "travel",
+    methodologyApplied: true,
+    guidanceSnippets: ["travel-tempo", "travel-competitive-repetition"],
+  });
+  assert.deepEqual(result.resolvedGenerationContext.appliedMethodologyScopes, [
+    "shared",
+    "travel",
+  ]);
+  assert.equal(result.validatedPack.durationMin, rawInput.durationMin);
+  assert.equal(result.validatedPack.theme, rawInput.theme);
+  assert.deepEqual(result.validatedPack.equipment, rawInput.equipment);
+  assert.match(
+    result.validatedPack.sessions[0].activities[0].description,
+    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
+  );
+  assert.equal(Object.hasOwn(result.validatedPack, "resolvedProgramType"), false);
+  assert.equal(Object.hasOwn(result.validatedPack, "appliedMethodologyScopes"), false);
+  assert.equal(Object.hasOwn(result.validatedPack, "methodologyInfluence"), false);
+});
+
+test("ost methodology context applies only an internal ost style bias while preserving request-owned fields", async () => {
+  const rawInput = {
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  };
+
+  const baseResult = await processSessionPackRequest(rawInput);
+  const resolvedResult = await processSessionPackRequest(rawInput, {
+    teamContext: {
+      programType: "ost",
+    },
+    methodologyRecords: {
+      shared: {
+        scope: "shared",
+        title: "Shared principles",
+        content: "Shared methodology guidance.",
+        status: "published",
+      },
+      ost: {
+        scope: "ost",
+        title: "OST principles",
+        content: "OST methodology guidance.",
+        status: "published",
+      },
+    },
+  });
+
+  assert.equal(resolvedResult.resolvedGenerationContext.resolvedMethodologyScope, "ost");
+  assert.deepEqual(resolvedResult.methodologyInfluence, {
+    styleBias: "ost",
+    methodologyApplied: true,
+    guidanceSnippets: ["ost-clear-directions", "ost-guided-repetition"],
+  });
+  assert.equal(resolvedResult.validatedPack.durationMin, rawInput.durationMin);
+  assert.equal(resolvedResult.validatedPack.theme, rawInput.theme);
+  assert.deepEqual(resolvedResult.validatedPack.equipment, rawInput.equipment);
+  assert.notDeepEqual(
+    stripPackIdentity(baseResult.validatedPack),
+    stripPackIdentity(resolvedResult.validatedPack)
+  );
+  assert.match(
+    resolvedResult.validatedPack.sessions[0].activities[0].description,
+    /Keep the setup simple, explain one rule at a time, and let the players learn through play\./
+  );
+  assert.equal(Object.hasOwn(resolvedResult.validatedPack, "methodologyInfluence"), false);
+});
+
+test("quick-marked themes keep the public pack shape while making the generated session more playful", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 60,
+    theme: "quick | finishing | notes:small teams",
+    sessionsCount: 1,
+  });
+
+  assert.match(
+    result.validatedPack.sessions[0].activities[0].description,
+    /Keep the setup easy to run and let the players get into the activity quickly\./
+  );
+  assert.match(
+    result.validatedPack.sessions[0].activities[1].description,
+    /Use playful competition and simple rules so the session stays fun and game-like\./
+  );
+  assert.equal(result.validatedPack.theme, "quick | finishing | notes:small teams");
+  assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
+});
+
+test("quick one-drill requests under 25 minutes validate with exact activity totals", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 25,
+    theme: "quick | format:one_drill | 1v1 dribbling | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = result.validatedPack.sessions;
+
+  assert.equal(result.validatedPack.durationMin, 25);
+  assert.equal(session.durationMin, 25);
+  assert.equal(session.activities.length, 1);
+  assert.equal(
+    session.activities.reduce((sum, activity) => sum + activity.minutes, 0),
+    25
+  );
+  assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
+  assert.equal(Object.hasOwn(result.validatedPack, "activityFormat"), false);
+});
+
+test("quick requests without explicit duration keep the caller's default 60-minute duration", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | 1v1 dribbling creativity | 10 players",
+    sessionsCount: 1,
+    equipment: ["cones", "pinnies"],
+  });
+
+  const [session] = result.validatedPack.sessions;
+
+  assert.equal(result.validatedPack.durationMin, 60);
+  assert.equal(session.durationMin, 60);
+  assert.equal(
+    session.activities.reduce((sum, activity) => sum + activity.minutes, 0),
+    60
+  );
 });
 
 test("processSessionImageAnalysisRequest stores one tenant-scoped image and returns a draft profile", async () => {

@@ -177,6 +177,8 @@ function createSessionsInner({
     // POST /sessions
     // -------------------------
     if (rk === "POST /sessions") {
+      assertNoClientTenantInputs(event);
+
       let body;
       try {
         body = parseJsonBody(event);
@@ -271,6 +273,8 @@ function createSessionsInner({
     // GET /sessions
     // -------------------------
     if (rk === "GET /sessions") {
+      assertNoClientTenantInputs(event);
+
       const { nextToken, cursor, limit } = event?.queryStringParameters || {};
       const effectiveNextToken = nextToken || cursor;
 
@@ -290,6 +294,7 @@ function createSessionsInner({
     // GET /sessions/{sessionId}/pdf
     // -------------------------
     if (isGetSessionPdfRoute(event)) {
+      assertNoClientTenantInputs(event);
       assertEnv({ requirePdfBucket: true });
       const sessionRepository = getSessionRepoFn();
 
@@ -356,6 +361,8 @@ function createSessionsInner({
     // -------------------------
     const method = getHttpMethod(event);
     if (method === "GET" && event?.pathParameters?.sessionId) {
+      assertNoClientTenantInputs(event);
+
       const sessionId = event?.pathParameters?.sessionId;
 
       if (!sessionId) {

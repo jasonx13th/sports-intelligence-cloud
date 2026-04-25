@@ -7,6 +7,7 @@ This document defines the current Team Layer v1 API contract for:
 - `POST /teams`
 - `GET /teams`
 - `GET /teams/{teamId}`
+- `PUT /teams/{teamId}`
 - `POST /teams/{teamId}/sessions/{sessionId}/assign`
 - `GET /teams/{teamId}/sessions`
 
@@ -46,6 +47,11 @@ Purpose:
 Purpose:
 - Fetch one tenant-scoped team by id.
 
+### `PUT /teams/{teamId}`
+
+Purpose:
+- Update one tenant-scoped team by id.
+
 ### `POST /teams/{teamId}/sessions/{sessionId}/assign`
 
 Purpose:
@@ -61,10 +67,11 @@ Purpose:
 
 ### Auth requirement
 
-- All five routes are protected by the existing JWT authorizer.
+- All six routes are protected by the existing JWT authorizer.
 - Verified identity comes from auth.
 - Authoritative tenant scope comes from server-side entitlements.
 - `POST /teams` remains admin-only.
+- `PUT /teams/{teamId}` remains admin-only.
 - `POST /teams/{teamId}/sessions/{sessionId}/assign` currently requires authentication but does not add a separate team-role restriction in the current implementation.
 - `GET /teams/{teamId}/sessions` currently requires authentication but does not add a separate team-role restriction in the current implementation.
 
@@ -92,8 +99,14 @@ Allowed body fields only:
 - `level` optional string
 - `notes` optional string
 - `status` optional string enum
+- `programType` optional string enum:
+  - `travel`
+  - `ost`
+- `playerCount` optional integer from `1` to `60`
 
 Unknown fields are rejected.
+
+`durationMin` is not a Team field. Session duration is chosen per request in Quick Session or Session Builder, so `POST /teams` rejects `durationMin` as an unknown field.
 
 #### Create request example
 
@@ -103,7 +116,9 @@ Unknown fields are rejected.
   "sport": "soccer",
   "ageBand": "U14",
   "level": "competitive",
-  "notes": "Strong group"
+  "notes": "Strong group",
+  "programType": "travel",
+  "playerCount": 18
 }
 ```
 
@@ -122,7 +137,41 @@ Tenant-like query parameters are rejected.
 - `teamId` required path parameter
 - No request body
 
-### 2.4 `POST /teams/{teamId}/sessions/{sessionId}/assign`
+### 2.4 `PUT /teams/{teamId}`
+
+- `teamId` required path parameter
+- Allowed body fields only:
+  - `name` required string
+  - `sport` required string
+  - `ageBand` required string
+  - `level` optional string
+  - `notes` optional string
+  - `status` optional string enum
+  - `programType` optional string enum:
+    - `travel`
+    - `ost`
+  - `playerCount` optional integer from `1` to `60`
+
+Unknown fields are rejected.
+
+`durationMin` is not a Team field and is rejected on `PUT /teams/{teamId}` as an unknown field.
+
+#### Update request example
+
+```json
+{
+  "name": "U14 Blue East",
+  "sport": "soccer",
+  "ageBand": "U14",
+  "level": "competitive",
+  "notes": "Strong group",
+  "status": "archived",
+  "programType": "travel",
+  "playerCount": 18
+}
+```
+
+### 2.5 `POST /teams/{teamId}/sessions/{sessionId}/assign`
 
 - `teamId` required path parameter
 - `sessionId` required path parameter
@@ -146,7 +195,7 @@ An empty object is also valid:
 {}
 ```
 
-### 2.5 `GET /teams/{teamId}/sessions`
+### 2.6 `GET /teams/{teamId}/sessions`
 
 - `teamId` required path parameter
 - No request body
@@ -167,6 +216,14 @@ An empty object is also valid:
   - `active`
   - `archived`
 - `status` defaults to `active`
+- `programType` is optional and must be one of:
+  - `travel`
+  - `ost`
+- `programType` is normalized to lowercase when present
+- `playerCount` is optional and must be an integer from `1` to `60`
+- `durationMin` is not part of the Team model
+- session duration is request-owned and chosen in Quick Session or Session Builder, not on Team
+- `durationMin` is rejected on `POST /teams` as an unknown field
 - Unknown body fields are rejected
 
 ### 3.2 Tenant-scope rejection rules
@@ -184,15 +241,37 @@ An empty object is also valid:
 - blank or whitespace-only `notes` is omitted from the stored payload
 - unknown body fields are rejected
 
-### 3.4 `GET /teams/{teamId}/sessions`
+### 3.4 `PUT /teams/{teamId}`
+
+- `teamId` path param is required
+- `name` must be a trimmed non-empty string with max length `120`
+- `sport` must be a trimmed non-empty string with max length `64`
+- `ageBand` must be a trimmed non-empty string with max length `32`
+- `level` is optional, trimmed when present, max length `32`
+- `notes` is optional, trimmed when present, max length `1000`
+- `status` is optional and must be one of:
+  - `active`
+  - `archived`
+- `status` defaults to `active`
+- `programType` is optional and must be one of:
+  - `travel`
+  - `ost`
+- `programType` is normalized to lowercase when present
+- `playerCount` is optional and must be an integer from `1` to `60`
+- `durationMin` is not part of the Team model
+- `durationMin` is rejected on `PUT /teams/{teamId}` as an unknown field
+- unknown body fields are rejected
+
+### 3.5 `GET /teams/{teamId}/sessions`
 
 - `teamId` path param is required
 - no request body is used
 - client-supplied tenant-like query or header fields are rejected
 
-### 3.5 Current auth / role rule
+### 3.6 Current auth / role rule
 
 `POST /teams` is currently restricted to `tenantCtx.role === "admin"`.
+`PUT /teams/{teamId}` is currently restricted to `tenantCtx.role === "admin"`.
 
 That admin-only behavior is part of the implemented contract and is not changed by this doc.
 
@@ -214,6 +293,8 @@ That admin-only behavior is part of the implemented contract and is not changed 
     "ageBand": "U14",
     "level": "competitive",
     "notes": "Strong group",
+    "programType": "travel",
+    "playerCount": 18,
     "status": "active",
     "createdAt": "2026-04-10T00:00:00.000Z",
     "updatedAt": "2026-04-10T00:00:00.000Z",
@@ -224,6 +305,7 @@ That admin-only behavior is part of the implemented contract and is not changed 
 
 Note:
 - `tenantId` is included in the current response because that is how the implementation normalizes team records today.
+- `programType` and `playerCount` are optional and may be omitted on older team records.
 
 ### 4.2 `GET /teams`
 
@@ -240,6 +322,8 @@ Note:
       "ageBand": "U14",
       "level": "competitive",
       "notes": "Strong group",
+      "programType": "travel",
+      "playerCount": 18,
       "status": "active",
       "createdAt": "2026-04-10T00:00:00.000Z",
       "updatedAt": "2026-04-10T00:00:00.000Z",
@@ -252,6 +336,7 @@ Note:
 
 Note:
 - `nextToken` is omitted when there is no next page.
+- `programType` and `playerCount` are optional and may be omitted on older team records.
 
 ### 4.3 `GET /teams/{teamId}`
 
@@ -267,6 +352,8 @@ Note:
     "ageBand": "U14",
     "level": "competitive",
     "notes": "Strong group",
+    "programType": "travel",
+    "playerCount": 18,
     "status": "active",
     "createdAt": "2026-04-10T00:00:00.000Z",
     "updatedAt": "2026-04-10T00:00:00.000Z",
@@ -275,7 +362,38 @@ Note:
 }
 ```
 
-### 4.4 `POST /teams/{teamId}/sessions/{sessionId}/assign`
+Note:
+- `programType` and `playerCount` are optional and may be omitted on older team records.
+
+### 4.4 `PUT /teams/{teamId}`
+
+- `200 OK`
+
+```json
+{
+  "team": {
+    "teamId": "team-123",
+    "tenantId": "tenant_authoritative",
+    "name": "U14 Blue East",
+    "sport": "soccer",
+    "ageBand": "U14",
+    "level": "competitive",
+    "notes": "Strong group",
+    "programType": "travel",
+    "playerCount": 18,
+    "status": "archived",
+    "createdAt": "2026-04-10T00:00:00.000Z",
+    "updatedAt": "2026-04-23T00:00:00.000Z",
+    "createdBy": "user-123"
+  }
+}
+```
+
+Notes:
+- `programType` and `playerCount` remain optional and may be omitted on older team records.
+- `durationMin` is not a Team field and is not returned by Team create, Team update, Team list, or Team detail.
+
+### 4.5 `POST /teams/{teamId}/sessions/{sessionId}/assign`
 
 First successful assignment:
 
@@ -328,7 +446,7 @@ Notes:
   - `durationMin`
   - `objectiveTags`
 
-### 4.5 `GET /teams/{teamId}/sessions`
+### 4.6 `GET /teams/{teamId}/sessions`
 
 - `200 OK`
 
@@ -386,6 +504,7 @@ Example:
 ### 5.2 `403 teams.admin_required`
 
 Used when a non-admin user calls `POST /teams`.
+Used when a non-admin user calls `PUT /teams/{teamId}`.
 
 ```json
 {
@@ -404,6 +523,7 @@ Used when a non-admin user calls `POST /teams`.
 Used when one of these routes cannot find the target team inside the resolved tenant scope:
 
 - `GET /teams/{teamId}`
+- `PUT /teams/{teamId}`
 - `POST /teams/{teamId}/sessions/{sessionId}/assign`
 - `GET /teams/{teamId}/sessions`
 

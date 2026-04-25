@@ -281,7 +281,7 @@ Use this for:
 - product specifications
 
 Current product area:
-- `docs/product/sic-coach-lite/`
+- `docs/product/club-vivo/`
 
 ### `docs/adr/`
 Architecture decision records.

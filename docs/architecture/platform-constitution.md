@@ -188,7 +188,7 @@ When there is ambiguity, use this order:
 2. `docs/architecture/platform-constitution.md`
 3. `docs/vision.md`
 4. `docs/architecture/tenant-claim-contract.md`
-5. `docs/product/sic-coach-lite/sic-session-builder.md`
+5. `docs/product/club-vivo/session-builder.md`
 6. `docs/progress/build-progress/roadmap-vnext.md`
 
 ---

@@ -399,22 +399,26 @@ These are contract/reference docs, not runtime code.
 
 ## 9. Product Docs
 
-SIC Coach Lite product docs live under `docs/product/sic-coach-lite/`:
+Club Vivo product docs live under `docs/product/club-vivo/`:
 
-- `overview.md`
-- `sic-session-builder.md`
-- `coach-workspace-v1.md`
-- `ksc-program-types-and-methodology-v1.md`
-- `club-methodology-v1.md`
-- `soccer-scope-v1.md`
-- `fut-soccer-scope-v1.md`
-- `image-assisted-intake-v1-scope.md`
-- `image-assisted-intake-parking-lot.md`
-- `methodology-source-mode-planning.md`
-- `roadmap-phases.md`
+- `README.md`
+- `session-builder.md`
+- `coach-workspace.md`
+- `methodology.md`
 - `user-flows.md`
+- `generation-profiles/README.md`
+- `generation-profiles/soccer.md`
+- `generation-profiles/fut-soccer.md`
+- `pilots/README.md`
+- `pilots/ksc/README.md`
+- `pilots/ksc/program-types-and-methodology.md`
+- `future/README.md`
+- `future/image-assisted-intake-v1-scope.md`
+- `future/image-assisted-intake-parking-lot.md`
+- `future/methodology-source-mode-planning.md`
+- `future/roadmap-phases.md`
 
-The product docs include both current product framing and future planning. The parking-lot/source-mode docs should not be treated as shipped runtime scope.
+The product docs include current Club Vivo product framing, KSC pilot material, and future planning. Pilot and future docs should not be treated as generic shipped runtime scope.
 
 ## 10. Architecture Docs
 
@@ -466,11 +470,11 @@ These files are build history and planning evidence. They are not active runtime
 
 Known parked or future-only planning docs include:
 
-- `docs/product/sic-coach-lite/image-assisted-intake-parking-lot.md`
+- `docs/product/club-vivo/future/image-assisted-intake-parking-lot.md`
   - Explicitly marked as parked/future exploration.
-- `docs/product/sic-coach-lite/methodology-source-mode-planning.md`
+- `docs/product/club-vivo/future/methodology-source-mode-planning.md`
   - Explicitly describes future source-mode decisions and does not implement upload, source switching, RAG, or admin configuration.
-- `docs/product/sic-coach-lite/coach-workspace-v1.md`
+- `docs/product/club-vivo/coach-workspace.md`
   - Includes future direction such as Quick Drill direction and coach-admin governance direction.
 - `docs/progress/week_21/week-21-class-session.md`
   - Planning/class-session document; includes future-oriented product concepts.
@@ -746,8 +750,8 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 ## Parked/Future Only
 
-- `docs/product/sic-coach-lite/image-assisted-intake-parking-lot.md`.
-- `docs/product/sic-coach-lite/methodology-source-mode-planning.md`.
+- `docs/product/club-vivo/future/image-assisted-intake-parking-lot.md`.
+- `docs/product/club-vivo/future/methodology-source-mode-planning.md`.
 - README-only future pillars:
   - `apps/ruta-viva/`
   - `apps/athlete-evolution-ai/`

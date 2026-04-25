@@ -39,7 +39,7 @@ This order follows the current platform constitution. When there is ambiguity, u
 2. `docs/architecture/platform-constitution.md`
 3. `docs/vision.md`
 4. `docs/architecture/tenant-claim-contract.md`
-5. `docs/product/sic-coach-lite/sic-session-builder.md`
+5. `docs/product/club-vivo/session-builder.md`
 6. `docs/progress/build-progress/roadmap-vnext.md`
 
 Changing this order requires an ADR or explicit architecture decision.
@@ -78,15 +78,15 @@ Other files in `docs/api/` are also contract/reference docs and should be review
 
 ## 6. Product Source-of-Truth Docs
 
-These SIC Coach Lite product docs define active product direction and should not change accidentally:
+These Club Vivo product docs define active product direction and should not change accidentally:
 
-- `docs/product/sic-coach-lite/sic-session-builder.md`
+- `docs/product/club-vivo/session-builder.md`
   - Session Builder product source of truth.
-- `docs/product/sic-coach-lite/coach-workspace-v1.md`
+- `docs/product/club-vivo/coach-workspace.md`
   - Shared coach workspace direction.
-- `docs/product/sic-coach-lite/ksc-program-types-and-methodology-v1.md`
+- `docs/product/club-vivo/pilots/ksc/program-types-and-methodology.md`
   - KSC program and methodology framing.
-- `docs/product/sic-coach-lite/club-methodology-v1.md`
+- `docs/product/club-vivo/methodology.md`
   - Club methodology v1 product framing.
 
 Future-facing language inside product docs should stay clearly labeled as future direction when it does not represent shipped runtime behavior.
@@ -111,8 +111,8 @@ Parked and future-planning docs preserve ideas that may matter later, but they d
 
 Current examples include:
 
-- `docs/product/sic-coach-lite/image-assisted-intake-parking-lot.md`
-- `docs/product/sic-coach-lite/methodology-source-mode-planning.md`
+- `docs/product/club-vivo/future/image-assisted-intake-parking-lot.md`
+- `docs/product/club-vivo/future/methodology-source-mode-planning.md`
 
 These docs should remain clearly separated from active source-of-truth docs unless a later architecture/product decision moves their scope into active work.
 
@@ -164,4 +164,3 @@ Before modifying a protected doc, ask:
 - Does this require an ADR?
 - Does this contradict any higher-priority source-of-truth doc?
 - Does this describe shipped runtime behavior or future/parked direction?
-

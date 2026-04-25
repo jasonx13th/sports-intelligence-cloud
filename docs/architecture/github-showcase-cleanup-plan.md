@@ -25,14 +25,14 @@ Current naming should be clarified before moving files.
 - SIC is the platform.
 - Club Vivo is the current coach-facing web app and product surface.
 - KSC is the first pilot/test club, not the general product.
-- `docs/product/sic-coach-lite/` is confusing because the active app is Club Vivo and the product direction is now a shared coach workspace, not only a "lite" wedge.
+- the former Coach Lite product-doc folder was confusing because the active app is Club Vivo and the product direction is now a shared coach workspace, not only a "lite" wedge.
 - Product docs should separate general Club Vivo behavior from KSC pilot-specific material.
 
 The current product docs still contain useful source material, but the folder name mixes platform name, wedge name, and product name. A cleaner structure should make it obvious that Club Vivo is the product surface and KSC is pilot evidence.
 
 ## 3. Proposed Product Docs Structure
 
-These names are proposed for review before any move.
+These names were approved for the first product-doc restructure.
 
 Recommended structure:
 
@@ -82,24 +82,24 @@ Alternative names:
 
 Recommendation: use `generation-profiles/` unless the product language intentionally wants a simpler coach-facing term. It matches the current system architecture vocabulary around generation context and avoids implying a separate package/plugin system.
 
-## 4. Current `docs/product/sic-coach-lite` Migration Map
+## 4. Completed Product Docs Migration Map
 
-Use `git mv` later after human approval so history is preserved.
+The first cleanup uses `git mv` so history is preserved.
 
-| Current file | Proposed destination | Reason | Classification | Use `git mv` later? |
+| Former file | Current destination | Reason | Classification | Move method |
 | --- | --- | --- | --- | --- |
-| `docs/product/sic-coach-lite/overview.md` | `docs/product/club-vivo/README.md` | General product overview should become the Club Vivo product landing doc, with naming updated away from Coach Lite. | Active product | Yes, with rewrite |
-| `docs/product/sic-coach-lite/sic-session-builder.md` | `docs/product/club-vivo/session-builder.md` | Session Builder remains core Club Vivo behavior and is currently in the source-of-truth order. | Active product | Yes |
-| `docs/product/sic-coach-lite/coach-workspace-v1.md` | `docs/product/club-vivo/coach-workspace.md` | Shared coach workspace is active product direction; KSC-specific sections may need splitting to pilot docs. | Active product / needs review | Yes, with split review |
-| `docs/product/sic-coach-lite/club-methodology-v1.md` | `docs/product/club-vivo/methodology.md` | Club methodology v1 is active product direction, with current runtime support through the shared app. | Active product | Yes |
-| `docs/product/sic-coach-lite/ksc-program-types-and-methodology-v1.md` | `docs/product/club-vivo/pilots/ksc/program-types-and-methodology.md` | This is explicitly KSC pilot/test club material, not generic product structure. | KSC pilot | Yes |
-| `docs/product/sic-coach-lite/soccer-scope-v1.md` | `docs/product/club-vivo/generation-profiles/soccer.md` | Soccer-first scope describes a sport-specific generation profile. | Active product | Yes |
-| `docs/product/sic-coach-lite/fut-soccer-scope-v1.md` | `docs/product/club-vivo/generation-profiles/fut-soccer.md` | Fut-Soccer is best treated as a generation profile/flavor, not a separate product. | Active product / needs review | Yes |
-| `docs/product/sic-coach-lite/user-flows.md` | `docs/product/club-vivo/user-flows.md` | User flows belong with general Club Vivo product behavior. | Active product / needs review | Yes |
-| `docs/product/sic-coach-lite/roadmap-phases.md` | `docs/product/club-vivo/future/roadmap-phases.md` | Older broad roadmap mixes current and future direction; keep but separate from shipped runtime. | Future parked / needs review | Yes |
-| `docs/product/sic-coach-lite/image-assisted-intake-v1-scope.md` | `docs/product/club-vivo/future/image-assisted-intake-v1-scope.md` | Source has a current image-analysis path, but broader image-assisted intake is not current active product focus; classify carefully. | Needs review | Yes |
-| `docs/product/sic-coach-lite/image-assisted-intake-parking-lot.md` | `docs/product/club-vivo/future/image-assisted-intake-parking-lot.md` | Explicit parking-lot/future exploration doc. | Future parked | Yes |
-| `docs/product/sic-coach-lite/methodology-source-mode-planning.md` | `docs/product/club-vivo/future/methodology-source-mode-planning.md` | Explicit future planning; upload/source-mode/RAG is not shipped runtime behavior. | Future parked | Yes |
+| `overview.md` | `docs/product/club-vivo/README.md` | General product overview should become the Club Vivo product landing doc, with naming updated away from Coach Lite. | Active product | `git mv` |
+| `sic-session-builder.md` | `docs/product/club-vivo/session-builder.md` | Session Builder remains core Club Vivo behavior and is currently in the source-of-truth order. | Active product | `git mv` |
+| `coach-workspace-v1.md` | `docs/product/club-vivo/coach-workspace.md` | Shared coach workspace is active product direction; KSC-specific sections may need splitting to pilot docs. | Active product / needs review | `git mv` |
+| `club-methodology-v1.md` | `docs/product/club-vivo/methodology.md` | Club methodology v1 is active product direction, with current runtime support through the shared app. | Active product | `git mv` |
+| `ksc-program-types-and-methodology-v1.md` | `docs/product/club-vivo/pilots/ksc/program-types-and-methodology.md` | This is explicitly KSC pilot/test club material, not generic product structure. | KSC pilot | `git mv` |
+| `soccer-scope-v1.md` | `docs/product/club-vivo/generation-profiles/soccer.md` | Soccer-first scope describes a sport-specific generation profile. | Active product | `git mv` |
+| `fut-soccer-scope-v1.md` | `docs/product/club-vivo/generation-profiles/fut-soccer.md` | Fut-Soccer is best treated as a generation profile/flavor, not a separate product. | Active product / needs review | `git mv` |
+| `user-flows.md` | `docs/product/club-vivo/user-flows.md` | User flows belong with general Club Vivo product behavior. | Active product / needs review | `git mv` |
+| `roadmap-phases.md` | `docs/product/club-vivo/future/roadmap-phases.md` | Older broad roadmap mixes current and future direction; keep but separate from shipped runtime. | Future parked / needs review | `git mv` |
+| `image-assisted-intake-v1-scope.md` | `docs/product/club-vivo/future/image-assisted-intake-v1-scope.md` | Source has a current image-analysis path, but broader image-assisted intake is not current active product focus; classify carefully. | Needs review | `git mv` |
+| `image-assisted-intake-parking-lot.md` | `docs/product/club-vivo/future/image-assisted-intake-parking-lot.md` | Explicit parking-lot/future exploration doc. | Future parked | `git mv` |
+| `methodology-source-mode-planning.md` | `docs/product/club-vivo/future/methodology-source-mode-planning.md` | Explicit future planning; upload/source-mode/RAG is not shipped runtime behavior. | Future parked | `git mv` |
 
 Potential new file after review:
 
@@ -271,7 +271,7 @@ Run validation based on what changed:
 
 Decisions needed before actual move/delete:
 
-- Rename `docs/product/sic-coach-lite` to `docs/product/club-vivo`?
+- Confirm whether any remaining internal "SIC Coach Lite" wording should be rewritten to Club Vivo now or preserved as wedge/history language.
 - Should `sport-packs` be renamed to `generation-profiles`, `methodology-packs`, `coaching-models`, or `session-flavors`?
 - Where exactly should KSC pilot docs live?
 - Keep or archive `docs/progress` from GitHub main?
@@ -290,5 +290,4 @@ After this plan is approved, the first actual cleanup action should be:
 
 Create an archive branch or tag from the current state before any move/delete/rewrite work.
 
-Then, in the first cleanup commit, use `git mv` to move `docs/product/sic-coach-lite/` into the approved `docs/product/club-vivo/` structure, update only broken references in source-of-truth docs, and run the validation checklist.
-
+Then, in the next cleanup commit, update README coverage for the highest-priority docs folders and continue validating after each small step.

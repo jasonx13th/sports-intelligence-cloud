@@ -1,4 +1,8 @@
-# SIC Coach Lite — Overview
+# Club Vivo Product Overview
+
+## Naming Note
+
+SIC is the platform. Club Vivo is the current coach-facing product and app surface. Older references in this document to SIC Coach Lite describe the original product wedge that has now been reorganized under Club Vivo product docs.
 
 ## Status
 Draft v1

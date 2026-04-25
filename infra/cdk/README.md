@@ -1,19 +1,50 @@
-# Sports Intelligence Cloud – Auth CDK App
+﻿# SIC CDK App
 
-This CDK app will manage the **authentication and identity** layer for the Sports Intelligence Cloud (starting with the Club Vivo pillar).
+`infra/cdk` contains the AWS CDK source for Sports Intelligence Cloud infrastructure.
 
-## Scope of `SicAuthStack`
+Infrastructure code belongs here. Runtime frontend and backend source code belongs in `apps/` and `services/`.
 
-Planned responsibilities:
+## Important Files
 
-- Cognito **User Pool** for end-users (club directors, coaches, athletes).
-- Cognito **User Pool Client(s)** for the web frontend.
-- Cognito **Groups** that represent roles:
-  - `director-group-cv`
-  - `coach-group-cv`
-  - `athlete-group-cv`
-- Custom Cognito attribute for `tenant_id` to support multi-tenant isolation.
-- (Later) Cognito **Identity Pool** and IAM roles for direct S3 access from the frontend.
-- Stack **outputs** (UserPoolId, ClientId, etc.) that other stacks (API, data) can use to configure API Gateway authorizers.
+- `bin/sic-api.ts`
+  - CDK entrypoint for the API stack.
+- `bin/sic-auth.ts`
+  - CDK entrypoint for the auth stack and optional API stack composition.
+- `lib/sic-api-stack.ts`
+  - Defines the Club Vivo HTTP API, API Lambda functions, DynamoDB tables, S3 bucket, Bedrock permission, IAM grants, CloudWatch logs, dashboards, and alarms.
+- `lib/sic-auth-stack.ts`
+  - Defines Cognito user pool, app client, hosted domain, groups, and auth trigger Lambdas.
+- `package.json`
+  - CDK build/synth/deploy scripts.
 
-This app is part of the overall `infra/` layout for the Sports Intelligence Cloud, and must follow the SIC architecture principles (multi-tenant first, security by default, observability is not optional).
+## Commands
+
+From `infra/cdk`:
+
+- `npm run build`
+  - Compile TypeScript.
+- `npm run synth`
+  - Build and synthesize CDK.
+- `npm run diff`
+  - Build and show CDK diff.
+- `npm run deploy`
+  - Build and deploy.
+
+## What Belongs Here
+
+- CDK stack source.
+- CDK entrypoints.
+- Infrastructure package configuration.
+
+## What Should Not Go Here
+
+- Runtime app code.
+- Lambda handler implementation changes outside CDK packaging needs.
+- Local CDK outputs or operator artifacts.
+- Secrets or environment-specific credentials.
+
+## Change Rules
+
+- Do not move or restructure CDK source without explicit architecture approval.
+- Infrastructure changes should be reviewed for auth, tenancy, IAM, data, cost, and observability impact.
+- Keep generated outputs such as `cdk.out/` and verification synth/deploy output directories out of tracked source.

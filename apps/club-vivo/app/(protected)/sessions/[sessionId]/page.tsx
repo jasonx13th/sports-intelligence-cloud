@@ -48,6 +48,29 @@ function formatCreatedAt(value: string) {
   }).format(new Date(value));
 }
 
+function formatMinuteLabel(value: number) {
+  return `${value} min`;
+}
+
+function formatActivityCount(value: number) {
+  return `${value} ${value === 1 ? "activity" : "activities"}`;
+}
+
+function buildActivityTimings(activities: SessionDetail["activities"]) {
+  let elapsedMinutes = 0;
+
+  return activities.map((activity) => {
+    const startMinute = elapsedMinutes;
+    const endMinute = startMinute + activity.minutes;
+    elapsedMinutes = endMinute;
+
+    return {
+      durationLabel: formatMinuteLabel(activity.minutes),
+      rangeLabel: `${startMinute}-${endMinute} min`
+    };
+  });
+}
+
 const IMAGE_ANALYSIS_ACCURACY_VALUES = new Set<SessionFeedbackImageAnalysisAccuracy>([
   "not_used",
   "low",
@@ -163,7 +186,28 @@ export default async function SessionDetailPage({
     : isBuilderSession
       ? builderDetailTitle || builderModeLabel
       : `${session.sport} / ${session.ageBand}`;
-  const pageBadge = isQuickSession || isBuilderSession ? builderModeLabel : "Session Detail";
+  const pageBadge = isQuickSession
+    ? "Quick Session Output"
+    : isBuilderSession
+      ? "Session Builder Output"
+      : "Session Detail";
+  const sourceLabel = isQuickSession
+    ? "Quick Session"
+    : isBuilderSession
+      ? `Session Builder - ${builderModeLabel}`
+      : "Saved Session";
+  const plannedActivitiesMinutes = session.activities.reduce(
+    (total, activity) => total + activity.minutes,
+    0
+  );
+  const activityTimings = buildActivityTimings(session.activities);
+  const activityCountLabel = formatActivityCount(session.activities.length);
+  const headerDescription = isQuickSession
+    ? `Coach-ready saved output from Quick Session with ${activityCountLabel} planned across ${formatMinuteLabel(session.durationMin)}.`
+    : isBuilderSession
+      ? `Coach-ready saved output from Session Builder with ${activityCountLabel} planned across ${formatMinuteLabel(session.durationMin)}.`
+      : `Saved session output with ${activityCountLabel} planned across ${formatMinuteLabel(session.durationMin)}.`;
+  const outputSummary = `${activityCountLabel} / ${formatMinuteLabel(plannedActivitiesMinutes)} activity plan / ${formatMinuteLabel(session.durationMin)} session window`;
 
   async function exportSessionPdfAction(
     _previousState: {
@@ -213,7 +257,7 @@ export default async function SessionDetailPage({
   ) {
     "use server";
 
-      const nextTitle = normalizeQuickSessionTitle(String(formData.get("title") || ""));
+    const nextTitle = normalizeQuickSessionTitle(String(formData.get("title") || ""));
 
     if (!nextTitle) {
       return {
@@ -239,8 +283,8 @@ export default async function SessionDetailPage({
     );
 
     return {
-        message: "Saved",
-        savedTitle: nextTitle
+      message: "Saved",
+      savedTitle: nextTitle
     };
   }
 
@@ -345,6 +389,7 @@ export default async function SessionDetailPage({
       <CoachPageHeader
         badge={pageBadge}
         title={pageTitle}
+        description={headerDescription}
         actions={
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <SessionExportButton sessionId={sessionId} exportAction={exportSessionPdfAction} />
@@ -359,6 +404,47 @@ export default async function SessionDetailPage({
       />
 
       <section className="club-vivo-shell rounded-[2rem] border p-8 backdrop-blur">
+        <section className="mb-8 rounded-[1.75rem] border border-slate-200 bg-white/80 p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Coach-ready field plan
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+                {pageTitle}
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700">
+                {outputSummary}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:w-[28rem] lg:grid-cols-1">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Generated From
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{sourceLabel}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Created
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-900">
+                  {formatCreatedAt(session.createdAt)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Runtime
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-900">
+                  {formatMinuteLabel(session.durationMin)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {isBuilderSession ? (
           <>
             <div className="grid gap-4 lg:grid-cols-3">
@@ -395,7 +481,7 @@ export default async function SessionDetailPage({
 
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
-                <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
+                <p className="mt-2 text-sm text-slate-800">{formatMinuteLabel(session.durationMin)}</p>
               </article>
 
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
@@ -474,7 +560,7 @@ export default async function SessionDetailPage({
               {isQuickSession ? (
                 <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
-                  <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
+                  <p className="mt-2 text-sm text-slate-800">{formatMinuteLabel(session.durationMin)}</p>
                 </article>
               ) : null}
 
@@ -510,7 +596,7 @@ export default async function SessionDetailPage({
 
                   <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
                     <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
-                    <p className="mt-2 text-sm text-slate-800">{session.durationMin} minutes</p>
+                    <p className="mt-2 text-sm text-slate-800">{formatMinuteLabel(session.durationMin)}</p>
                   </article>
 
                   <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
@@ -599,23 +685,50 @@ export default async function SessionDetailPage({
           </>
         )}
 
-        <article className="mt-8 rounded-3xl border border-slate-200 bg-white/70 p-5">
-          <h2 className="text-lg font-semibold text-slate-900">Activities</h2>
+        <article className="mt-8 rounded-3xl border border-slate-200 bg-white/75 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Run Order
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900">Activities</h2>
+            </div>
+            <p className="text-sm font-medium text-slate-600">{outputSummary}</p>
+          </div>
 
-          <div className="mt-4 grid gap-4">
+          <div className="mt-5 grid gap-4">
             {session.activities.map((activity, index) => (
               <section
                 key={`${activity.name}-${index}`}
                 className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
               >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <h3 className="text-base font-semibold text-slate-900">{activity.name}</h3>
-                  <p className="text-sm text-slate-600">{activity.minutes} minutes</p>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Activity {index + 1}
+                    </p>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                      {activity.name}
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800">
+                      {activityTimings[index]?.rangeLabel}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                      {activityTimings[index]?.durationLabel}
+                    </span>
+                  </div>
                 </div>
 
-                <p className="mt-3 text-sm leading-6 text-slate-700">
-                  {activity.description?.trim() || "No description provided."}
-                </p>
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white/75 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Coach Delivery
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    {activity.description?.trim() || "No description provided."}
+                  </p>
+                </div>
               </section>
             ))}
           </div>

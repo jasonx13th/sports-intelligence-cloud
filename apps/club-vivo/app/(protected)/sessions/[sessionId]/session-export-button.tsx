@@ -18,10 +18,11 @@ function ExportButtonLabel() {
   return (
     <button
       type="submit"
-      className="inline-flex rounded-full border border-transparent bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex items-center rounded-full border border-transparent bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending}
+      aria-label="Export this saved session as a PDF"
     >
-      {pending ? "Preparing PDF..." : "Export PDF"}
+      {pending ? "Preparing PDF..." : "Export coach PDF"}
     </button>
   );
 }
@@ -36,7 +37,7 @@ export function SessionExportButton({
   const [state, formAction] = useActionState(exportAction, {});
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
       <form action={formAction}>
         <input type="hidden" name="sessionId" value={sessionId} />
         <ExportButtonLabel />
@@ -48,7 +49,7 @@ export function SessionExportButton({
         </p>
       ) : (
         <p className="max-w-xs text-sm leading-6 text-slate-600">
-          Download a coach-ready PDF of this saved session.
+          Download the field-plan handout for this saved session.
         </p>
       )}
     </div>

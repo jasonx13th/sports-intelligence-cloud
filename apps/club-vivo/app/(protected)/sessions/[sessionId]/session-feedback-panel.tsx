@@ -56,9 +56,9 @@ export function SessionFeedbackPanel({
 
   return (
     <article className="mt-8 rounded-3xl border border-slate-200 bg-white/70 p-5">
-      <h2 className="text-lg font-semibold text-slate-900">Feedback</h2>
+      <h2 className="text-lg font-semibold text-slate-900">Coach feedback after field test</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-        Apply this session with your team first, then submit one short round of pilot feedback.
+        Run the session with your team first, then capture what worked, what missed, and what would make the next generated plan stronger.
       </p>
 
       {isLocked ? (
@@ -77,11 +77,11 @@ export function SessionFeedbackPanel({
                 required
               >
                 <option value="">Select rating</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
+                <option value="1">1 - Not usable</option>
+                <option value="2">2 - Needed major changes</option>
+                <option value="3">3 - Usable with edits</option>
+                <option value="4">4 - Strong session</option>
+                <option value="5">5 - Ready to repeat</option>
               </select>
             </label>
 
@@ -94,11 +94,11 @@ export function SessionFeedbackPanel({
                 required
               >
                 <option value="">Select rating</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
+                <option value="1">1 - Activities missed</option>
+                <option value="2">2 - Limited value</option>
+                <option value="3">3 - Some useful moments</option>
+                <option value="4">4 - Mostly useful</option>
+                <option value="5">5 - Very useful</option>
               </select>
             </label>
           </div>
@@ -113,18 +113,19 @@ export function SessionFeedbackPanel({
               defaultValue={state.values.favoriteActivity}
               maxLength={280}
               rows={3}
-              placeholder="Example: Activity 2 because the scoring rule made the players compete."
+              placeholder="Example: Activity 2 because the scoring rule created better decisions under pressure."
               className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
             />
           </label>
 
           <label className="grid gap-2 text-sm text-slate-700">
-            <span className="font-medium">Missing features</span>
+            <span className="font-medium">What was missing or confusing?</span>
             <textarea
               name="missingFeatures"
               defaultValue={state.values.missingFeatures}
               maxLength={280}
               rows={4}
+              placeholder="Example: Needed clearer setup spacing, player counts, or an easier regression."
               className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
               required
             />

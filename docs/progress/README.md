@@ -1,51 +1,51 @@
 # Progress Evidence
 
-`docs/progress` is historical and progress evidence for Sports Intelligence Cloud. It is not active runtime code.
+`docs/progress` is the clean GitHub-facing home for SIC progress summaries.
 
-GitHub `main` should prefer short, clear summaries over deep week-by-week implementation detail. The detailed week folders are still present for now because current docs still reference them and because their portfolio/audit value has not been fully reviewed.
-
-The detailed history is also protected by the archive branch and tag created during the GitHub showcase cleanup checkpoint:
+Detailed week-by-week progress history was removed from GitHub `main` after the concise summary layer was created. The full detailed history remains preserved in:
 
 - branch: `archive/pre-showcase-cleanup`
 - tag: `pre-showcase-cleanup-2026-04-25`
 
-Do not delete, move, or rename the detailed week folders until link references and portfolio value are reviewed.
+This folder is documentation only. It is not runtime code and does not define deployed behavior by itself.
 
 ## Start Here
 
 - `weekly-progress-notes.md`
   - Short week-by-week summary for GitHub readers.
 - `architect-process-summary.md`
-  - Short architecture/process story distilled from the long architect process log.
+  - Short architecture/process story distilled from the archived detailed process log.
 - `new-sic/`
-  - Current New SIC starting point cleanup plan, audit notes, and closeout summaries.
-- `build-progress/architect_process_log.md`
-  - Detailed audit log for the historical architecture process. Keep for now.
-- `build-progress/roadmap-vnext.md`
-  - Still referenced in source-of-truth governance until that governance is deliberately updated.
+  - New SIC starting point cleanup plans, audits, and closeout summaries.
 
 ## Current Structure
 
-- `week_00/` through `week_21/`
-  - Detailed historical build notes, scope locks, closeouts, demos, walkthroughs, and evidence.
-- `build-progress/`
-  - Long-running roadmap and detailed architect process log.
-- `new-sic/`
-  - New starting point cleanup planning and closeout notes.
-- `templates/`
-  - Reusable progress-note templates.
-- `qa/`
-  - Historical question/answer notes.
+```text
+docs/progress/
+├── README.md
+├── architect-process-summary.md
+├── weekly-progress-notes.md
+└── new-sic/
+```
 
-## Status
+## Archive Status
 
-The week folders are historical evidence, not the current product source of truth. Current product and architecture readers should start from the short summaries and then open detailed week folders only when they need evidence behind a decision.
+The removed detailed history included:
 
-`roadmap-vnext.md` remains referenced by `docs/architecture/foundations/source-of-truth-manifest.md` and related governance docs. Review that source-of-truth status before archiving or replacing it.
+- detailed week folders
+- old day notes
+- old closeout files
+- old class-session notes
+- old walkthrough and demo scripts
+- old progress templates and Q/A notes
+- the former detailed architect process log
+- the former week-based roadmap file
+
+Those files should be restored from the archive branch/tag only if a future review decides that some detailed historical material belongs in `main` again.
 
 ## Rules
 
-- Do not rewrite historical week files to modernize the past.
+- Keep `main` focused on concise progress summaries.
+- Do not reintroduce detailed historical week folders without an explicit cleanup decision.
 - Do not claim future or parked ideas are shipped runtime.
-- Do not delete or move week folders until references are reviewed.
-- Keep new progress summaries factual, concise, and linked to evidence.
+- Keep new progress summaries factual, concise, and linked to current docs where possible.

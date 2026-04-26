@@ -685,6 +685,5 @@ Those diagrams may be recreated in Miro or draw.io for presentation, but they sh
 - Decide whether README-only future app folders should stay at top level:
   - `apps/ruta-viva/`
   - `apps/athlete-evolution-ai/`
-- Review whether `docs/progress/build-progress/roadmap-vnext.md` should remain source of truth now that work is moving away from week-based planning.
+- Review whether the source-of-truth order needs a new roadmap/governance document now that work is moving away from week-based planning.
 - Consider whether future official visual diagrams should be generated under `docs/architecture/diagrams/` and cross-linked from this map.
-

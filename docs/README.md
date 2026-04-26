@@ -11,7 +11,7 @@ Docs explain product direction, API contracts, architecture, operations, decisio
 - Product documentation for Club Vivo.
 - Architecture decision records.
 - Operational runbooks.
-- Historical build evidence and progress notes.
+- Concise progress summaries and New SIC cleanup notes.
 
 ## What Should Not Go Here
 
@@ -33,11 +33,11 @@ Docs explain product direction, API contracts, architecture, operations, decisio
 - `runbooks/`
   - Operational guidance for failures, smoke tests, shipping, and support workflows.
 - `progress/`
-  - Historical build notes, walkthroughs, closeouts, and audit evidence.
+  - Concise progress summaries and New SIC cleanup notes.
 
 ## Historical Progress Docs
 
-`docs/progress/` is build history and evidence. It should not be rewritten casually to match the current repo layout. Correct factual mistakes when necessary, but preserve the actual build path.
+`docs/progress/` is the clean GitHub-facing progress summary layer. Detailed historical progress history is preserved in the archive branch/tag listed in `docs/progress/README.md`.
 
 ## Product Docs
 
@@ -59,4 +59,3 @@ Future or parked product ideas belong under:
 - Do not present future or parked ideas as shipped runtime behavior.
 - Public API contract changes may require an ADR or explicit architecture decision.
 - Auth, tenancy, entitlement, IAM, CDK, data model, or repository-boundary changes require deliberate architecture review.
-

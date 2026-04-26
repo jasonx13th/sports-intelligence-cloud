@@ -173,7 +173,7 @@ The repo should currently reflect these active priorities:
 - coach and team product workflows
 - multi-tenant platform safety
 - observability and reliability
-- roadmap execution through `roadmap-vnext.md`
+- current product and architecture execution through source-of-truth docs
 - documentation that clearly explains the platform
 
 Long-term ideas should be preserved, but separated from the active execution path.
@@ -189,7 +189,6 @@ When there is ambiguity, use this order:
 3. `docs/vision.md`
 4. `docs/architecture/tenant-claim-contract.md`
 5. `docs/product/club-vivo/session-builder.md`
-6. `docs/progress/build-progress/roadmap-vnext.md`
 
 ---
 

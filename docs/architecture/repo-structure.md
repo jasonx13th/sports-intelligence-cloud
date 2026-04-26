@@ -314,29 +314,25 @@ Use this for:
 - export behavior docs
 
 ### `docs/progress/`
-Build history, weekly work, closeouts, and long-running progress references.
+Concise progress summaries and New SIC cleanup notes.
 
 Structure:
 
 ```text
 docs/progress/
-├── build-progress/
-├── qa/
-├── templates/
-├── week_00/
-├── week_01/
-├── ...
-└── week_13/
+├── README.md
+├── architect-process-summary.md
+├── weekly-progress-notes.md
+└── new-sic/
 ```
 
 #### Progress placement rules
-- padded week folders only: `week_00`, `week_01`, `week_12`
-- weekly closeouts -> `closeout-summary.md`
-- week demo walkthroughs -> `demo-script.md`
-- Q and A reference material -> `docs/progress/qa/`
-- long-running roadmap and architect log -> `docs/progress/build-progress/`
+- GitHub-facing progress history should stay concise.
+- Use `docs/progress/weekly-progress-notes.md` for the public week-by-week summary.
+- Use `docs/progress/architect-process-summary.md` for the public architecture/process summary.
+- Use `docs/progress/new-sic/` for cleanup plans, audits, and closeouts.
 
-Keep historical notes historical. Do not rewrite old notes just to modernize past file paths unless there is a strong reason.
+Detailed historical progress files are preserved in the archive branch/tag listed in `docs/progress/README.md`, not in GitHub `main`.
 
 ---
 
@@ -417,15 +413,12 @@ Avoid:
 - ad hoc names like `Day_01.md`
 - generic names that do not explain purpose
 
-### Week folders
-Use padded week numbering:
-- `week_00`
-- `week_01`
-- `week_02`
+### Progress summaries
+Keep progress summaries lowercase and descriptive.
 
-Not:
-- `week_0`
-- `week_1`
+Examples:
+- `weekly-progress-notes.md`
+- `architect-process-summary.md`
 
 ### Catch-all folders
 Avoid generic production folders like:

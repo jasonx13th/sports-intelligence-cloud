@@ -205,4 +205,5 @@ Intelligence features based on real workflows and real data
 - Architecture principles: `docs/architecture/architecture-principles.md`
 - Tenant identity and claims: `docs/architecture/tenant-claim-contract.md`
 - Product spec: `docs/product/club-vivo/session-builder.md`
-- Active roadmap: `docs/progress/build-progress/roadmap-vnext.md`
+- Current system map: `docs/architecture/sic-current-system-map.md`
+- Progress summary: `docs/progress/weekly-progress-notes.md`

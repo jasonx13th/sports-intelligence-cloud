@@ -461,11 +461,7 @@ Build history lives under `docs/progress/`.
 - `docs/progress/README.md` explains the current progress-history status and points GitHub readers to concise summaries.
 - `docs/progress/weekly-progress-notes.md` is the short week-by-week summary for GitHub readers.
 - `docs/progress/architect-process-summary.md` is the short architecture/process story.
-- Detailed `week_*` folders under `docs/progress/` contain chronological build notes, scope locks, day summaries, walkthroughs, and closeouts.
-- `docs/progress/build-progress/architect_process_log.md` is an audit-oriented process log.
-- `docs/progress/build-progress/roadmap-vnext.md` is the active roadmap/progress planning document.
-- `docs/progress/templates/` contains progress templates.
-- `docs/progress/qa/` contains question/answer notes.
+- `docs/progress/new-sic/` contains the New SIC cleanup plan, progress-history audit, and closeout summaries.
 
 These files are build history and planning evidence. They are not active runtime code.
 
@@ -751,7 +747,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 - Older demo scripts and closeout notes under `docs/progress/`.
 - `docs/progress/weekly-progress-notes.md` as concise public progress history.
 - `docs/progress/architect-process-summary.md` as concise public architecture/process history.
-- `docs/progress/build-progress/architect_process_log.md` as detailed audit history.
+- detailed progress history preserved by the archive branch/tag listed in `docs/progress/README.md`.
 
 ## Parked/Future Only
 

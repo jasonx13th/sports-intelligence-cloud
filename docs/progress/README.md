@@ -1,47 +1,51 @@
-# Progress Logs
+# Progress Evidence
 
-This folder is the tracked home for weekly build logs, day notes, closeouts, templates, Q and A notes, and build-progress summaries.
+`docs/progress` is historical and progress evidence for Sports Intelligence Cloud. It is not active runtime code.
 
-## What belongs here
+GitHub `main` should prefer short, clear summaries over deep week-by-week implementation detail. The detailed week folders are still present for now because current docs still reference them and because their portfolio/audit value has not been fully reviewed.
 
-- Weekly and daily progress notes under padded `week_*` folders.
-- Reusable note templates under `templates/`.
-- Long-running build summaries under `build-progress/`.
-- Reference Q and A notes under `qa/`.
+The detailed history is also protected by the archive branch and tag created during the GitHub showcase cleanup checkpoint:
 
-## Current structure
+- branch: `archive/pre-showcase-cleanup`
+- tag: `pre-showcase-cleanup-2026-04-25`
 
-- `build-progress/` -> long-running roadmap and architect log
-- `qa/` -> reference questions and answers
-- `templates/` -> reusable note templates
-- `week_00/`, `week_01/`, `week_02/` ... -> weekly tracked notes
+Do not delete, move, or rename the detailed week folders until link references and portfolio value are reviewed.
 
-## Naming rules
+## Start Here
 
-- Week folders must use padded names like `week_00`, `week_01`, `week_12`.
-- Weekly closeouts should use `closeout-summary.md`.
-- Week-specific demo walkthroughs should use `demo-script.md`.
-- Prefer lowercase kebab-case file names for new tracked notes.
-- Avoid names like `Day_01.md`, `closeoutsummary.md`, or folders with apostrophes.
+- `weekly-progress-notes.md`
+  - Short week-by-week summary for GitHub readers.
+- `architect-process-summary.md`
+  - Short architecture/process story distilled from the long architect process log.
+- `new-sic/`
+  - Current New SIC starting point cleanup plan, audit notes, and closeout summaries.
+- `build-progress/architect_process_log.md`
+  - Detailed audit log for the historical architecture process. Keep for now.
+- `build-progress/roadmap-vnext.md`
+  - Still referenced in source-of-truth governance until that governance is deliberately updated.
 
-## Safety rules
+## Current Structure
 
-- Do not commit real secrets, tokens, cookies, credentials, private keys, or environment values.
-- Do not commit PII or customer-identifying details.
-- Use placeholders such as `<redacted>`, `<tenant-id>`, `<request-id>`, `<commit-sha>`, or `<JWT>`.
-- Do not paste raw `Authorization` headers, JWTs, session cookies, `Set-Cookie` values, or full sensitive request bodies.
+- `week_00/` through `week_21/`
+  - Detailed historical build notes, scope locks, closeouts, demos, walkthroughs, and evidence.
+- `build-progress/`
+  - Long-running roadmap and detailed architect process log.
+- `new-sic/`
+  - New starting point cleanup planning and closeout notes.
+- `templates/`
+  - Reusable progress-note templates.
+- `qa/`
+  - Historical question/answer notes.
 
-## How to add notes
+## Status
 
-- Create a new weekly folder using the padded pattern, for example `week_14`.
-- Add new day notes inside that folder using the existing naming pattern already established for current progress notes.
-- Start each new day note from `docs/progress/templates/day_template.md`.
-- Start each new week closeout from `docs/progress/templates/week_closeout_template.md`.
-- Keep entries factual and concise: what changed, how it was validated, and what remains open.
+The week folders are historical evidence, not the current product source of truth. Current product and architecture readers should start from the short summaries and then open detailed week folders only when they need evidence behind a decision.
 
-## What not to do
+`roadmap-vnext.md` remains referenced by `docs/architecture/foundations/source-of-truth-manifest.md` and related governance docs. Review that source-of-truth status before archiving or replacing it.
 
-- Do not create unpadded week folders like `week_1`.
-- Do not create duplicate summary files with slightly different names.
-- Do not rewrite historical notes just to modernize old path references unless there is a strong reason.
-- Do not use this folder for local-only scratch notes. Local-only working material belongs in `.workspace/`.
+## Rules
+
+- Do not rewrite historical week files to modernize the past.
+- Do not claim future or parked ideas are shipped runtime.
+- Do not delete or move week folders until references are reviewed.
+- Keep new progress summaries factual, concise, and linked to evidence.

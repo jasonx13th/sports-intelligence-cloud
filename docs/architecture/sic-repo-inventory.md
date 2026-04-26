@@ -152,7 +152,7 @@ The current CDK API stack wires these Lambda handlers and API Gateway routes:
 
 ### Handler source present but not found in current CDK route wiring
 
-These handler folders exist and have tests or implementation, but current `infra/cdk/lib/sic-api-stack.ts` does not show matching Lambda functions/routes for them:
+These handler folders exist and have tests or implementation, but they are **not currently CDK-wired**. Source exists, but they are not part of the current deployed Club Vivo runtime in `infra/cdk/lib/sic-api-stack.ts`.
 
 - `services/club-vivo/api/clubs/handler.js`
   - Source handles `POST /clubs` and `GET /clubs`.
@@ -165,7 +165,9 @@ These handler folders exist and have tests or implementation, but current `infra
 - `services/club-vivo/api/lake-etl/etl.py`
   - Python ETL source for lake movement.
 
-These should not be deleted or moved without deeper review because docs and runbooks still reference domain exports and lake workflows.
+Keep these folders for review, future domain work, or parked export-lake work. Do not treat them as active shipped runtime, and do not delete them yet because tests, docs, or schemas still reference the surrounding context.
+
+Keeping them unwired avoids deploying unused AWS resources. New routes, buckets, Glue/Athena/lake resources, or EventBridge paths should only be wired when they are needed and approved.
 
 ## 3. Active Backend Domain Logic
 
@@ -560,7 +562,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 - `docs/architecture/repo-structure.md` and this inventory overlap; decide whether both should remain or whether one becomes the canonical repo map.
 - Coach Lite preview route was removed from the active Club Vivo app tree after audit; useful Coach Lite architecture docs remain for later review or migration.
 - Ruta Viva and Athlete Evolution AI are preserved as future product concepts under `docs/product/future/`.
-- `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/` contain implementation/tests but are not wired in the current `SicApiStack` route list found during this pass.
+- `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/` contain implementation/tests but are not currently CDK-wired in the current `SicApiStack` route list found during this pass. Source exists, but these folders are not part of the current deployed Club Vivo runtime.
 - Domain export and lake runbooks/docs reference resources not found in current CDK source; review whether these are historical, planned, or maintained outside the current stack.
 - `apps/club-vivo/lib/coach-team-hints.ts` appears browser-local and may be legacy after backend Teams became active.
 - `apps/club-vivo/lib/selected-team.ts` has read/clear usage in `session-builder-server.ts`; `setSelectedTeamId` was not found outside its own module during this pass.
@@ -599,7 +601,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 - `SessionPdfBucket` is defined in `infra/cdk/lib/sic-api-stack.ts`.
 - Session PDF storage uses `services/club-vivo/api/src/domains/sessions/pdf/session-pdf-storage.js`.
 - Session image source storage uses `services/club-vivo/api/src/platform/storage/session-builder-image-storage.js`.
-- Domain export/lake code expects `DOMAIN_EXPORT_BUCKET` and `LAKE_BUCKET`, but matching bucket definitions were not found in the current CDK stack during this pass.
+- Domain export/lake code expects `DOMAIN_EXPORT_BUCKET` and `LAKE_BUCKET`, but matching bucket definitions were not found in the current CDK stack during this pass. Keeping this work not currently CDK-wired avoids deploying unused AWS resources until new routes, buckets, Glue/Athena/lake resources, or EventBridge paths are needed and approved.
 
 ### Where is Bedrock used or permitted?
 
@@ -723,7 +725,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 ## Needs Deeper Review Before Moving
 
-- `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/`.
+- `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/`; these are not currently CDK-wired, should not be treated as active shipped runtime, and should not be deleted yet because tests, docs, or schemas still reference the surrounding context.
 - Domain export and lake docs/runbooks.
 - Old Coach Lite architecture docs, after useful generation, diagram, and methodology decisions are migrated or summarized.
 - Browser-local hint helpers that may overlap with newer backend-backed Teams and Sessions behavior.

@@ -186,11 +186,11 @@ Do not delete these directly from working history without an approved archive st
 
 These areas need source and dependency review before cleanup:
 
-- `services/club-vivo/api/clubs`
-- `services/club-vivo/api/memberships`
-- `services/club-vivo/api/exports-domain`
-- `services/club-vivo/api/lake-ingest`
-- `services/club-vivo/api/lake-etl`
+- `services/club-vivo/api/clubs` - not currently CDK-wired; source exists, but it is not part of the current deployed Club Vivo runtime.
+- `services/club-vivo/api/memberships` - not currently CDK-wired; source exists, but it is not part of the current deployed Club Vivo runtime.
+- `services/club-vivo/api/exports-domain` - not currently CDK-wired; keep for review as parked export-lake work.
+- `services/club-vivo/api/lake-ingest` - not currently CDK-wired; keep for review as parked export-lake work.
+- `services/club-vivo/api/lake-etl` - not currently CDK-wired; keep for review as parked export-lake work.
 - domain export/lake docs and runbooks
 - Coach Lite preview route, now removed from the active app tree after audit
 - browser-local hint helpers:
@@ -199,6 +199,10 @@ These areas need source and dependency review before cleanup:
   - `apps/club-vivo/lib/selected-team.ts`
 - `postman`
 - `datasets/schemas/exports/v1`
+
+Do not treat the unwired backend/export/lake folders as active shipped runtime, and do not delete them yet because tests, docs, or schemas still reference the surrounding context. Keeping them unwired avoids deploying unused AWS resources. New routes, buckets, Glue/Athena/lake resources, or EventBridge paths should only be wired when they are needed and approved.
+
+Current Club Vivo runtime remains focused on the active CDK-wired routes: `me`, `session-packs`, `sessions`, `teams`, `methodology`, `templates`, and `athletes`.
 
 Review questions:
 

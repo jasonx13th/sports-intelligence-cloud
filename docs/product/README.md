@@ -24,3 +24,8 @@ SIC is the platform. Club Vivo is the current coach-facing product and app surfa
 - `docs/product/club-vivo/`
   - Club Vivo product docs for the shared coach-facing workspace.
 
+## Future Product Concepts
+
+- `docs/product/future/`
+  - SIC-wide future product concepts that are not active runtime apps.
+  - Current preserved concepts include Ruta Viva and Athlete Evolution AI.

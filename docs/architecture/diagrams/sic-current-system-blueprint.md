@@ -129,7 +129,7 @@ Use a light gray dashed box for items that should not be read as active runtime:
 - Image-assisted intake broader restart parked
 - Methodology upload/source-mode parked
 - Domain export/lake review needed
-- README-only future app folders review needed
+- Future product concept placement reviewed
 - Deeper PDF design future work
 
 ## 5. Visual Color System
@@ -239,7 +239,7 @@ Use this color plan consistently:
 | Image-Assisted Intake Broader Restart | Product parking lot docs | Future exploration, not restarted as active product work | Parked/future |
 | Methodology Upload / Source Mode | `docs/product/club-vivo/future/methodology-source-mode-planning.md` | Future planning only | Parked/future |
 | Domain Export / Lake Review | `services/club-vivo/api/exports-domain/`, `lake-ingest/`, `lake-etl/` | Source exists, current CDK wiring not verified | Needs review |
-| README-Only Future App Folders | `apps/ruta-viva/`, `apps/athlete-evolution-ai/` | Future pillars, not active Club Vivo runtime | Parked/future |
+| Future Product Concepts | `docs/product/future/ruta-viva.md`, `docs/product/future/athlete-evolution-ai.md` | Future pillars, not active Club Vivo runtime | Parked/future |
 | Deeper PDF Design | Future product/design work | Current PDF export is functional but minimal | Parked/future |
 
 ## 7. Arrows And Labels
@@ -389,5 +389,5 @@ Suggested draw.io pages:
 
 - Should parked/future items be on the same board or a separate frame?
 - Should domain export/lake be shown as parked or left out until reviewed?
-- Should README-only future app folders be shown as future pillars or omitted?
+- Should SIC-wide future product concepts be shown as future pillars or omitted?
 - Should the first draw.io diagram be one large system map or multiple focused diagrams?

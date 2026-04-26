@@ -178,7 +178,7 @@ These are candidates only after an archive branch/tag or other backup exists:
 - README-only future app folders moved to `docs/product/future/`
 - parked/future planning docs if they clutter showcase and after they are preserved elsewhere
 - preview/demo-only app routes if not needed for the current product:
-  - `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/`
+  - `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/` was removed after the Coach Lite preview audit.
 
 Do not delete these directly from working history without an approved archive strategy.
 
@@ -192,7 +192,7 @@ These areas need source and dependency review before cleanup:
 - `services/club-vivo/api/lake-ingest`
 - `services/club-vivo/api/lake-etl`
 - domain export/lake docs and runbooks
-- `apps/club-vivo/app/(protected)/sessions/coach-lite-preview`
+- Coach Lite preview route, now removed from the active app tree after audit
 - browser-local hint helpers:
   - `apps/club-vivo/lib/coach-team-hints.ts`
   - `apps/club-vivo/lib/equipment-hints.ts`
@@ -274,7 +274,7 @@ Decisions needed before actual move/delete:
 - Where exactly should KSC pilot docs live?
 - Keep or archive `docs/progress` from GitHub main?
 - Keep future product concepts under `docs/product/future/` unless implementation starts?
-- Keep or remove `coach-lite-preview`?
+- Migrate or archive old Coach Lite architecture docs after preserving useful generation, diagram, and methodology decisions?
 - Keep `postman` top-level?
 - Keep `datasets` export schemas top-level?
 - What should GitHub `README.md` highlight first?

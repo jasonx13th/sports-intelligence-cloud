@@ -7,7 +7,7 @@ Draft v1
 
 This document defines the Week 21 product direction for **Coach Workspace v1** inside SIC Coach Lite.
 
-It uses `docs/progress/week_21/day1-scope-lock.md` as the current Week 21 source of truth.
+It uses `../../progress/weekly-progress-notes.md` and `../../architecture/sic-current-system-map.md` for the current GitHub-facing Week 21 and New SIC context. Detailed Week 21 notes remain historical evidence under `docs/progress/`.
 
 This is a product-direction document only.
 It does not claim that all described surfaces already exist in the current runtime.

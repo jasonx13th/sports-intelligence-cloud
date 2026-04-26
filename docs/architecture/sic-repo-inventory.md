@@ -458,7 +458,10 @@ Architecture docs live under `docs/architecture/`:
 
 Build history lives under `docs/progress/`.
 
-- `docs/progress/week_00/` through `docs/progress/week_21/` contain chronological build notes, scope locks, day summaries, walkthroughs, and closeouts.
+- `docs/progress/README.md` explains the current progress-history status and points GitHub readers to concise summaries.
+- `docs/progress/weekly-progress-notes.md` is the short week-by-week summary for GitHub readers.
+- `docs/progress/architect-process-summary.md` is the short architecture/process story.
+- Detailed `week_*` folders under `docs/progress/` contain chronological build notes, scope locks, day summaries, walkthroughs, and closeouts.
 - `docs/progress/build-progress/architect_process_log.md` is an audit-oriented process log.
 - `docs/progress/build-progress/roadmap-vnext.md` is the active roadmap/progress planning document.
 - `docs/progress/templates/` contains progress templates.
@@ -476,7 +479,7 @@ Known parked or future-only planning docs include:
   - Explicitly describes future source-mode decisions and does not implement upload, source switching, RAG, or admin configuration.
 - `docs/product/club-vivo/coach-workspace.md`
   - Includes future direction such as Quick Drill direction and coach-admin governance direction.
-- `docs/progress/week_21/week-21-class-session.md`
+- A Week 21 class-session planning note in the detailed progress history.
   - Planning/class-session document; includes future-oriented product concepts.
 - `apps/ruta-viva/README.md`
   - README-only future pillar for cycling/active mobility analytics.
@@ -717,7 +720,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 ## Safe To Reorganize Later
 
-- Historical `docs/progress/week_*` docs, if link targets and process references are preserved.
+- Historical detailed progress docs, if link targets and process references are preserved.
 - Local-only ignored directories and generated outputs, using `.gitignore` as the source of truth.
 - README-only future app folders, after a human decision about portfolio/GitHub presentation.
 - Progress templates and QA notes, after preserving any references.
@@ -744,9 +747,11 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 ## Historical Only
 
-- `docs/progress/week_00/` through `docs/progress/week_21/`.
+- Detailed `week_*` folders under `docs/progress/`.
 - Older demo scripts and closeout notes under `docs/progress/`.
-- `docs/progress/build-progress/architect_process_log.md` as audit history.
+- `docs/progress/weekly-progress-notes.md` as concise public progress history.
+- `docs/progress/architect-process-summary.md` as concise public architecture/process history.
+- `docs/progress/build-progress/architect_process_log.md` as detailed audit history.
 
 ## Parked/Future Only
 

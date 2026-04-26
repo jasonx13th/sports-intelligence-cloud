@@ -173,7 +173,7 @@ GitHub main should keep the current active runtime, infrastructure, and governin
 
 These are candidates only after an archive branch/tag or other backup exists:
 
-- `docs/progress/week_*` detailed weekly history
+- detailed weekly history under `docs/progress/`, after the summary layer and `docs/progress/new-sic/progress-history-audit.md` have been reviewed
 - old week/class-session docs
 - README-only future app folders:
   - `apps/ruta-viva`

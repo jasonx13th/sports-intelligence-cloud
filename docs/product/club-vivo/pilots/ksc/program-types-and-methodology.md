@@ -9,7 +9,7 @@ This document defines the Week 21 product direction for KSC program types and me
 
 KSC is the current pilot/example tenant for this topic, not product-wide shared platform truth.
 
-It uses `docs/progress/week_21/day1-scope-lock.md` as the current Week 21 source of truth.
+It uses `../../../../progress/weekly-progress-notes.md` and `../../../../architecture/sic-current-system-map.md` for the current GitHub-facing Week 21 and New SIC context. Detailed Week 21 notes remain historical evidence under `docs/progress/`.
 
 This is a product-direction document only.
 It does not claim that all described objects or defaults already exist in the current runtime.

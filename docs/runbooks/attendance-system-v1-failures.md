@@ -292,7 +292,8 @@ fields @timestamp, level, eventType, message, tenantId, userId, requestId, corre
 
 - `docs/api/team-attendance-v1-contract.md`
 - `docs/api/team-weekly-planning-v1-contract.md`
-- `docs/progress/week_16/attendance-storage-design.md`
+- `docs/progress/weekly-progress-notes.md`
+- `docs/progress/architect-process-summary.md`
 - `docs/architecture/attendance-system-v1.md`
 - `docs/runbooks/auth-failures.md`
 - `docs/runbooks/entitlement-failures.md`

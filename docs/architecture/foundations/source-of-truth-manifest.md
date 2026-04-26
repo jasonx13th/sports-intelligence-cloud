@@ -95,7 +95,11 @@ Future-facing language inside product docs should stay clearly labeled as future
 
 Historical docs preserve how the project actually evolved.
 
-- `docs/progress/week_*`
+- `docs/progress/README.md`
+- `docs/progress/weekly-progress-notes.md`
+- `docs/progress/architect-process-summary.md`
+- `docs/progress/new-sic/progress-history-audit.md`
+- detailed `week_*` folders under `docs/progress/`
 - `docs/progress/build-progress/architect_process_log.md`
 - progress closeout summaries
 - walkthrough scripts
@@ -103,7 +107,7 @@ Historical docs preserve how the project actually evolved.
 
 These files should not be rewritten casually. They can be corrected for factual mistakes, broken references, or obvious clarity problems, but they should not be rewritten to erase the actual build path.
 
-Historical docs are evidence and narrative context, not active runtime code.
+Historical docs are evidence and narrative context, not active runtime code. GitHub-facing references should prefer the concise progress summaries unless a specific detailed historical note is required for audit work.
 
 ## 8. Parked/Future Docs
 

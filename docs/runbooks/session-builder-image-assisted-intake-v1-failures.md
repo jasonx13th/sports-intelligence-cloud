@@ -311,6 +311,7 @@ fields @timestamp, level, eventType, message, tenantId, userId, requestId, corre
 
 - `docs/architecture/session-builder-image-assisted-intake-v1.md`
 - `docs/product/club-vivo/future/image-assisted-intake-v1-scope.md`
-- `docs/progress/week_18/week18-day1-scope-lock.md`
+- `docs/progress/weekly-progress-notes.md`
+- `docs/progress/architect-process-summary.md`
 - `docs/runbooks/auth-failures.md`
 - `docs/runbooks/entitlement-failures.md`

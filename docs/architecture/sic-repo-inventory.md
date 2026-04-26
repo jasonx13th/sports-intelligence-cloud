@@ -477,10 +477,10 @@ Known parked or future-only planning docs include:
   - Includes future direction such as Quick Drill direction and coach-admin governance direction.
 - A Week 21 class-session planning note in the detailed progress history.
   - Planning/class-session document; includes future-oriented product concepts.
-- `apps/ruta-viva/README.md`
-  - README-only future pillar for cycling/active mobility analytics.
-- `apps/athlete-evolution-ai/README.md`
-  - README-only future pillar for ML/GenAI athlete insights.
+- `docs/product/future/ruta-viva.md`
+  - Future product concept for cycling/active mobility analytics.
+- `docs/product/future/athlete-evolution-ai.md`
+  - Future product concept for ML/GenAI athlete insights.
 
 These should not be presented as active shipped runtime surfaces.
 
@@ -559,7 +559,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 - `docs/architecture/repo-structure.md` and this inventory overlap; decide whether both should remain or whether one becomes the canonical repo map.
 - `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/` appears preview/demo-like and uses `mock-session-pack.ts`; confirm whether it belongs in the public-facing repo structure.
-- `apps/ruta-viva/` and `apps/athlete-evolution-ai/` are README-only future pillars; decide whether they should remain top-level app folders or move to future concepts.
+- Ruta Viva and Athlete Evolution AI are preserved as future product concepts under `docs/product/future/`.
 - `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/` contain implementation/tests but are not wired in the current `SicApiStack` route list found during this pass.
 - Domain export and lake runbooks/docs reference resources not found in current CDK source; review whether these are historical, planned, or maintained outside the current stack.
 - `apps/club-vivo/lib/coach-team-hints.ts` appears browser-local and may be legacy after backend Teams became active.
@@ -718,7 +718,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 - Historical detailed progress docs, if link targets and process references are preserved.
 - Local-only ignored directories and generated outputs, using `.gitignore` as the source of truth.
-- README-only future app folders, after a human decision about portfolio/GitHub presentation.
+- Future product concept docs, after a human decision about portfolio/GitHub presentation.
 - Progress templates and QA notes, after preserving any references.
 
 ## Needs Deeper Review Before Moving
@@ -753,7 +753,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 - `docs/product/club-vivo/future/image-assisted-intake-parking-lot.md`.
 - `docs/product/club-vivo/future/methodology-source-mode-planning.md`.
-- README-only future pillars:
-  - `apps/ruta-viva/`
-  - `apps/athlete-evolution-ai/`
+- Future product concepts:
+  - `docs/product/future/ruta-viva.md`
+  - `docs/product/future/athlete-evolution-ai.md`
 - Future product-direction content around Quick Drill, methodology source-mode, document upload, RAG/vector ingestion, and separate analytics/ML pillars until explicitly rescoped.

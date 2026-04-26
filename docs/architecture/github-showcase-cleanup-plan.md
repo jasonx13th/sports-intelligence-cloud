@@ -125,7 +125,7 @@ README files should make the repo easier to navigate and help future files land 
 | Recommended README path | Purpose of folder | What belongs here | What should not go here | Current status | Priority |
 | --- | --- | --- | --- | --- | --- |
 | `README.md` | Repo landing page and GitHub showcase entry | Product summary, active app, architecture map links, setup/test commands | Deep progress history or long implementation journals | Exists | High |
-| `apps/README.md` | App workspace index | Active and future app folder explanations | Backend services, infra docs | Needs create | High |
+| `apps/README.md` | App workspace index | Active app folder explanations | Backend services, infra docs, future product concepts | Exists | High |
 | `apps/club-vivo/README.md` | Club Vivo frontend guide | Next app purpose, routes, env expectations, local dev, validation | Backend contracts or platform history | Exists | High |
 | `services/README.md` | Backend services index | Service folders and ownership boundaries | Frontend docs or product roadmaps | Needs create | High |
 | `services/club-vivo/README.md` | Club Vivo backend service overview | API service purpose and subfolders | Auth trigger ownership | Needs create | Medium |
@@ -175,9 +175,7 @@ These are candidates only after an archive branch/tag or other backup exists:
 
 - detailed weekly history under `docs/progress/`, after the summary layer and `docs/progress/new-sic/progress-history-audit.md` have been reviewed
 - old week/class-session docs
-- README-only future app folders:
-  - `apps/ruta-viva`
-  - `apps/athlete-evolution-ai`
+- README-only future app folders moved to `docs/product/future/`
 - parked/future planning docs if they clutter showcase and after they are preserved elsewhere
 - preview/demo-only app routes if not needed for the current product:
   - `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/`
@@ -238,7 +236,7 @@ Use small commits.
 4. Update system map and inventory references.
 5. Create/update README files by folder group.
 6. Update root README navigation.
-7. Review/remove or archive placeholder future app folders.
+7. Move README-only future app concepts out of `apps/`.
 8. Review/archive weekly progress docs.
 9. Review preview/demo routes.
 10. Validate after every step.
@@ -275,7 +273,7 @@ Decisions needed before actual move/delete:
 - Should `sport-packs` be renamed to `generation-profiles`, `methodology-packs`, `coaching-models`, or `session-flavors`?
 - Where exactly should KSC pilot docs live?
 - Keep or archive `docs/progress` from GitHub main?
-- Keep or remove README-only future app folders?
+- Keep future product concepts under `docs/product/future/` unless implementation starts?
 - Keep or remove `coach-lite-preview`?
 - Keep `postman` top-level?
 - Keep `datasets` export schemas top-level?

@@ -83,13 +83,7 @@ Examples:
 - `apps/club-vivo/lib/session-builder-api.ts`
 - `apps/club-vivo/app/sessions/new/session-new-flow.tsx`
 
-### `apps/athlete-evolution-ai/`
-Reserved app area. Currently placeholder-level.
-
-### `apps/ruta-viva/`
-Reserved app area. Currently placeholder-level.
-
-Do not expand placeholder apps unless the work is intentionally starting there.
+Future SIC-wide product concepts belong under `docs/product/future/` until implementation starts. Do not add placeholder app folders without an approved product and architecture decision.
 
 ---
 
@@ -282,6 +276,9 @@ Use this for:
 
 Current product area:
 - `docs/product/club-vivo/`
+
+Future SIC-wide product concepts:
+- `docs/product/future/`
 
 ### `docs/adr/`
 Architecture decision records.

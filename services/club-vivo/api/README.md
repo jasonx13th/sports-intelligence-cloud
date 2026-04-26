@@ -22,6 +22,14 @@ Handler/source folders that need review before cleanup include:
 - `lake-ingest/`
 - `lake-etl/`
 
+These folders are **not currently CDK-wired**. Source exists, but they are not part of the current deployed Club Vivo runtime in `infra/cdk/lib/sic-api-stack.ts`.
+
+Keep them for review, future domain work, or parked export-lake work. Do not treat them as active shipped runtime, and do not delete them yet because tests, docs, or schemas still reference the surrounding context.
+
+Keeping these folders unwired avoids deploying unused AWS resources. New routes, buckets, Glue/Athena/lake resources, or EventBridge paths should only be wired when they are needed and approved.
+
+The current deployed Club Vivo API remains focused on the active routes for `me`, `session-packs`, `sessions`, `teams`, `methodology`, `templates`, and `athletes`.
+
 ## Important Source Folders
 
 - `src/domains/`
@@ -85,4 +93,3 @@ npm test --prefix services/club-vivo/api
 - Keep public/cross-layer contracts aligned with `docs/api/`.
 - Preserve fail-closed tenant behavior.
 - Do not widen public POST `/session-packs` without explicit approval.
-

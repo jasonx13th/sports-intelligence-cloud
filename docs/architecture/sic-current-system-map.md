@@ -156,7 +156,9 @@ Handler folders present but not found in the current CDK route list:
 - `services/club-vivo/api/lake-ingest/`
 - `services/club-vivo/api/lake-etl/`
 
-Those areas need deeper review before cleanup because source and docs still reference export/lake workflows.
+These folders are **not currently CDK-wired**. Source exists, but they are not part of the current deployed Club Vivo runtime. Keep them for review, future domain work, or parked export-lake work. Do not treat them as active shipped runtime, and do not delete them yet because tests, docs, or schemas still reference the surrounding context.
+
+Keeping these folders unwired avoids deploying unused AWS resources. New routes, buckets, Glue/Athena/lake resources, or EventBridge paths should only be wired when they are needed and approved. The current deployed Club Vivo app remains focused on the active routes for `me`, `session-packs`, `sessions`, `teams`, `methodology`, `templates`, and `athletes`.
 
 ### Platform Wrapper And Tenant Context
 
@@ -680,7 +682,7 @@ Those diagrams may be recreated in Miro or draw.io for presentation, but they sh
 
 ## 14. Open Questions / Next Map Improvements
 
-- Determine whether domain export and lake code is historical, parked, or active outside the current CDK stack.
+- Domain export and lake code is not currently CDK-wired in the source CDK stack; decide whether it should remain parked, move to archive later, or be wired only after an approved need for new AWS resources.
 - Coach Lite preview route has been removed from the active app tree; decide later whether old Coach Lite architecture docs should be migrated or archived.
 - Future SIC-wide product concepts now live under `docs/product/future/`; keep `apps/` focused on active app surfaces.
 - Review whether the source-of-truth order needs a new roadmap/governance document now that work is moving away from week-based planning.

@@ -681,7 +681,7 @@ Those diagrams may be recreated in Miro or draw.io for presentation, but they sh
 ## 14. Open Questions / Next Map Improvements
 
 - Determine whether domain export and lake code is historical, parked, or active outside the current CDK stack.
-- Decide whether `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/` should remain in the active app tree.
+- Coach Lite preview route has been removed from the active app tree; decide later whether old Coach Lite architecture docs should be migrated or archived.
 - Future SIC-wide product concepts now live under `docs/product/future/`; keep `apps/` focused on active app surfaces.
 - Review whether the source-of-truth order needs a new roadmap/governance document now that work is moving away from week-based planning.
 - Consider whether future official visual diagrams should be generated under `docs/architecture/diagrams/` and cross-linked from this map.

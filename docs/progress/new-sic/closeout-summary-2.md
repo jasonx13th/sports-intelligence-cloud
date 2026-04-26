@@ -11,6 +11,7 @@ Progress history archive cleanup for GitHub `main`.
 - The old week-based roadmap file was removed from `main`.
 - Old progress templates were removed from `main`.
 - Old Q/A progress notes were removed from `main`.
+- The isolated Coach Lite preview route was removed from the active Club Vivo app tree.
 - Concise progress summaries remain in `main`.
 - New SIC cleanup docs remain in `main`.
 
@@ -30,8 +31,8 @@ Full detailed progress history remains preserved by:
 
 ## What Stayed Untouched
 
-- Runtime code
-- Frontend behavior
+- Backend runtime code
+- Frontend behavior outside removal of the isolated preview route
 - Backend behavior
 - Infrastructure
 - API contracts
@@ -39,6 +40,7 @@ Full detailed progress history remains preserved by:
 - Tenancy
 - Entitlements
 - IAM/CDK
+- Useful Coach Lite architecture docs
 
 ## Result
 

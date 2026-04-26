@@ -26,9 +26,7 @@ function isActive(pathname: string, href: string) {
       pathname === href ||
       (pathname.startsWith("/sessions/") &&
         pathname !== "/sessions/new" &&
-        !pathname.startsWith("/sessions/new/") &&
-        pathname !== "/sessions/coach-lite-preview" &&
-        !pathname.startsWith("/sessions/coach-lite-preview/"))
+        !pathname.startsWith("/sessions/new/"))
     );
   }
 

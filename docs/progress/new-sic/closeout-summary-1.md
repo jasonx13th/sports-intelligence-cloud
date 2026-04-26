@@ -44,7 +44,7 @@ New SIC starting point and GitHub showcase cleanup checkpoint.
 ## Remaining Cleanup Decisions
 
 - `docs/progress` keep/archive decision
-- `coach-lite-preview` review
+- `coach-lite-preview` review, completed in `closeout-summary-2.md`
 - README-only future app folders review
 - Postman and datasets review
 - Unwired backend folders review

@@ -85,8 +85,8 @@ It does not propose file moves, deletions, renames, runtime changes, auth change
   - Client feedback panel.
 - `apps/club-vivo/app/(protected)/sessions/[sessionId]/quick-session-title-editor.tsx`
   - Client title editor for saved Quick Session display hints.
-- `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/`
-  - Coach Lite preview route and mock pack. It looks like a preview/demo surface and should be reviewed before any public repo cleanup.
+- Coach Lite preview route
+  - Removed from the active Club Vivo app tree after audit. Useful Coach Lite architecture docs remain under `docs/architecture/coach-lite/` for later review or migration.
 
 ### Coach UI components
 
@@ -558,7 +558,7 @@ No `.gitignore` change is made in this inventory.
 These are candidates for later review only. Do not delete, move, or rename them from this inventory.
 
 - `docs/architecture/repo-structure.md` and this inventory overlap; decide whether both should remain or whether one becomes the canonical repo map.
-- `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/` appears preview/demo-like and uses `mock-session-pack.ts`; confirm whether it belongs in the public-facing repo structure.
+- Coach Lite preview route was removed from the active Club Vivo app tree after audit; useful Coach Lite architecture docs remain for later review or migration.
 - Ruta Viva and Athlete Evolution AI are preserved as future product concepts under `docs/product/future/`.
 - `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/` contain implementation/tests but are not wired in the current `SicApiStack` route list found during this pass.
 - Domain export and lake runbooks/docs reference resources not found in current CDK source; review whether these are historical, planned, or maintained outside the current stack.
@@ -725,7 +725,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 
 - `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/`.
 - Domain export and lake docs/runbooks.
-- `apps/club-vivo/app/(protected)/sessions/coach-lite-preview/`.
+- Old Coach Lite architecture docs, after useful generation, diagram, and methodology decisions are migrated or summarized.
 - Browser-local hint helpers that may overlap with newer backend-backed Teams and Sessions behavior.
 - Any docs that currently mix shipped scope with future product direction.
 

@@ -1,8 +1,8 @@
 # Architect Process Summary
 
-This is the short GitHub-readable version of the longer `docs/progress/build-progress/architect_process_log.md`.
+This is the short GitHub-readable architecture/process summary for SIC.
 
-It summarizes the architecture/process story through Week 21 and the New SIC starting point. It is a summary layer only; detailed evidence remains in the week folders and the long architect process log.
+It summarizes the architecture/process story through Week 21 and the New SIC starting point. It is a summary layer only; detailed process evidence remains preserved in the archive branch/tag listed in `docs/progress/README.md`.
 
 ## Platform Foundation Summary
 

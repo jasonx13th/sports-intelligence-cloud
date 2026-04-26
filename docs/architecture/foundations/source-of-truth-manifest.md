@@ -40,7 +40,6 @@ This order follows the current platform constitution. When there is ambiguity, u
 3. `docs/vision.md`
 4. `docs/architecture/tenant-claim-contract.md`
 5. `docs/product/club-vivo/session-builder.md`
-6. `docs/progress/build-progress/roadmap-vnext.md`
 
 Changing this order requires an ADR or explicit architecture decision.
 
@@ -99,8 +98,7 @@ Historical docs preserve how the project actually evolved.
 - `docs/progress/weekly-progress-notes.md`
 - `docs/progress/architect-process-summary.md`
 - `docs/progress/new-sic/progress-history-audit.md`
-- detailed `week_*` folders under `docs/progress/`
-- `docs/progress/build-progress/architect_process_log.md`
+- archived detailed progress history preserved by the archive branch/tag listed in `docs/progress/README.md`
 - progress closeout summaries
 - walkthrough scripts
 - QA notes
@@ -153,7 +151,7 @@ Diagram docs can be updated normally when they clarify the current system. If a 
 
 Starter candidates for later review:
 
-- Review whether `docs/progress/build-progress/roadmap-vnext.md` should remain a source-of-truth doc now that SIC is moving away from week-based work.
+- Review whether the current source-of-truth order needs a new product/roadmap governing doc now that SIC has moved away from week-based work.
 - Review whether `docs/architecture/repo-structure.md` and `docs/architecture/sic-repo-inventory.md` should be merged, cross-linked, or kept separate.
 - Review whether `docs/architecture/platform-constitution.md` should mention the new repo architecture audit phase.
 - Review whether `docs/vision.md` should be updated after the new system map is created.

@@ -281,7 +281,7 @@ Decisions needed before actual move/delete:
 - Keep `datasets` export schemas top-level?
 - What should GitHub `README.md` highlight first?
 - Which README files should be created first?
-- Should `roadmap-vnext.md` remain in the source-of-truth order after moving away from week-based work?
+- What current product or architecture doc should carry roadmap/governance responsibility after moving away from week-based work?
 - Should `docs/product/club-vivo/future/image-assisted-intake-v1-scope.md` be future/parked, active reference, or architecture-only evidence?
 
 ## 14. Proposed First Cleanup Action

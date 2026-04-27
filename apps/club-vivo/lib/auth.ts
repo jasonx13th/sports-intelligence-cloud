@@ -60,6 +60,10 @@ export function getRequiredAuthConfig(): AuthConfig {
   };
 }
 
+export function buildAppUrl(pathname: string) {
+  return new URL(pathname, getRequiredAuthConfig().redirectUri);
+}
+
 export function buildAuthorizeUrl({
   state,
   codeChallenge,

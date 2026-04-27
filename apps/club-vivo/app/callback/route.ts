@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   AUTH_STATE_COOKIE,
   PKCE_VERIFIER_COOKIE,
+  buildAppUrl,
   clearAuthCookies,
   clearTemporaryAuthCookies,
   exchangeAuthorizationCode,
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
       return redirectToLogin(request);
     }
 
-    const response = NextResponse.redirect(new URL("/home", request.url));
+    const response = NextResponse.redirect(buildAppUrl("/home"));
 
     setAccessTokenCookie(response, {
       accessToken: tokenResult.accessToken,

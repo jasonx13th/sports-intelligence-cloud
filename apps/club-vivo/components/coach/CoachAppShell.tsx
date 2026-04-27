@@ -32,6 +32,7 @@ export function CoachAppShell({
                 </p>
                 <Link
                   href="/logout"
+                  prefetch={false}
                   className="font-medium text-slate-500 transition hover:text-slate-700 hover:underline"
                 >
                   Log out

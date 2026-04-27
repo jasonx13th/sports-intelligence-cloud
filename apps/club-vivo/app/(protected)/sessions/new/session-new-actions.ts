@@ -4,11 +4,11 @@ import { Buffer } from "node:buffer";
 
 import {
   analyzeSessionImage,
+  generateSessionPack,
   type ConfirmedImageAnalysisProfile,
   type ImageAnalysisMode,
   type SessionBuilderApiError
 } from "../../../../lib/session-builder-api";
-import { generateSessionPackForWorkspace } from "../../../../lib/session-builder-server";
 import { formatEnvironmentLabel } from "../../../../lib/session-builder-context-hints";
 import type { AnalyzeFormState, GenerateFormState } from "./session-new-flow";
 
@@ -163,7 +163,6 @@ export async function generateSessionPackAction(
   const ageBand = String(formData.get("ageBand") || "").trim();
   const durationMin = String(formData.get("durationMin") || "").trim();
   const environment = String(formData.get("environment") || "").trim();
-  const teamId = String(formData.get("teamId") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
   const constraints = String(formData.get("constraints") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
@@ -201,7 +200,8 @@ export async function generateSessionPackAction(
       ? parseConfirmedProfile(confirmedProfileJson)
       : undefined;
 
-    const pack = await generateSessionPackForWorkspace({
+    // TODO: Preserve selected-team/methodology influence after deployed /session-packs accepts team context.
+    const pack = await generateSessionPack({
       sport,
       ...(sportPackId ? { sportPackId } : {}),
       ageBand,
@@ -214,7 +214,7 @@ export async function generateSessionPackAction(
       sessionsCount: 1,
       ...(equipment ? { equipment: parseEquipment(equipment) } : {}),
       ...(confirmedProfile ? { confirmedProfile } : {})
-    }, teamId || undefined);
+    });
 
     return {
       values,

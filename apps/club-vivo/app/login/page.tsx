@@ -32,6 +32,7 @@ export default async function LoginPage({
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/login/start"
+            prefetch={false}
             className="inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
           >
             Sign in
@@ -39,6 +40,7 @@ export default async function LoginPage({
 
           <Link
             href="/login/start?mode=signup"
+            prefetch={false}
             className="inline-flex rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-white"
           >
             Start access

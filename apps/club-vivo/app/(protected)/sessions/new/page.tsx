@@ -17,17 +17,9 @@ import {
   getEquipmentItems,
   serializeEquipmentHints
 } from "../../../../lib/equipment-hints";
+import { listTeams, type TeamRecord } from "../../../../lib/team-api";
 import { saveGeneratedSessionAction } from "../session-actions";
-
-type WorkspaceTeamOption = {
-  id: string;
-  label: string;
-  sport: "soccer" | "fut-soccer";
-  ageBand: string;
-  programType?: "travel" | "ost";
-  methodologyLabel?: string;
-  defaultDurationMin?: number;
-};
+import { type WorkspaceTeamOption } from "../../../../components/coach/TeamSelector";
 
 const INITIAL_ANALYZE_STATE: AnalyzeFormState = {
   values: {
@@ -52,6 +44,58 @@ function parseSearchParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function isNextRedirectError(error: unknown): error is { digest: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
+function getDefaultDurationMin(programType?: "travel" | "ost") {
+  return programType === "ost" ? 45 : 60;
+}
+
+function mapBackendTeamToOption(team: TeamRecord): WorkspaceTeamOption {
+  return {
+    id: team.teamId,
+    label: team.name,
+    sport: team.sport,
+    ageBand: team.ageBand,
+    programType: team.programType,
+    defaultDurationMin: getDefaultDurationMin(team.programType)
+  };
+}
+
+function getFallbackTeamOptions(rawCookieValue: string | undefined): WorkspaceTeamOption[] {
+  return getCoachTeams(rawCookieValue).map((team) => ({
+    id: team.id,
+    label: team.teamName,
+    sport: "soccer",
+    ageBand: team.ageBand,
+    programType: team.teamType,
+    defaultDurationMin: getDefaultDurationMin(team.teamType)
+  }));
+}
+
+async function getTeamOptions(rawCookieValue: string | undefined) {
+  try {
+    const backendTeams = await listTeams();
+
+    if (backendTeams.length > 0) {
+      return backendTeams.map(mapBackendTeamToOption);
+    }
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+  }
+
+  return getFallbackTeamOptions(rawCookieValue);
+}
+
 export default async function NewSessionPage({
   searchParams
 }: {
@@ -67,16 +111,8 @@ export default async function NewSessionPage({
   const requestedNotes = parseSearchParam(resolvedSearchParams?.notes)?.trim() || "";
   const initialConstraints = requestedNotes || undefined;
   const cookieStore = await cookies();
-  const coachTeams = getCoachTeams(cookieStore.get(COACH_TEAM_HINTS_COOKIE)?.value);
+  const teamOptions = await getTeamOptions(cookieStore.get(COACH_TEAM_HINTS_COOKIE)?.value);
   const initialEquipmentOptions = getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
-  const teamOptions: WorkspaceTeamOption[] = coachTeams.map((team) => ({
-    id: team.id,
-    label: team.teamName,
-    sport: "soccer",
-    ageBand: team.ageBand,
-    programType: team.teamType,
-    defaultDurationMin: team.teamType === "travel" ? 60 : 45
-  }));
 
   const initialGenerateState: GenerateFormState = {
     values: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -298,6 +298,8 @@ export function NewSessionFlow({
   const [profileEditorValue, setProfileEditorValue] = useState("");
   const [confirmedProfileJson, setConfirmedProfileJson] = useState("");
   const [profileNotice, setProfileNotice] = useState<string>();
+  const reviewSectionRef = useRef<HTMLElement | null>(null);
+  const lastScrolledPackIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!analyzeState.analysis?.profile) {
@@ -330,6 +332,22 @@ export function NewSessionFlow({
     generateState.values.sport,
     generateState.values.theme
   ]);
+
+  useEffect(() => {
+    const packId = generateState.pack?.packId;
+
+    if (!packId || lastScrolledPackIdRef.current === packId) {
+      return;
+    }
+
+    lastScrolledPackIdRef.current = packId;
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    reviewSectionRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start"
+    });
+  }, [generateState.pack?.packId]);
 
   const minimumDuration = workspaceMode === "quick_drill" ? QUICK_DRILL_MIN_DURATION : FULL_SESSION_MIN_DURATION;
   const hasDraftProfile = Boolean(analyzeState.analysis?.profile);
@@ -560,7 +578,7 @@ export function NewSessionFlow({
         </div>
       </details>
 
-      <section className="rounded-3xl border border-slate-200 bg-white/70 p-6">
+      <section ref={reviewSectionRef} className="rounded-3xl border border-slate-200 bg-white/70 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Review your session</h2>

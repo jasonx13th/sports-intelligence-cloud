@@ -3,8 +3,6 @@
 import { useState, useTransition } from "react";
 
 type ObjectiveConstraintsInputsProps = {
-  objective: string;
-  onObjectiveChange: (value: string) => void;
   constraints: string;
   onConstraintsChange: (value: string) => void;
   equipment: string;
@@ -43,8 +41,6 @@ function getEquipmentDescription(value: string) {
 }
 
 export function ObjectiveConstraintsInputs({
-  objective,
-  onObjectiveChange,
   constraints,
   onConstraintsChange,
   equipment,
@@ -114,37 +110,6 @@ export function ObjectiveConstraintsInputs({
 
   return (
     <div className="grid gap-4">
-      <label className="grid gap-2 text-sm text-slate-700">
-        <span className="font-medium">Objective</span>
-        <input
-          name="theme"
-          value={objective}
-          onChange={(event) => onObjectiveChange(event.target.value)}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-          placeholder="Pressing in midfield, first touch under pressure, finishing from cutbacks"
-          required
-        />
-        <span className="text-xs leading-5 text-slate-500">
-          Keep the session goal short and specific so the generated plan is easier to use.
-        </span>
-      </label>
-
-      <label className="grid gap-2 text-sm text-slate-700">
-        <span className="font-medium">Brainstorming</span>
-        <textarea
-          name="constraints"
-          value={constraints}
-          onChange={(event) => onConstraintsChange(event.target.value)}
-          rows={6}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-          placeholder="Session ideas, coaching notes, weather or space limits, and extra details for today"
-        />
-        <span className="text-xs leading-5 text-slate-500">
-          Use this for session ideas, coaching notes, weather or space constraints, and any extra
-          details that matter today.
-        </span>
-      </label>
-
       <section className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -265,6 +230,22 @@ export function ObjectiveConstraintsInputs({
           Essentials list for this coach workspace.
         </p>
       </section>
+
+      <label className="grid gap-2 text-sm text-slate-700">
+        <span className="font-medium">Brainstorming</span>
+        <textarea
+          name="constraints"
+          value={constraints}
+          onChange={(event) => onConstraintsChange(event.target.value)}
+          rows={6}
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+          placeholder="Session ideas, coaching notes, weather or space limits, and extra details for today"
+        />
+        <span className="text-xs leading-5 text-slate-500">
+          Use this for session ideas, coaching notes, weather or space constraints, and any extra
+          details that matter today.
+        </span>
+      </label>
     </div>
   );
 }

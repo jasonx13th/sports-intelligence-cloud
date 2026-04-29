@@ -97,13 +97,6 @@ export function SessionBuilderTopBlock({
 
   return (
     <form action={formAction} className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">Start here</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Choose the team, set the build direction, and add the coaching context for today.
-        </p>
-      </div>
-
       <input type="hidden" name="sport" value={sport} />
       <input type="hidden" name="ageBand" value={ageBand} />
       <input type="hidden" name="teamId" value={selectedTeamId} />
@@ -132,14 +125,32 @@ export function SessionBuilderTopBlock({
         </section>
 
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">Set-up</h3>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Set the time, objective, and the practical details that matter for today&apos;s
-              group.
-            </p>
-          </div>
+          <label className="grid gap-2 text-sm text-slate-700">
+            <span className="font-medium">Objective</span>
+            <input
+              name="theme"
+              value={objective}
+              onChange={(event) => onObjectiveChange(event.target.value)}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+              placeholder="Pressing in midfield, first touch under pressure, finishing from cutbacks"
+              required
+            />
+            <span className="text-xs leading-5 text-slate-500">
+              Keep the session goal short and specific so the generated plan is easier to use.
+            </span>
+          </label>
+        </section>
 
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <DurationSelector
+            value={durationMin}
+            onChange={onDurationMinChange}
+            minimumDuration={minimumDuration}
+            mode={mode}
+          />
+        </section>
+
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
           <div className="grid gap-4">
             <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -207,18 +218,9 @@ export function SessionBuilderTopBlock({
                 environments stay in this builder page for now.
               </span>
             </div>
-
-            <DurationSelector
-              value={durationMin}
-              onChange={onDurationMinChange}
-              minimumDuration={minimumDuration}
-              mode={mode}
-            />
           </div>
 
           <ObjectiveConstraintsInputs
-            objective={objective}
-            onObjectiveChange={onObjectiveChange}
             constraints={constraints}
             onConstraintsChange={onConstraintsChange}
             equipment={equipment}

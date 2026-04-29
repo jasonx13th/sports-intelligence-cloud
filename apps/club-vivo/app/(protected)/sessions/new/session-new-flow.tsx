@@ -589,7 +589,7 @@ export function NewSessionFlow({
 
           {workspaceMode === "quick_drill" ? (
             <p className="max-w-sm rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
-              Quick Drill still uses the shared generation path. It is a lighter planning frame,
+              Drill still uses the shared generation path. It is a lighter planning frame,
               not a separate backend mode.
             </p>
           ) : null}

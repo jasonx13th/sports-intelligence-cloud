@@ -135,32 +135,57 @@ function SaveButton() {
   );
 }
 
-function formatSessionMetaValue(value: string) {
-  return value
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function buildSessionContextTitle({
+  teamName,
+  ageBand,
+  durationMin
+}: {
+  teamName: string;
+  ageBand: string;
+  durationMin: number;
+}) {
+  const durationLabel = Number.isFinite(durationMin) ? `${durationMin} min` : "";
+  const parts = [teamName.trim(), ageBand.trim().toUpperCase(), durationLabel].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(" / ") : "Generated session";
 }
 
-function OverviewItem({
-  label,
-  value,
-  className = ""
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 ${className}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
-    </div>
+function normalizeComparisonText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function sentenceRepeatsObjective(sentence: string, objective: string, objectiveTags: string[]) {
+  const match = sentence.match(/^today(?:'|\u2019)?s\s+(?:focus|objective)\s*:\s*(.+)$/i);
+
+  if (!match) {
+    return false;
+  }
+
+  const sentenceObjective = normalizeComparisonText(match[1]);
+  const coachObjective = normalizeComparisonText(objective);
+  const tagObjectives = objectiveTags.map(normalizeComparisonText).filter(Boolean);
+
+  if (!sentenceObjective) {
+    return true;
+  }
+
+  if (
+    coachObjective &&
+    (coachObjective.includes(sentenceObjective) || sentenceObjective.includes(coachObjective))
+  ) {
+    return true;
+  }
+
+  return tagObjectives.some(
+    (tag) => tag.includes(sentenceObjective) || sentenceObjective.includes(tag)
   );
 }
 
-function splitActivityDescription(description: string) {
+function splitActivityDescription(
+  description: string,
+  objective: string,
+  objectiveTags: string[]
+) {
   const normalizedDescription = description.replace(/\s+/g, " ").trim();
 
   if (!normalizedDescription) {
@@ -170,10 +195,15 @@ function splitActivityDescription(description: string) {
   const sentenceMatches = normalizedDescription.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
 
   if (!sentenceMatches || sentenceMatches.length < 2) {
-    return [normalizedDescription];
+    return sentenceRepeatsObjective(normalizedDescription, objective, objectiveTags)
+      ? []
+      : [normalizedDescription];
   }
 
-  return sentenceMatches.map((sentence) => sentence.trim()).filter(Boolean);
+  return sentenceMatches
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .filter((sentence) => !sentenceRepeatsObjective(sentence, objective, objectiveTags));
 }
 
 function LegendSymbol({
@@ -185,7 +215,7 @@ function LegendSymbol({
 }) {
   return (
     <span
-      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-800 ${className}`}
+      className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-800 ${className}`}
     >
       {children}
     </span>
@@ -200,59 +230,83 @@ function DiagramLegendItem({
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2">
       {symbol}
-      <span className="text-sm leading-5 text-slate-700">{label}</span>
+      <span className="text-xs leading-5 text-slate-700">{label}</span>
+    </div>
+  );
+}
+
+function DiagramCanvas({ size = "compact" }: { size?: "compact" | "large" }) {
+  return (
+    <div
+      className={[
+        "relative overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white",
+        size === "large" ? "min-h-72" : "min-h-44"
+      ].join(" ")}
+    >
+      <div className="absolute inset-4 rounded-lg border border-slate-100" />
+      <div className="absolute left-1/2 top-4 h-[calc(100%-2rem)] border-l border-slate-100" />
+      <div className="absolute left-6 top-1/2 h-2 w-2 rounded-full bg-blue-500" />
+      <div className="absolute left-1/3 top-1/3 h-2 w-2 rounded-full bg-blue-500" />
+      <div className="absolute right-8 top-1/3 h-2 w-2 rounded-full bg-red-500" />
+      <div className="absolute bottom-8 left-1/4 h-2 w-2 rounded-full bg-yellow-400" />
+      <div className="absolute bottom-8 right-1/3 h-2 w-2 rounded-full bg-yellow-400" />
+      <div className="absolute left-[30%] top-[42%] h-px w-24 rotate-[-12deg] bg-slate-400" />
+      <div className="absolute left-[52%] top-[32%] h-px w-16 rotate-[24deg] border-t border-dotted border-slate-400" />
+      <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+        <div className="rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Diagram coming next
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
 function DiagramPlaceholder() {
-  const [isExplainingDiagram, setIsExplainingDiagram] = useState(false);
+  const [isLargePreview, setIsLargePreview] = useState(false);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
       <button
         type="button"
-        onClick={() => setIsExplainingDiagram((current) => !current)}
+        onClick={() => setIsLargePreview((current) => !current)}
         className="group block w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-teal-600"
-        aria-label={isExplainingDiagram ? "Hide diagram explanation" : "Show diagram explanation"}
+        aria-label={isLargePreview ? "Show compact diagram preview" : "Show larger diagram preview"}
       >
-        <div className="relative min-h-44 overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white transition group-hover:border-teal-300 group-hover:bg-teal-50/20">
-        <div className="absolute inset-4 rounded-lg border border-slate-100" />
-        <div className="absolute left-1/2 top-4 h-[calc(100%-2rem)] border-l border-slate-100" />
-        <div className="absolute left-6 top-1/2 h-2 w-2 rounded-full bg-blue-500" />
-        <div className="absolute left-1/3 top-1/3 h-2 w-2 rounded-full bg-blue-500" />
-        <div className="absolute right-8 top-1/3 h-2 w-2 rounded-full bg-red-500" />
-        <div className="absolute bottom-8 left-1/4 h-2 w-2 rounded-full bg-yellow-400" />
-        <div className="absolute bottom-8 right-1/3 h-2 w-2 rounded-full bg-yellow-400" />
-        <div className="absolute left-[30%] top-[42%] h-px w-24 rotate-[-12deg] bg-slate-400" />
-        <div className="absolute left-[52%] top-[32%] h-px w-16 rotate-[24deg] border-t border-dotted border-slate-400" />
-        <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
-          <div className="rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Diagram coming next
-            </p>
-          </div>
-        </div>
+        <div className="transition group-hover:border-teal-300 group-hover:bg-teal-50/20">
+          <DiagramCanvas />
         </div>
       </button>
       <p className="mt-3 text-xs leading-5 text-slate-500">
-        Full diagrams will use the Club Vivo diagram standard in a later version.
+        Click to {isLargePreview ? "collapse" : "enlarge"} this future diagram preview.
       </p>
-      {isExplainingDiagram ? (
-        <div className="mt-3 rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-3 text-xs leading-5 text-teal-900">
-          Read future diagrams with the Club Vivo legend: arrows show ball or player movement,
-          blue marks the team being coached, red marks opposition, and yellow marks cones or
-          equipment.
+      {isLargePreview ? (
+        <div className="mt-3 rounded-2xl border border-teal-100 bg-teal-50/70 p-3">
+          <DiagramCanvas size="large" />
+          <p className="mt-3 text-xs leading-5 text-teal-900">
+            Full diagrams will use the Club Vivo diagram standard in a later version. Read arrows
+            for movement, blue as the team being coached, red as opposition, and yellow as cones or
+            equipment.
+          </p>
         </div>
       ) : null}
     </div>
   );
 }
 
-function ActivityCoachGuide({ description }: { description?: string }) {
-  const descriptionLines = splitActivityDescription(description ?? "");
+function ActivityCoachGuide({
+  description,
+  objective,
+  objectiveTags
+}: {
+  description?: string;
+  objective: string;
+  objectiveTags: string[];
+}) {
+  const descriptionLines = splitActivityDescription(description ?? "", objective, objectiveTags);
 
   if (descriptionLines.length === 0) {
     return null;
@@ -260,14 +314,9 @@ function ActivityCoachGuide({ description }: { description?: string }) {
 
   return (
     <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          How to run it
-        </h6>
-        <span className="w-fit rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800">
-          Coach guide
-        </span>
-      </div>
+      <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        How to run it
+      </h6>
 
       {descriptionLines.length > 1 ? (
         <ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
@@ -299,18 +348,18 @@ function CandidateCard({
     environment: string;
   };
 }) {
-  const equipment = Array.isArray(candidate.equipment) ? candidate.equipment : [];
   const objectiveTags = Array.isArray(candidate.objectiveTags) ? candidate.objectiveTags : [];
   const sessionLabel = buildBuilderSessionLabelFromSession({
     objective: sessionTitleContext.objective,
     session: candidate
   });
-  const overviewItems = [
-    { label: "Duration", value: `${candidate.durationMin} minutes` },
-    { label: "Activities", value: String(candidate.activities.length) },
-    { label: "Age band", value: candidate.ageBand.toUpperCase() },
-    { label: "Sport", value: formatSessionMetaValue(candidate.sport) }
-  ];
+  const contextTitle = buildSessionContextTitle({
+    teamName: sessionTitleContext.teamName,
+    ageBand: candidate.ageBand,
+    durationMin: candidate.durationMin
+  });
+  const coachObjective = sessionTitleContext.objective.trim();
+  const objectiveDisplay = coachObjective || objectiveTags.join(", ");
 
   return (
     <article className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-sm sm:p-6">
@@ -322,10 +371,6 @@ function CandidateCard({
           <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
             {sessionLabel}
           </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Review before saving. This is the coach-ready preview that will become the saved
-            session plan.
-          </p>
         </div>
 
         <form action={saveFormAction} className="sm:shrink-0">
@@ -338,84 +383,39 @@ function CandidateCard({
         </form>
       </div>
 
-      <section className="mt-6 rounded-3xl border border-slate-200 bg-white/70 p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h4 className="text-base font-semibold text-slate-900">At a glance</h4>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              The essentials a coach needs before deciding to save this session.
-            </p>
+      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+        <section className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <h4 className="text-base font-semibold text-slate-900">{contextTitle}</h4>
+            <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              At a glance
+            </span>
           </div>
-          <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-            Preview
-          </span>
-        </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <OverviewItem label="Title" value={sessionLabel} className="lg:col-span-2" />
-          {overviewItems.map((item) => (
-            <OverviewItem key={item.label} label={item.label} value={item.value} />
-          ))}
-        </div>
-
-        {objectiveTags.length > 0 || equipment.length > 0 ? (
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            {objectiveTags.length > 0 ? (
-              <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Objective
-                </h5>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {objectiveTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-900"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </section>
+          <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+            <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Objective
+            </h5>
+            {objectiveDisplay ? (
+              <p className="mt-2 text-sm leading-6 text-slate-800">{objectiveDisplay}</p>
             ) : null}
+          </section>
+        </section>
 
-            {equipment.length > 0 ? (
-              <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Equipment
-                </h5>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {equipment.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="mt-6 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+        <section className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
         <div className="flex flex-col gap-1">
-          <h4 className="text-base font-semibold text-slate-900">Diagram legend</h4>
-          <p className="text-sm leading-6 text-slate-600">
-            A first pass at the symbols future Club Vivo diagrams will use.
-          </p>
+          <h4 className="text-sm font-semibold text-slate-900">Diagram legend</h4>
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
           <DiagramLegendItem symbol={<LegendSymbol>→</LegendSymbol>} label="Pass or shot" />
           <DiagramLegendItem
             symbol={<LegendSymbol>⋯→</LegendSymbol>}
-            label="Player movement without the ball"
+            label="Movement without the ball"
           />
           <DiagramLegendItem symbol={<LegendSymbol>~~~→</LegendSymbol>} label="Dribble or carry" />
           <DiagramLegendItem
             symbol={<LegendSymbol>⤴</LegendSymbol>}
-            label="Curved run, overlap, or rotation"
+            label="Curved run or rotation"
           />
           <DiagramLegendItem
             symbol={
@@ -423,7 +423,7 @@ function CandidateCard({
                 <span className="h-3 w-3 rounded-full bg-blue-500" />
               </LegendSymbol>
             }
-            label="Team being coached"
+            label="Team coached"
           />
           <DiagramLegendItem
             symbol={
@@ -442,17 +442,13 @@ function CandidateCard({
             label="Cones or equipment"
           />
         </div>
-      </section>
+        </section>
+      </div>
 
       <section className="mt-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h4 className="text-lg font-semibold text-slate-900">Activity sequence</h4>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Run the plan in order, then adapt each activity as needed on the field.
-            </p>
-          </div>
-          <span className="text-sm font-medium text-slate-600">
+          <h4 className="text-lg font-semibold text-slate-900">Activities</h4>
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
             {candidate.activities.length} activities
           </span>
         </div>
@@ -470,14 +466,9 @@ function CandidateCard({
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-700 text-sm font-semibold text-white">
                         {activityIndex + 1}
                       </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Activity {activityIndex + 1}
-                        </p>
-                        <h5 className="mt-1 text-lg font-semibold text-slate-900">
-                          {activity.name}
-                        </h5>
-                      </div>
+                      <h5 className="min-w-0 text-lg font-semibold text-slate-900">
+                        {activity.name}
+                      </h5>
                     </div>
 
                     <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700">
@@ -485,7 +476,11 @@ function CandidateCard({
                     </span>
                   </div>
 
-                  <ActivityCoachGuide description={activity.description} />
+                  <ActivityCoachGuide
+                    description={activity.description}
+                    objective={coachObjective}
+                    objectiveTags={objectiveTags}
+                  />
                 </div>
 
                 <DiagramPlaceholder />
@@ -822,12 +817,7 @@ export function NewSessionFlow({
 
       <section ref={reviewSectionRef} className="rounded-3xl border border-slate-200 bg-white/70 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Review your session</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Review the generated session below, then save it to continue.
-            </p>
-          </div>
+          <h2 className="text-lg font-semibold text-slate-900">Review before saving</h2>
 
           {workspaceMode === "quick_drill" ? (
             <p className="max-w-sm rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">

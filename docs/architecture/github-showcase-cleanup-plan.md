@@ -196,7 +196,6 @@ These areas need source and dependency review before cleanup:
 - browser-local hint helpers:
   - `apps/club-vivo/lib/coach-team-hints.ts`
   - `apps/club-vivo/lib/equipment-hints.ts`
-  - `apps/club-vivo/lib/selected-team.ts`
 - `postman`
 - `datasets/schemas/exports/v1`
 

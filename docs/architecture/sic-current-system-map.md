@@ -82,7 +82,7 @@ The active frontend runtime is `apps/club-vivo/`.
   - `apps/club-vivo/app/(protected)/sessions/new/page.tsx`
   - `apps/club-vivo/app/(protected)/sessions/new/session-new-flow.tsx`
   - `apps/club-vivo/app/(protected)/sessions/new/session-new-actions.ts`
-  - `apps/club-vivo/lib/session-builder-server.ts`
+  - `apps/club-vivo/lib/session-builder-api.ts`
 - Sessions library
   - `apps/club-vivo/app/(protected)/sessions/page.tsx`
   - `apps/club-vivo/components/coach/RecentSessionsPanel.tsx`
@@ -265,7 +265,6 @@ Frontend source:
 - `apps/club-vivo/app/(protected)/sessions/new/page.tsx`
 - `apps/club-vivo/app/(protected)/sessions/new/session-new-flow.tsx`
 - `apps/club-vivo/app/(protected)/sessions/new/session-new-actions.ts`
-- `apps/club-vivo/lib/session-builder-server.ts`
 - `apps/club-vivo/lib/session-builder-api.ts`
 
 Backend source:
@@ -281,7 +280,7 @@ Flow:
 1. Coach opens `/sessions/new`.
 2. The protected app loads team options and methodology context used by the builder UI.
 3. Coach selects a team and enters builder inputs.
-4. The server action validates the selected team through the app server/API client path before generation.
+4. The server action builds the generation request and calls the deployed Session Builder API helper.
 5. The app calls `POST /session-packs`; this does not widen the public contract for tenant identity.
 6. The backend normalizes input and builds Generation Context v1.
 7. The backend optionally loads team context and published methodology context.
@@ -475,8 +474,6 @@ flowchart TD
   ProtectedLayout --> Teams["/teams"]
   ProtectedLayout --> Equipment["/equipment"]
   ProtectedLayout --> Methodology["/methodology"]
-  ProtectedLayout --> Dashboard["/dashboard"]
-  ProtectedLayout --> Profile["/profile redirects to /teams"]
 ```
 
 ### Backend API / Domain / Data Map

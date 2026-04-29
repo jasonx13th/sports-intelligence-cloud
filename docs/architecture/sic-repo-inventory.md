@@ -30,7 +30,7 @@ It does not propose file moves, deletions, renames, runtime changes, auth change
 - `apps/club-vivo/app/logout/route.ts`
   - Clears auth cookies and redirects to login.
 - `apps/club-vivo/middleware.ts`
-  - Cookie gate for selected protected paths. Current matcher includes dashboard, profile, teams, and sessions paths.
+  - Cookie gate for selected protected paths. Current matcher includes home, teams, sessions, equipment, and methodology paths.
 
 ### Protected app shell
 
@@ -47,10 +47,6 @@ It does not propose file moves, deletions, renames, runtime changes, auth change
 
 - `apps/club-vivo/app/(protected)/home/page.tsx`
   - Coach workspace landing page, Quick Session entry, recent sessions.
-- `apps/club-vivo/app/(protected)/dashboard/page.tsx`
-  - Secondary dashboard route.
-- `apps/club-vivo/app/(protected)/profile/page.tsx`
-  - Redirects to `/teams`.
 - `apps/club-vivo/app/(protected)/teams/page.tsx`
   - Coach-facing Team Manager backed by `apps/club-vivo/lib/team-api.ts`.
 - `apps/club-vivo/app/(protected)/equipment/page.tsx`
@@ -95,7 +91,7 @@ Active coach UI components live under `apps/club-vivo/components/coach/`:
 - app shell and nav: `CoachAppShell.tsx`, `CoachPrimaryNav.tsx`, `CoachPageHeader.tsx`
 - Session Builder inputs: `SessionBuilderTopBlock.tsx`, `TeamSelector.tsx`, `ModeSelector.tsx`, `DurationSelector.tsx`, `ObjectiveConstraintsInputs.tsx`
 - Home and library: `HomeSessionStartCard.tsx`, `RecentSessionsPanel.tsx`, `ReuseFromLibraryEntry.tsx`
-- Teams and Equipment: `TeamsSetupManager.tsx`, `EquipmentEssentialsManager.tsx`
+- Equipment: `EquipmentEssentialsManager.tsx`
 - session output rendering: `SessionPackView.tsx`, `DrillDiagramView.tsx`
 
 ### Frontend libraries
@@ -104,8 +100,6 @@ Active frontend support code lives under `apps/club-vivo/lib/`:
 
 - auth and API access: `auth.ts`, `api.ts`, `pkce.ts`, `get-current-user.ts`, `get-current-user-identity.ts`
 - backend API clients: `session-builder-api.ts`, `team-api.ts`, `methodology-api.ts`
-- Session Builder server bridge: `session-builder-server.ts`
-- selected-team cookie helpers: `selected-team.ts`
 - Quick Session helpers: `quick-session-intent.ts`, `quick-session-payload.ts`, `quick-session-title-hints.ts`
 - saved-session display hints: `session-origin-hints.ts`, `session-builder-context-hints.ts`, `builder-session-label.ts`
 - browser-local planning hints: `coach-team-hints.ts`, `equipment-hints.ts`
@@ -565,7 +559,7 @@ These are candidates for later review only. Do not delete, move, or rename them 
 - `services/club-vivo/api/clubs/`, `memberships/`, `exports-domain/`, `lake-ingest/`, and `lake-etl/` contain implementation/tests but are not currently CDK-wired in the current `SicApiStack` route list found during this pass. Source exists, but these folders are not part of the current deployed Club Vivo runtime.
 - Domain export and lake runbooks/docs reference resources not found in current CDK source; review whether these are historical, planned, or maintained outside the current stack.
 - `apps/club-vivo/lib/coach-team-hints.ts` appears browser-local and may be legacy after backend Teams became active.
-- `apps/club-vivo/lib/selected-team.ts` has read/clear usage in `session-builder-server.ts`; `setSelectedTeamId` was not found outside its own module during this pass.
+- The former browser-local team-selection bridge was removed from the active Club Vivo web runtime after review.
 - Some progress/product docs contain future Quick Drill or upload/source-mode language; keep them clearly separated from shipped runtime docs.
 - `postman/` contains useful workflow assets; decide if it should remain top-level for GitHub presentation or move under docs/tools.
 - `datasets/schemas/exports/v1/` is currently checked by CI; do not move without updating the CI workflow and export docs.
@@ -647,7 +641,6 @@ These are candidates for later review only. Do not delete, move, or rename them 
   - `apps/club-vivo/app/(protected)/sessions/new/session-new-flow.tsx`
   - `apps/club-vivo/app/(protected)/sessions/new/session-new-actions.ts`
   - `apps/club-vivo/components/coach/SessionBuilderTopBlock.tsx`
-  - `apps/club-vivo/lib/session-builder-server.ts`
   - `apps/club-vivo/lib/session-builder-api.ts`
 - Backend:
   - `services/club-vivo/api/session-packs/handler.js`

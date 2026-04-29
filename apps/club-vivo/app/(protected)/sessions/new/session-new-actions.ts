@@ -200,7 +200,7 @@ export async function generateSessionPackAction(
       ? parseConfirmedProfile(confirmedProfileJson)
       : undefined;
 
-    // TODO: Preserve selected-team/methodology influence after deployed /session-packs accepts team context.
+    // TODO: Pass backend team and methodology context after deployed /session-packs accepts it.
     const pack = await generateSessionPack({
       sport,
       ...(sportPackId ? { sportPackId } : {}),

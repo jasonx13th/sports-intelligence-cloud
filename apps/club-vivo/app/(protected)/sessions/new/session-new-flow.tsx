@@ -216,7 +216,8 @@ function DiagramPlaceholder() {
         type="button"
         onClick={() => setIsExplainingDiagram((current) => !current)}
         className="group block w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
-        aria-expanded={isExplainingDiagram}
+        aria-expanded={isExplainingDiagram ? "true" : "false"}
+        aria-label={isExplainingDiagram ? "Hide diagram explanation" : "Show diagram explanation"}
       >
         <div className="relative min-h-44 overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white transition group-hover:border-teal-300 group-hover:bg-teal-50/20">
         <div className="absolute inset-4 rounded-lg border border-slate-100" />

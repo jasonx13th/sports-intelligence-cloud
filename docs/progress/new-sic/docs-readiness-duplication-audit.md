@@ -8,6 +8,14 @@ The goal is to reduce duplication, identify source-of-truth candidates, preserve
 
 This is an audit document only. It does not rewrite, delete, rename, merge, or reclassify existing docs. It does not change app code, backend code, infra, auth, middleware, Cognito, IAM, CDK, package files, or runtime code.
 
+## Related Docs
+
+- Hosting/domain planning: [hosting-and-domain-launch-plan.md](hosting-and-domain-launch-plan.md).
+- Broad deployment readiness: [deployment-readiness-checklist.md](deployment-readiness-checklist.md).
+- Narrow Club Vivo runtime readiness: [club-vivo-runtime-readiness-checklist.md](club-vivo-runtime-readiness-checklist.md).
+- Local runtime readiness evidence: [club-vivo-runtime-readiness-evidence.md](club-vivo-runtime-readiness-evidence.md).
+- Docs overlap/audit guidance: this document.
+
 ## Commands and Searches Used
 
 Run from repo root on branch `audit/docs-readiness-and-duplication`:

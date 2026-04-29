@@ -6,6 +6,14 @@ This checklist validates the Club Vivo web runtime before deployment or hosting 
 
 Scope is limited to documentation and verification of the active `apps/club-vivo` web surface. It does not authorize auth, middleware, callback/logout, backend API, tenancy, entitlement, IAM, CDK, or package changes.
 
+## Related Docs
+
+- Hosting/domain planning: [hosting-and-domain-launch-plan.md](hosting-and-domain-launch-plan.md).
+- Broad deployment readiness: [deployment-readiness-checklist.md](deployment-readiness-checklist.md).
+- Narrow Club Vivo runtime readiness: this document.
+- Local runtime readiness evidence: [club-vivo-runtime-readiness-evidence.md](club-vivo-runtime-readiness-evidence.md).
+- Docs overlap/audit guidance: [docs-readiness-duplication-audit.md](docs-readiness-duplication-audit.md).
+
 ## 2. Current Branch and Baseline
 
 - [ ] Confirm the working branch is `checklist/club-vivo-runtime-readiness`.

@@ -1,5 +1,13 @@
 # New SIC Deployment Readiness Checklist
 
+## Related Docs
+
+- Hosting/domain planning: [hosting-and-domain-launch-plan.md](hosting-and-domain-launch-plan.md).
+- Broad deployment readiness: this document.
+- Narrow Club Vivo runtime readiness: [club-vivo-runtime-readiness-checklist.md](club-vivo-runtime-readiness-checklist.md).
+- Local runtime readiness evidence: [club-vivo-runtime-readiness-evidence.md](club-vivo-runtime-readiness-evidence.md).
+- Docs overlap/audit guidance: [docs-readiness-duplication-audit.md](docs-readiness-duplication-audit.md).
+
 ## Account Access Rule
 
 - [ ] Use the `j-admin` IAM administrator account for normal AWS Console work.

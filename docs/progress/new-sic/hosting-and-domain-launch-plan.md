@@ -12,6 +12,14 @@ A hosted environment gives SIC a real truth test for the frontend, backend, auth
 
 The goal is a stable 3-month pilot/test environment, not a huge production overbuild. The first hosted version should be practical, low-cost, observable enough to debug, and narrow enough to maintain.
 
+## Related Docs
+
+- Hosting/domain planning: this document.
+- Broad deployment readiness: [deployment-readiness-checklist.md](deployment-readiness-checklist.md).
+- Narrow Club Vivo runtime readiness: [club-vivo-runtime-readiness-checklist.md](club-vivo-runtime-readiness-checklist.md).
+- Local runtime readiness evidence: [club-vivo-runtime-readiness-evidence.md](club-vivo-runtime-readiness-evidence.md).
+- Docs overlap/audit guidance: [docs-readiness-duplication-audit.md](docs-readiness-duplication-audit.md).
+
 ## 3. Recommended Hosting Direction
 
 Recommended direction:

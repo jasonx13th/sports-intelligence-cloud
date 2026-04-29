@@ -7,6 +7,14 @@ Local runtime readiness verification started from a clean `main` baseline after:
 - PR #16 removed stale Club Vivo web runtime surfaces.
 - PR #17 added the Club Vivo runtime readiness checklist.
 
+## Related Docs
+
+- Hosting/domain planning: [hosting-and-domain-launch-plan.md](hosting-and-domain-launch-plan.md).
+- Broad deployment readiness: [deployment-readiness-checklist.md](deployment-readiness-checklist.md).
+- Narrow Club Vivo runtime readiness: [club-vivo-runtime-readiness-checklist.md](club-vivo-runtime-readiness-checklist.md).
+- Local runtime readiness evidence: this document.
+- Docs overlap/audit guidance: [docs-readiness-duplication-audit.md](docs-readiness-duplication-audit.md).
+
 ## Branch
 
 - Branch: `verify/club-vivo-runtime-readiness`

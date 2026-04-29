@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { type ReactNode, useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -135,6 +135,155 @@ function SaveButton() {
   );
 }
 
+function formatSessionMetaValue(value: string) {
+  return value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function OverviewItem({
+  label,
+  value,
+  className = ""
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 ${className}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function splitActivityDescription(description: string) {
+  const normalizedDescription = description.replace(/\s+/g, " ").trim();
+
+  if (!normalizedDescription) {
+    return [];
+  }
+
+  const sentenceMatches = normalizedDescription.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+
+  if (!sentenceMatches || sentenceMatches.length < 2) {
+    return [normalizedDescription];
+  }
+
+  return sentenceMatches.map((sentence) => sentence.trim()).filter(Boolean);
+}
+
+function LegendSymbol({
+  children,
+  className = ""
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-800 ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function DiagramLegendItem({
+  symbol,
+  label
+}: {
+  symbol: ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      {symbol}
+      <span className="text-sm leading-5 text-slate-700">{label}</span>
+    </div>
+  );
+}
+
+function DiagramPlaceholder() {
+  const [isExplainingDiagram, setIsExplainingDiagram] = useState(false);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <button
+        type="button"
+        onClick={() => setIsExplainingDiagram((current) => !current)}
+        className="group block w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+        aria-expanded={isExplainingDiagram}
+      >
+        <div className="relative min-h-44 overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white transition group-hover:border-teal-300 group-hover:bg-teal-50/20">
+        <div className="absolute inset-4 rounded-lg border border-slate-100" />
+        <div className="absolute left-1/2 top-4 h-[calc(100%-2rem)] border-l border-slate-100" />
+        <div className="absolute left-6 top-1/2 h-2 w-2 rounded-full bg-blue-500" />
+        <div className="absolute left-1/3 top-1/3 h-2 w-2 rounded-full bg-blue-500" />
+        <div className="absolute right-8 top-1/3 h-2 w-2 rounded-full bg-red-500" />
+        <div className="absolute bottom-8 left-1/4 h-2 w-2 rounded-full bg-yellow-400" />
+        <div className="absolute bottom-8 right-1/3 h-2 w-2 rounded-full bg-yellow-400" />
+        <div className="absolute left-[30%] top-[42%] h-px w-24 rotate-[-12deg] bg-slate-400" />
+        <div className="absolute left-[52%] top-[32%] h-px w-16 rotate-[24deg] border-t border-dotted border-slate-400" />
+        <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+          <div className="rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Diagram coming next
+            </p>
+          </div>
+        </div>
+        </div>
+      </button>
+      <p className="mt-3 text-xs leading-5 text-slate-500">
+        Full diagrams will use the Club Vivo diagram standard in a later version.
+      </p>
+      {isExplainingDiagram ? (
+        <div className="mt-3 rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-3 text-xs leading-5 text-teal-900">
+          Read future diagrams with the Club Vivo legend: arrows show ball or player movement,
+          blue marks the team being coached, red marks opposition, and yellow marks cones or
+          equipment.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ActivityCoachGuide({ description }: { description?: string }) {
+  const descriptionLines = splitActivityDescription(description ?? "");
+
+  if (descriptionLines.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          How to run it
+        </h6>
+        <span className="w-fit rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800">
+          Coach guide
+        </span>
+      </div>
+
+      {descriptionLines.length > 1 ? (
+        <ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
+          {descriptionLines.map((line) => (
+            <li key={line} className="rounded-xl bg-slate-50/80 px-3 py-2">
+              {line}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-slate-700">{descriptionLines[0]}</p>
+      )}
+    </section>
+  );
+}
+
 function CandidateCard({
   candidate,
   origin,
@@ -151,35 +300,32 @@ function CandidateCard({
   };
 }) {
   const equipment = Array.isArray(candidate.equipment) ? candidate.equipment : [];
+  const objectiveTags = Array.isArray(candidate.objectiveTags) ? candidate.objectiveTags : [];
   const sessionLabel = buildBuilderSessionLabelFromSession({
     objective: sessionTitleContext.objective,
     session: candidate
   });
+  const overviewItems = [
+    { label: "Duration", value: `${candidate.durationMin} minutes` },
+    { label: "Activities", value: String(candidate.activities.length) },
+    { label: "Age band", value: candidate.ageBand.toUpperCase() },
+    { label: "Sport", value: formatSessionMetaValue(candidate.sport) }
+  ];
 
   return (
-    <article className="rounded-3xl border border-slate-200 bg-white/80 p-5">
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+    <article className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
             Generated session
           </p>
-          <h3 className="mt-2 text-lg font-semibold text-slate-900">
+          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
             {sessionLabel}
           </h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              {candidate.ageBand.toUpperCase()}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              {candidate.durationMin} minutes
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              {candidate.activities.length} activities
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              {candidate.sport}
-            </span>
-          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Review before saving. This is the coach-ready preview that will become the saved
+            session plan.
+          </p>
         </div>
 
         <form action={saveFormAction} className="sm:shrink-0">
@@ -192,66 +338,162 @@ function CandidateCard({
         </form>
       </div>
 
-      <div className="mt-5 grid gap-5">
-        <section className="grid gap-2">
-          <h4 className="text-sm font-semibold text-slate-900">Focus</h4>
-          <div className="flex flex-wrap gap-2">
-            {candidate.objectiveTags.length > 0 ? (
-              candidate.objectiveTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              <span className="text-sm text-slate-500">No objective tags listed</span>
-            )}
-          </div>
-        </section>
-
-        <section className="grid gap-2">
-          <h4 className="text-sm font-semibold text-slate-900">Equipment</h4>
-          <div className="flex flex-wrap gap-2">
-            {equipment.length > 0 ? (
-              equipment.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-                >
-                  {item}
-                </span>
-              ))
-            ) : (
-              <span className="text-sm text-slate-500">No equipment listed</span>
-            )}
-          </div>
-        </section>
-      </div>
-
-      <div className="mt-5 grid gap-3">
-        {candidate.activities.map((activity, activityIndex) => (
-          <section
-            key={`${activity.name}-${activityIndex}`}
-            className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
-          >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Activity {activityIndex + 1}
-                </p>
-                <h4 className="mt-1 text-base font-semibold text-slate-900">{activity.name}</h4>
-              </div>
-              <p className="text-sm font-medium text-slate-600">{activity.minutes} minutes</p>
-            </div>
-
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              {activity.description?.trim() || "No description provided."}
+      <section className="mt-6 rounded-3xl border border-slate-200 bg-white/70 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h4 className="text-base font-semibold text-slate-900">At a glance</h4>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              The essentials a coach needs before deciding to save this session.
             </p>
-          </section>
-        ))}
-      </div>
+          </div>
+          <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Preview
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <OverviewItem label="Title" value={sessionLabel} className="lg:col-span-2" />
+          {overviewItems.map((item) => (
+            <OverviewItem key={item.label} label={item.label} value={item.value} />
+          ))}
+        </div>
+
+        {objectiveTags.length > 0 || equipment.length > 0 ? (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {objectiveTags.length > 0 ? (
+              <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Objective
+                </h5>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {objectiveTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-900"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {equipment.length > 0 ? (
+              <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Equipment
+                </h5>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {equipment.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mt-6 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+        <div className="flex flex-col gap-1">
+          <h4 className="text-base font-semibold text-slate-900">Diagram legend</h4>
+          <p className="text-sm leading-6 text-slate-600">
+            A first pass at the symbols future Club Vivo diagrams will use.
+          </p>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <DiagramLegendItem symbol={<LegendSymbol>→</LegendSymbol>} label="Pass or shot" />
+          <DiagramLegendItem
+            symbol={<LegendSymbol>⋯→</LegendSymbol>}
+            label="Player movement without the ball"
+          />
+          <DiagramLegendItem symbol={<LegendSymbol>~~~→</LegendSymbol>} label="Dribble or carry" />
+          <DiagramLegendItem
+            symbol={<LegendSymbol>⤴</LegendSymbol>}
+            label="Curved run, overlap, or rotation"
+          />
+          <DiagramLegendItem
+            symbol={
+              <LegendSymbol className="border-blue-200 bg-blue-50">
+                <span className="h-3 w-3 rounded-full bg-blue-500" />
+              </LegendSymbol>
+            }
+            label="Team being coached"
+          />
+          <DiagramLegendItem
+            symbol={
+              <LegendSymbol className="border-red-200 bg-red-50">
+                <span className="h-3 w-3 rounded-full bg-red-500" />
+              </LegendSymbol>
+            }
+            label="Opposition"
+          />
+          <DiagramLegendItem
+            symbol={
+              <LegendSymbol className="border-yellow-200 bg-yellow-50">
+                <span className="h-3 w-3 rounded-full bg-yellow-400" />
+              </LegendSymbol>
+            }
+            label="Cones or equipment"
+          />
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h4 className="text-lg font-semibold text-slate-900">Activity sequence</h4>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Run the plan in order, then adapt each activity as needed on the field.
+            </p>
+          </div>
+          <span className="text-sm font-medium text-slate-600">
+            {candidate.activities.length} activities
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-4">
+          {candidate.activities.map((activity, activityIndex) => (
+            <section
+              key={`${activity.name}-${activityIndex}`}
+              className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5"
+            >
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+                <div className="min-w-0">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-700 text-sm font-semibold text-white">
+                        {activityIndex + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Activity {activityIndex + 1}
+                        </p>
+                        <h5 className="mt-1 text-lg font-semibold text-slate-900">
+                          {activity.name}
+                        </h5>
+                      </div>
+                    </div>
+
+                    <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700">
+                      {activity.minutes} minutes
+                    </span>
+                  </div>
+
+                  <ActivityCoachGuide description={activity.description} />
+                </div>
+
+                <DiagramPlaceholder />
+              </div>
+            </section>
+          ))}
+        </div>
+      </section>
     </article>
   );
 }

@@ -36,7 +36,7 @@ function getEquipmentDescription(value: string) {
     case "pinnies":
       return "Split teams or create overloads and transitions.";
     default:
-      return "Use this item when it matters for today’s session set-up.";
+      return "Use this item when it matters for today's session set-up.";
   }
 }
 
@@ -109,11 +109,11 @@ export function ObjectiveConstraintsInputs({
   }
 
   return (
-    <div className="grid gap-4">
-      <section className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+    <>
+      <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h4 className="text-sm font-semibold text-slate-900">Equipment</h4>
+            <h3 className="text-base font-semibold text-slate-900">Equipment</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
               Choose what this session will use. New items also update Essentials in this browser.
             </p>
@@ -231,21 +231,23 @@ export function ObjectiveConstraintsInputs({
         </p>
       </section>
 
-      <label className="grid gap-2 text-sm text-slate-700">
-        <span className="font-medium">Brainstorming</span>
-        <textarea
-          name="constraints"
-          value={constraints}
-          onChange={(event) => onConstraintsChange(event.target.value)}
-          rows={6}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-          placeholder="Session ideas, coaching notes, weather or space limits, and extra details for today"
-        />
-        <span className="text-xs leading-5 text-slate-500">
-          Use this for session ideas, coaching notes, weather or space constraints, and any extra
-          details that matter today.
-        </span>
-      </label>
-    </div>
+      <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+        <label className="grid gap-2 text-sm text-slate-700">
+          <span className="font-medium">Brainstorming</span>
+          <textarea
+            name="constraints"
+            value={constraints}
+            onChange={(event) => onConstraintsChange(event.target.value)}
+            rows={6}
+            className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+            placeholder="Session ideas, coaching notes, weather or space limits, and extra details for today"
+          />
+          <span className="text-xs leading-5 text-slate-500">
+            Use this for session ideas, coaching notes, weather or space constraints, and any extra
+            details that matter today.
+          </span>
+        </label>
+      </section>
+    </>
   );
 }

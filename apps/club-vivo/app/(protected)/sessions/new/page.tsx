@@ -65,6 +65,7 @@ function mapBackendTeamToOption(team: TeamRecord): WorkspaceTeamOption {
     sport: team.sport,
     ageBand: team.ageBand,
     programType: team.programType,
+    playerCount: team.playerCount,
     defaultDurationMin: getDefaultDurationMin(team.programType)
   };
 }
@@ -76,6 +77,7 @@ function getFallbackTeamOptions(rawCookieValue: string | undefined): WorkspaceTe
     sport: "soccer",
     ageBand: team.ageBand,
     programType: team.teamType,
+    playerCount: team.playerCount,
     defaultDurationMin: getDefaultDurationMin(team.teamType)
   }));
 }

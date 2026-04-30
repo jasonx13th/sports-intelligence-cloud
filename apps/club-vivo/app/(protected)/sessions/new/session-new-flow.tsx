@@ -727,6 +727,9 @@ export function NewSessionFlow({
         equipmentOptions={equipmentOptions}
         onSaveEquipmentOption={handleSaveEquipmentOption}
         selectedTeamName={selectedTeam?.label || ""}
+        selectedTeamAgeBand={selectedTeam?.ageBand}
+        selectedTeamProgramType={selectedTeam?.programType}
+        selectedTeamPlayerCount={selectedTeam?.playerCount}
         actions={<GenerateButton />}
       />
 

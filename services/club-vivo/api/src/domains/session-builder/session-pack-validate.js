@@ -256,7 +256,10 @@ function getMissingEquipmentForTheme(theme, equipment) {
   const themeKey = normalizeEquipmentName(theme);
   const provided = new Set(equipment.map(normalizeEquipmentName));
   const hasGoalEquipment =
-    provided.has("goals") || provided.has("mini goals") || provided.has("pug goals");
+    provided.has("goals") ||
+    provided.has("mini goals") ||
+    provided.has("pug goals") ||
+    provided.has("pugg goals");
   const missing = new Set();
 
   if (GOALS_REQUIRED_THEME_KEYWORDS.some((keyword) => themeKey.includes(keyword)) && !hasGoalEquipment) {

@@ -123,6 +123,67 @@ test("generatePack creates one 20-minute quick activity when requested", () => {
   assert.match(session.activities[0].description, /grid|gates|target players/i);
 });
 
+test("generatePack avoids goal-required wording when no goal equipment is selected", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 20,
+    theme: "attacking gates",
+    sessionMode: "drill",
+    coachNotes: "Use cone gates only.",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  const [session] = pack.sessions;
+  const text = session.activities.map((activity) => `${activity.name} ${activity.description}`).join(" ");
+
+  assert.equal(/to goal|goals\b|mini goals|pugg goals/i.test(text), false);
+  assert.match(text, /cone gates|end zones|target lines|passing gates|scoring zones/i);
+});
+
+test("generatePack carries OST mixed-age playful context into activity text", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u10",
+    durationMin: 20,
+    theme: "attacking gates",
+    sessionMode: "drill",
+    coachNotes:
+      "originalTeamAgeBand:Mixed age | mixedAge:true | assumedAgeRange:6-11 | programType:OST | coachingStyle:playful beginner-friendly inclusive simple rules easy/harder variations",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  const description = pack.sessions[0].activities[0].description;
+
+  assert.equal(pack.sessions[0].ageBand, "u10");
+  assert.match(description, /programType:OST/);
+  assert.match(description, /playful beginner-friendly inclusive/i);
+  assert.match(description, /Progress:/);
+  assert.match(description, /Regress:/);
+});
+
+test("generatePack carries Travel U10 context into activity text", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u10",
+    durationMin: 30,
+    theme: "passing under pressure",
+    sessionMode: "drill",
+    coachNotes:
+      "originalTeamAgeBand:U10 | programType:Travel | coachingStyle:soccer-specific technical tactical decision-making game-realistic",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  const description = pack.sessions[0].activities[0].description;
+
+  assert.equal(pack.sessions[0].ageBand, "u10");
+  assert.match(description, /programType:Travel/);
+  assert.match(description, /technical tactical decision-making/i);
+});
+
 test("generatePack treats quick_activity theme format as one activity for legacy callers", () => {
   const pack = generatePack({
     sport: "soccer",

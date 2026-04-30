@@ -166,7 +166,10 @@ function getMissingEquipmentForActivities(activities, equipment) {
 
   const provided = new Set(equipment.map(normalizeEquipmentName));
   const hasGoalEquipment =
-    provided.has("goals") || provided.has("mini goals") || provided.has("pug goals");
+    provided.has("goals") ||
+    provided.has("mini goals") ||
+    provided.has("pug goals") ||
+    provided.has("pugg goals");
   const missing = new Set();
 
   for (const activity of activities || []) {

@@ -129,6 +129,7 @@ function extractPromptSignals(theme, options = {}) {
     activityFormat: activityFormat || null,
     playerCount:
       playerCountMatch?.[1] ? Number.parseInt(playerCountMatch[1], 10) : options.playerCount || null,
+    equipment: Array.isArray(options.equipment) ? options.equipment : [],
     quickSession: inferredThemeMode === "quick",
     sessionMode,
   };
@@ -389,6 +390,17 @@ function compactText(value, fallback) {
   return normalized || fallback;
 }
 
+function hasGoalEquipment(equipment) {
+  return (Array.isArray(equipment) ? equipment : []).some((item) => {
+    const normalized = normalizeTheme(item);
+    return (
+      normalized.includes("goal") ||
+      normalized.includes("pug goal") ||
+      normalized.includes("pugg goal")
+    );
+  });
+}
+
 function capDescription(value) {
   const normalized = compactText(value, "");
 
@@ -402,11 +414,14 @@ function capDescription(value) {
 function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
   const objective = compactText(promptSignals?.primaryObjective, "the session objective");
   const environment = compactText(promptSignals?.environment, "the available space");
-  const coachNotes = compactText(promptSignals?.coachNotes, "");
+  const coachNotes = compactText(promptSignals?.coachNotes, "").slice(0, 180).trim();
   const playerCount = Number.isInteger(promptSignals?.playerCount)
     ? ` for about ${promptSignals.playerCount} players`
     : "";
-  const noteText = coachNotes ? ` Coach input: ${coachNotes}.` : "";
+  const scoringTargets = hasGoalEquipment(promptSignals?.equipment)
+    ? "targets, pugg goals, mini goals, or goals"
+    : "cone gates, end zones, target lines, passing gates, or scoring zones";
+  const noteText = coachNotes ? `Coach input: ${coachNotes.replace(/\.+$/, "")}.` : "";
   const phaseRun =
     phase === "final"
       ? "Run: restart like a real game, keep normal scoring, and coach briefly between balls out."
@@ -418,13 +433,13 @@ function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
 
   return capDescription(
     [
-      `Setup: use ${environment} as a clear grid with cones, gates, channels, targets, or goals${playerCount}.`,
+      `Setup: use ${environment} as a clear grid with ${scoringTargets}${playerCount}.`,
       noteText.trim(),
       `${phaseRun} ${baseDescription}`,
-      `Cues: scan early, create a support angle, make the first touch useful, and react on transition.`,
-      `Watch: lines getting long, players hiding from the ball, or space becoming too tight.`,
-      `Progress: add a defender, touch limit, transition goal, or smaller channel.`,
+      "Progress: add pressure, a time limit, or a transition target.",
       "Regress: widen the grid, remove pressure, or give an extra support player.",
+      "Cues: scan early, support at an angle, make the first touch useful, and react on transition.",
+      "Watch: long lines, hidden players, or space becoming too tight.",
     ].join(" ")
   );
 }
@@ -459,10 +474,14 @@ function buildFinalGameDescription({ promptSignals, ageBand }) {
   const environment = compactText(promptSignals?.environment, "available space");
   const gameName = buildFinalGameName({ promptSignals, ageBand }).replace("Water break + ", "");
 
+  const scoringTargetText = hasGoalEquipment(promptSignals?.equipment)
+    ? "goals or pugg goals"
+    : "end zones, cone gates, or target lines";
+
   return buildCoachReadyDescription({
     phase: "final",
     promptSignals,
-    baseDescription: `After a brief water break, play a real ${gameName}. Keep direction, goals, restarts, and scoring normal so players apply ${objective} in the game.`,
+    baseDescription: `After a brief water break, play a real ${gameName}. Keep direction, restarts, and scoring through ${scoringTargetText} so players apply ${objective} in the game.`,
   });
 }
 
@@ -642,7 +661,7 @@ function templatePassingShape({ sport, ageBand, durationMin, equipment }) {
   const activities = [
     { name: "Dynamic warmup + ball mastery", minutes: 10, description: "Set a small grid, pair movement with touches, and cue players to check shoulders before receiving." },
     { name: "Rondo (numbers up)", minutes: 15, description: "Score by splitting defenders or completing a target number of passes. Cue angles, scanning, and first touch away from pressure." },
-    { name: "Passing pattern to goals", minutes: 20, description: "Build from unopposed pattern to passive pressure, then active pressure. Reward timing, support angle, and clean final pass." },
+    { name: "Passing pattern to targets", minutes: 20, description: "Build from unopposed pattern to passive pressure, then active pressure. Reward timing, support angle, and clean final pass." },
   ];
 
   return baseSession({
@@ -836,9 +855,15 @@ function generateSessionFromTheme({
     sessionMode,
     coachNotes,
     playerCount: resolvedPlayerCount,
+    equipment,
   });
   const themeKey = normalizeTheme(promptSignals.primaryObjective || theme);
-  const t = pickSportPackTemplate({ sportPackId, themeKey });
+  const t = pickSportPackTemplate({
+    sportPackId,
+    themeKey: !hasGoalEquipment(equipment) && pickTemplate(themeKey) === "finishing"
+      ? "attacking gates"
+      : themeKey,
+  });
 
   const session =
     (promptSignals.sessionMode === "quick_activity" || promptSignals.sessionMode === "drill") &&

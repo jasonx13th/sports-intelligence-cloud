@@ -4,6 +4,7 @@ type WorkspaceTeamOption = {
   sport: string;
   ageBand?: string;
   programType?: "travel" | "ost";
+  playerCount?: number;
   methodologyLabel?: string;
   defaultDurationMin?: number;
 };

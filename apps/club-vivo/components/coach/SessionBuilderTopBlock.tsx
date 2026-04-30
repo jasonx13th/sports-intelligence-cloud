@@ -42,6 +42,9 @@ type SessionBuilderTopBlockProps = {
     value: string
   ) => Promise<{ items: string[]; error?: string; message?: string }>;
   selectedTeamName: string;
+  selectedTeamAgeBand?: string;
+  selectedTeamProgramType?: "travel" | "ost";
+  selectedTeamPlayerCount?: number;
   actions: ReactNode;
 };
 
@@ -76,6 +79,9 @@ export function SessionBuilderTopBlock({
   equipmentOptions,
   onSaveEquipmentOption,
   selectedTeamName,
+  selectedTeamAgeBand,
+  selectedTeamProgramType,
+  selectedTeamPlayerCount,
   actions
 }: SessionBuilderTopBlockProps) {
   const [isAddingEnvironment, setIsAddingEnvironment] = useState(false);
@@ -101,6 +107,13 @@ export function SessionBuilderTopBlock({
       <input type="hidden" name="ageBand" value={ageBand} />
       <input type="hidden" name="teamId" value={selectedTeamId} />
       <input type="hidden" name="teamName" value={selectedTeamName} />
+      <input type="hidden" name="teamAgeBand" value={selectedTeamAgeBand || ""} />
+      <input type="hidden" name="teamProgramType" value={selectedTeamProgramType || ""} />
+      <input
+        type="hidden"
+        name="teamPlayerCount"
+        value={selectedTeamPlayerCount ? String(selectedTeamPlayerCount) : ""}
+      />
       <input
         type="hidden"
         name="sessionMode"

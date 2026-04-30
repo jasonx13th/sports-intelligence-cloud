@@ -101,6 +101,11 @@ export function SessionBuilderTopBlock({
       <input type="hidden" name="ageBand" value={ageBand} />
       <input type="hidden" name="teamId" value={selectedTeamId} />
       <input type="hidden" name="teamName" value={selectedTeamName} />
+      <input
+        type="hidden"
+        name="sessionMode"
+        value={mode === "quick_drill" ? "drill" : "full_session"}
+      />
       <input type="hidden" name="confirmedProfileJson" value={confirmedProfileJson} />
 
       <div className="grid gap-5">

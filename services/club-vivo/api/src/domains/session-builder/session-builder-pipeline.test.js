@@ -345,14 +345,37 @@ test("processSessionPackRequest carries compact builder notes and environment in
     sessionsCount: 1,
   });
 
-  assert.match(result.validatedPack.sessions[0].activities[0].description, /Today's focus: pressing\./i);
   assert.match(result.validatedPack.sessions[0].activities[0].description, /available turf\./i);
   assert.match(
     result.validatedPack.sessions[0].activities[1].description,
-    /Coach note: first pass after regain\./i
+    /Coach context: first pass after regain\./i
   );
   assert.equal(result.validatedPack.theme, "pressing | notes:first pass after regain | env:turf");
   assert.equal(Object.hasOwn(result.validatedPack, "promptSignals"), false);
+});
+
+test("processSessionPackRequest carries explicit coach notes without exposing request-only fields", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing | notes:short",
+    sessionMode: "full_session",
+    coachNotes: "press as a unit after turnovers, then find the first forward pass",
+    sessionsCount: 1,
+  });
+
+  assert.equal(result.normalizedInput.sessionMode, "full_session");
+  assert.equal(
+    result.normalizedInput.coachNotes,
+    "press as a unit after turnovers, then find the first forward pass"
+  );
+  assert.match(
+    result.validatedPack.sessions[0].activities[1].description,
+    /press as a unit after turnovers, then find the first forward pass/
+  );
+  assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
+  assert.equal(Object.hasOwn(result.validatedPack, "coachNotes"), false);
 });
 
 test("lookup path loads teamContext and published methodology records when tenant inputs and repositories are supplied", async () => {
@@ -591,7 +614,7 @@ test("quick-marked themes keep the public pack shape while making the generated 
   assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
 });
 
-test("quick one-drill requests under 25 minutes validate with exact activity totals", async () => {
+test("quick one-drill requests under 25 minutes validate as one activity", async () => {
   const result = await processSessionPackRequest({
     sport: "soccer",
     ageBand: "u14",
@@ -610,6 +633,7 @@ test("quick one-drill requests under 25 minutes validate with exact activity tot
     session.activities.reduce((sum, activity) => sum + activity.minutes, 0),
     25
   );
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [25]);
   assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
   assert.equal(Object.hasOwn(result.validatedPack, "activityFormat"), false);
 });
@@ -632,6 +656,61 @@ test("quick requests without explicit duration keep the caller's default 60-minu
     session.activities.reduce((sum, activity) => sum + activity.minutes, 0),
     60
   );
+});
+
+test("quick session-mode requests create a four-activity full session", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | possession session | 14 players",
+    sessionMode: "full_session",
+    coachNotes: "I need a full training session with a final game.",
+    sessionsCount: 1,
+  });
+
+  const [session] = result.validatedPack.sessions;
+
+  assert.equal(session.activities.length, 4);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [12, 18, 18, 12]);
+  assert.match(session.activities.at(-1).name, /Water break \+ 7v7 final game/);
+});
+
+test("quick drill-mode requests create one main activity", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 30,
+    theme: "quick | passing drill | 10 players",
+    sessionMode: "drill",
+    coachNotes: "Give me a quick drill with repetition.",
+    sessionsCount: 1,
+  });
+
+  const [session] = result.validatedPack.sessions;
+
+  assert.equal(session.activities.length, 1);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [30]);
+  assert.match(session.activities[0].description, /grid|gates|channels|target players/i);
+});
+
+test("quick activity-mode requests create one 20-minute activity", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 20,
+    theme: "quick | first touch under pressure | 12 players",
+    sessionMode: "quick_activity",
+    coachNotes: "First touch under pressure, no full session needed.",
+    sessionsCount: 1,
+  });
+
+  const [session] = result.validatedPack.sessions;
+
+  assert.equal(session.durationMin, 20);
+  assert.equal(session.activities.length, 1);
+  assert.equal(session.activities[0].minutes, 20);
+  assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
 });
 
 test("processSessionImageAnalysisRequest stores one tenant-scoped image and returns a draft profile", async () => {

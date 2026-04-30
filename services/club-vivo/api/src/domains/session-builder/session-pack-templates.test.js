@@ -48,7 +48,7 @@ test("minutesSum totals activity minutes deterministically", () => {
   assert.equal(minutesSum([]), 0);
 });
 
-test("generatePack pads generated sessions to the requested duration", () => {
+test("generatePack shapes full sessions to four exact activity blocks", () => {
   const pack = generatePack({
     sport: "soccer",
     ageBand: "u12",
@@ -62,14 +62,103 @@ test("generatePack pads generated sessions to the requested duration", () => {
   for (const session of pack.sessions) {
     assert.equal(session.durationMin, 65);
     assert.equal(minutesSum(session.activities), 65);
-    assert.equal(session.activities.at(-2).name, "Low-intensity technical reps");
-    assert.equal(session.activities.at(-2).minutes, 5);
-    assert.equal(session.activities.at(-1).name, "Cooldown");
-    assert.equal(session.activities.at(-1).minutes, 10);
+    assert.equal(session.activities.length, 4);
+    assert.deepEqual(session.activities.map((activity) => activity.minutes), [13, 19, 20, 13]);
+    assert.match(session.activities.at(-1).name, /Water break \+ .* final game/);
   }
 });
 
-test("generatePack uses only cooldown when remaining minutes are within the cooldown cap", () => {
+test("generatePack splits a 60-minute full session into 12 / 18 / 18 / 12", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | possession session | 14 players",
+    sessionMode: "full_session",
+    coachNotes: "Use a full practice plan with a final game.",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.activities.length, 4);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [12, 18, 18, 12]);
+  assert.match(session.activities.at(-1).name, /Water break \+ 7v7 final game/);
+});
+
+test("generatePack creates one 30-minute drill activity", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 30,
+    theme: "quick | passing drill | 10 players",
+    sessionMode: "drill",
+    coachNotes: "Make it a drill with lots of repetition.",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.activities.length, 1);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [30]);
+  assert.match(session.activities[0].description, /grid|gates|channels|target players/i);
+});
+
+test("generatePack creates one 20-minute quick activity when requested", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 20,
+    theme: "quick | first touch under pressure | 12 players",
+    sessionMode: "quick_activity",
+    coachNotes: "First touch under pressure with quick rotations.",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.durationMin, 20);
+  assert.equal(session.activities.length, 1);
+  assert.equal(session.activities[0].minutes, 20);
+  assert.match(session.activities[0].description, /grid|gates|target players/i);
+});
+
+test("generatePack treats quick_activity theme format as one activity for legacy callers", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 20,
+    theme: "quick | format:quick_activity | attacking 2v3 | 5 players",
+    sessionsCount: 1,
+    equipment: ["cones", "balls"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.activities.length, 1);
+  assert.equal(session.activities[0].minutes, 20);
+  assert.match(session.activities[0].description, /gates|target players/i);
+});
+
+test("generatePack descriptions avoid repeated Today focus copy", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "quick | pressing session | 14 players",
+    sessionMode: "full_session",
+    coachNotes: "Work on the press trigger after a bad touch.",
+    sessionsCount: 1,
+  });
+
+  const text = pack.sessions[0].activities.map((activity) => activity.description).join(" ");
+
+  assert.equal(/Today's focus/i.test(text), false);
+  assert.equal(/Theme challenge/i.test(text), false);
+  assert.equal(/Score the desired action/i.test(text), false);
+});
+
+test("generatePack does not end full sessions with generic cooldown", () => {
   const pack = generatePack({
     sport: "soccer",
     ageBand: "u16",
@@ -80,10 +169,11 @@ test("generatePack uses only cooldown when remaining minutes are within the cool
 
   const [session] = pack.sessions;
   assert.equal(minutesSum(session.activities), 50);
-  assert.equal(session.activities.at(-1).name, "Cooldown");
-  assert.equal(session.activities.at(-1).minutes, 5);
+  assert.equal(session.activities.length, 4);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [10, 15, 15, 10]);
+  assert.match(session.activities.at(-1).name, /Water break \+ .* final game/);
   assert.equal(
-    session.activities.some((activity) => activity.name === "Low-intensity technical reps"),
+    session.activities.some((activity) => activity.name === "Cooldown"),
     false
   );
 });
@@ -191,9 +281,8 @@ test("generatePack applies compact builder prompt notes and environment to activ
 
   const [session] = pack.sessions;
 
-  assert.match(session.activities[0].description, /Today's focus: pressing\./i);
   assert.match(session.activities[0].description, /available turf\./i);
-  assert.match(session.activities[1].description, /Coach note: first pass after regain\./i);
+  assert.match(session.activities[1].description, /Coach context: first pass after regain\./i);
 });
 
 test("generatePack applies a quick-session bias that feels playful and easy to run", () => {
@@ -243,7 +332,8 @@ test("generatePack derives useful quick-session tags, equipment, and coaching de
   ]);
   assert.match(session.activities[0].description, /Cue first three steps/);
   assert.match(session.activities[1].description, /Scoring:/);
-  assert.match(session.activities[2].description, /Progression:/);
+  assert.match(session.activities.at(-1).name, /Water break \+ .* final game/);
+  assert.match(session.activities.at(-1).description, /real .*final game/i);
 });
 
 test("generatePack uses pressure and possession prompt words instead of falling back to theme-only tags", () => {
@@ -280,7 +370,7 @@ test("generatePack keeps default quick sessions at 60 minutes with exact activit
   assert.deepEqual(session.equipment, ["cones", "pinnies"]);
 });
 
-test("generatePack creates a valid compact one-drill quick plan under 25 minutes", () => {
+test("generatePack creates a valid compact one-drill quick activity under 25 minutes", () => {
   const pack = generatePack({
     sport: "soccer",
     ageBand: "u14",
@@ -295,12 +385,11 @@ test("generatePack creates a valid compact one-drill quick plan under 25 minutes
   assert.equal(session.durationMin, 25);
   assert.equal(session.activities.length, 1);
   assert.equal(minutesSum(session.activities), 25);
-  assert.equal(session.activities[0].minutes, 25);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [25]);
   assert.equal(session.objectiveTags.includes("1v1"), true);
   assert.equal(session.objectiveTags.includes("dribbling"), true);
-  assert.match(session.activities[0].description, /Setup:/);
-  assert.match(session.activities[0].description, /Scoring:/);
-  assert.match(session.activities[0].description, /Progression:/);
+  assert.match(session.activities[0].description, /grid|gates|target players/i);
+  assert.match(session.activities[0].description, /Progress/i);
 });
 
 test("buildCoachLiteDraftFromPack derives a minimal valid internal Coach Lite draft", () => {

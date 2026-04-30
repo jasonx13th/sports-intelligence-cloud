@@ -155,7 +155,7 @@ export default async function SessionDetailPage({
         session
       })
     : null;
-  const displayQuickSessionTitle = quickSessionTitle || derivedQuickSessionTitle || "Quick Session";
+  const displayQuickSessionTitle = quickSessionTitle || derivedQuickSessionTitle || "Quick Activity";
   const quickSessionFocusSummary = isQuickSession
     ? buildQuickSessionFocusSummary(session)
     : null;
@@ -191,12 +191,12 @@ export default async function SessionDetailPage({
       ? builderDetailTitle || builderModeLabel
       : `${session.sport} / ${session.ageBand}`;
   const pageBadge = isQuickSession
-    ? "Quick Session Output"
+    ? "Quick Activity Output"
     : isBuilderSession
       ? "Session Builder Output"
       : "Session Detail";
   const sourceLabel = isQuickSession
-    ? "Quick Session"
+    ? "Quick Activity"
     : isBuilderSession
       ? `Session Builder - ${builderModeLabel}`
       : "Saved Session";
@@ -207,7 +207,7 @@ export default async function SessionDetailPage({
   const activityTimings = buildActivityTimings(session.activities);
   const activityCountLabel = formatActivityCount(session.activities.length);
   const headerDescription = isQuickSession
-    ? `Coach-ready saved output from Quick Session with ${activityCountLabel} planned across ${formatMinuteLabel(session.durationMin)}.`
+    ? `Coach-ready saved output from Quick Activity with ${activityCountLabel} planned across ${formatMinuteLabel(session.durationMin)}.`
     : isBuilderSession
       ? `Coach-ready saved output from Session Builder with ${activityCountLabel} planned across ${formatMinuteLabel(session.durationMin)}.`
       : `Saved session output with ${activityCountLabel} planned across ${formatMinuteLabel(session.durationMin)}.`;
@@ -280,7 +280,7 @@ export default async function SessionDetailPage({
 
     if (!nextTitle) {
       return {
-        error: "Add a short quick-session title before saving.",
+        error: "Add a short quick-activity title before saving.",
         savedTitle: displayQuickSessionTitle
       };
     }

@@ -91,6 +91,30 @@ test("validateCreateSessionPack accepts soccer with fut-soccer sportPackId", () 
   assert.equal(result.sportPackId, "fut-soccer");
 });
 
+test("validateCreateSessionPack accepts explicit generation mode and coach notes", () => {
+  const result = validateCreateSessionPack(
+    makeValidPackRequest({
+      sessionMode: "quick_activity",
+      coachNotes: "Use the players' request for more finishing repetition.",
+    })
+  );
+
+  assert.equal(result.sessionMode, "quick_activity");
+  assert.equal(result.coachNotes, "Use the players' request for more finishing repetition.");
+});
+
+test("validateCreateSessionPack rejects unsupported generation mode", () => {
+  assert.throws(
+    () => validateCreateSessionPack(makeValidPackRequest({ sessionMode: "quick" })),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.reason, "unsupported_session_mode");
+      assert.equal(err.details.field, "sessionMode");
+      return true;
+    }
+  );
+});
+
 test("validateCreateSessionPack rejects unsupported ageBand with stable reason", () => {
   assert.throws(
     () => validateCreateSessionPack(makeValidPackRequest({ ageBand: "u7" })),

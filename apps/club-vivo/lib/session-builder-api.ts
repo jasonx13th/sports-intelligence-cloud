@@ -41,6 +41,8 @@ export type GenerateSessionPackInput = {
   ageBand: string;
   durationMin: number;
   theme: string;
+  sessionMode?: "full_session" | "drill" | "quick_activity";
+  coachNotes?: string;
   sessionsCount?: number;
   equipment?: string[];
   confirmedProfile?: ConfirmedImageAnalysisProfile;
@@ -190,6 +192,71 @@ export class SessionBuilderApiError extends Error {
   }
 }
 
+function hasUnknownNewGenerationFields(details: unknown) {
+  const text =
+    typeof details === "string"
+      ? details
+      : (() => {
+          try {
+            return JSON.stringify(details);
+          } catch {
+            return "";
+          }
+        })();
+
+  return text.includes("sessionMode") || text.includes("coachNotes");
+}
+
+function toLegacyGenerateSessionPackInput(input: GenerateSessionPackInput) {
+  const { sessionMode: _sessionMode, coachNotes: _coachNotes, ...legacyInput } = input;
+  return legacyInput;
+}
+
+function shapeLegacySessionToSingleActivity(
+  session: GeneratedSession,
+  durationMin: number,
+  fallbackName: string
+): GeneratedSession {
+  const sourceActivity = session.activities[1] || session.activities[0];
+  const activity = sourceActivity || {
+    name: fallbackName,
+    description:
+      "Set one clear grid with a simple scoring rule, quick rotations, and a few practical coaching cues."
+  };
+
+  return {
+    ...session,
+    durationMin,
+    activities: [
+      {
+        ...activity,
+        name: activity.name?.trim() || fallbackName,
+        minutes: durationMin
+      }
+    ]
+  };
+}
+
+function shapeLegacyPackForRequestedMode(
+  pack: SessionPack,
+  input: GenerateSessionPackInput
+): SessionPack {
+  if (input.sessionMode !== "quick_activity" && input.sessionMode !== "drill") {
+    return pack;
+  }
+
+  const durationMin = input.durationMin;
+  const fallbackName = input.sessionMode === "quick_activity" ? "Quick activity" : "Main activity";
+
+  return {
+    ...pack,
+    durationMin,
+    sessions: pack.sessions.map((session) =>
+      shapeLegacySessionToSingleActivity(session, durationMin, fallbackName)
+    )
+  };
+}
+
 async function getAccessToken() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
@@ -272,12 +339,42 @@ export async function getSession(sessionId: string) {
 }
 
 export async function generateSessionPack(input: GenerateSessionPackInput) {
-  const result = await requestJson<{
+  let result: {
     pack: SessionPack;
-  }>("/session-packs", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  };
+
+  try {
+    result = await requestJson<{
+      pack: SessionPack;
+    }>("/session-packs", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    // Temporary compatibility bridge: deployed /session-packs may not yet accept
+    // sessionMode or coachNotes, so retry once with the legacy request shape.
+    if (
+      error instanceof SessionBuilderApiError &&
+      error.status === 400 &&
+      (input.sessionMode || input.coachNotes) &&
+      hasUnknownNewGenerationFields(error.details)
+    ) {
+      result = await requestJson<{
+        pack: SessionPack;
+      }>("/session-packs", {
+        method: "POST",
+        body: JSON.stringify(toLegacyGenerateSessionPackInput(input)),
+      });
+      // Temporary compatibility bridge until deployed /session-packs accepts
+      // sessionMode behavior: legacy drill-style responses can return three
+      // activities, but Quick Activity and Session Builder Drill now expect one.
+      result = {
+        pack: shapeLegacyPackForRequestedMode(result.pack, input)
+      };
+    } else {
+      throw error;
+    }
+  }
 
   return result.pack;
 }

@@ -14,7 +14,7 @@ type HomeSessionStartCardProps = {
   showPromptHelper?: boolean;
 };
 
-function CreateSessionButton() {
+function CreateActivityButton() {
   const { pending } = useFormStatus();
 
   return (
@@ -23,7 +23,7 @@ function CreateSessionButton() {
       className="inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending}
     >
-      {pending ? "Creating..." : "Create session"}
+      {pending ? "Creating..." : "Create activity"}
     </button>
   );
 }
@@ -43,10 +43,10 @@ export function HomeSessionStartCard({
     <section className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur sm:p-8">
       <form action={formAction} className="grid gap-6">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Quick session</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Quick activity</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Drop in one prompt and create sessions immediately. Use Session Builder when you want
-            the more detailed setup path.
+            Drop in one prompt for a 20-minute game-like activity by default. Ask for a session or
+            full practice when you want the shared brain to build a longer plan.
           </p>
         </div>
 
@@ -58,13 +58,13 @@ export function HomeSessionStartCard({
             onChange={(event) => setNotes(event.target.value)}
             rows={6}
             className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-            placeholder="Today we need a sharp possession session, 14 players, tight space, and a strong finishing block at the end."
+            placeholder="Attacking 2v3 with cones and balls for under 12 players."
             required
           />
           {showPromptHelper ? (
             <span className="text-xs leading-5 text-slate-500">
-              The prompt maps into the existing shared generation path, then opens the dedicated
-              quick-session review flow.
+              Include duration, player count, age, equipment, or constraints when you have them.
+              The result opens in the text-first quick activity review.
             </span>
           ) : null}
         </label>
@@ -76,7 +76,7 @@ export function HomeSessionStartCard({
         ) : null}
 
         <div className="flex justify-start">
-          <CreateSessionButton />
+          <CreateActivityButton />
         </div>
       </form>
     </section>

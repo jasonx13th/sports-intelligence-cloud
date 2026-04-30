@@ -16,12 +16,14 @@ const { validateConfirmedProfile } = require("./image-intake-validate");
 
 const GOALS_REQUIRED_THEME_KEYWORDS = ["goal", "goals", "finish", "finishing"];
 const SUPPORTED_SPORT_PACK_IDS = ["fut-soccer"];
+const SUPPORTED_SESSION_MODES = ["full_session", "drill", "quick_activity"];
 
 // Keep bounds tight; expand later with product evidence.
 const LIMITS = {
   sportMax: 40,
   ageBandMax: 40,
   themeMax: 60,
+  coachNotesMax: 1000,
   durationMinMin: 5,
   durationMinMax: 240,
   sessionsCountMin: 1,
@@ -265,7 +267,18 @@ function getMissingEquipmentForTheme(theme, equipment) {
 }
 
 function validateCreateSessionPack(body) {
-  const allowed = ["sport", "sportPackId", "ageBand", "durationMin", "theme", "sessionsCount", "equipment", "confirmedProfile"];
+  const allowed = [
+    "sport",
+    "sportPackId",
+    "ageBand",
+    "durationMin",
+    "theme",
+    "sessionMode",
+    "coachNotes",
+    "sessionsCount",
+    "equipment",
+    "confirmedProfile",
+  ];
   rejectUnknownFields(body, allowed);
 
   requireFields(body, ["sport", "ageBand", "durationMin", "theme"]);
@@ -278,6 +291,8 @@ function validateCreateSessionPack(body) {
     max: LIMITS.durationMinMax,
   });
   const theme = requireString(body, "theme", { max: LIMITS.themeMax });
+  const sessionMode = optionalEnum(body, "sessionMode", SUPPORTED_SESSION_MODES, "unsupported_session_mode");
+  const coachNotes = optionalString(body, "coachNotes", { max: LIMITS.coachNotesMax });
   const equipment = requireEquipmentArray(body, "equipment");
 
   const sessionsCountRaw = body?.sessionsCount;
@@ -327,6 +342,8 @@ function validateCreateSessionPack(body) {
     ageBand,
     durationMin,
     theme,
+    ...(sessionMode !== undefined ? { sessionMode } : {}),
+    ...(coachNotes !== undefined ? { coachNotes } : {}),
     sessionsCount,
     ...(equipment.length ? { equipment } : {}),
     ...(body?.confirmedProfile ? { confirmedProfile: validateConfirmedProfile(body.confirmedProfile) } : {}),

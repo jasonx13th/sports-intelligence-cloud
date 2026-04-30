@@ -165,8 +165,10 @@ export async function generateSessionPackAction(
   const environment = String(formData.get("environment") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
   const constraints = String(formData.get("constraints") || "").trim();
+  const sessionModeValue = String(formData.get("sessionMode") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
   const confirmedProfileJson = String(formData.get("confirmedProfileJson") || "").trim();
+  const sessionMode = sessionModeValue === "drill" ? "drill" : "full_session";
 
   const sport = selectedSport === "fut-soccer" ? "soccer" : selectedSport;
   const sportPackId = selectedSport === "fut-soccer" ? "fut-soccer" : undefined;
@@ -211,6 +213,8 @@ export async function generateSessionPackAction(
         environment,
         constraints
       }),
+      sessionMode,
+      ...(constraints ? { coachNotes: constraints } : {}),
       sessionsCount: 1,
       ...(equipment ? { equipment: parseEquipment(equipment) } : {}),
       ...(confirmedProfile ? { confirmedProfile } : {})

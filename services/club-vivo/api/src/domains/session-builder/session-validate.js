@@ -3,7 +3,6 @@
 const { requireFields, validationError } = require("../../platform/validation/validate");
 
 const SUPPORTED_AGE_BANDS = ["u6", "u8", "u10", "u12", "u14", "u16", "u18", "adult"];
-const GOALS_REQUIRED_KEYWORDS = ["goal", "goals", "finish", "finishing"];
 
 const LIMITS = {
   sportMax: 40,
@@ -161,26 +160,11 @@ function requireEquipmentArray(body, field = "equipment") {
   return [...new Set(arr.map(normalizeEquipmentName))];
 }
 
-function getMissingEquipmentForActivities(activities, equipment) {
-  if (!Array.isArray(equipment) || equipment.length === 0) return [];
-
-  const provided = new Set(equipment.map(normalizeEquipmentName));
-  const hasGoalEquipment =
-    provided.has("goals") ||
-    provided.has("mini goals") ||
-    provided.has("pug goals") ||
-    provided.has("pugg goals");
-  const missing = new Set();
-
-  for (const activity of activities || []) {
-    const activityName = normalizeEquipmentName(activity?.name);
-
-    if (GOALS_REQUIRED_KEYWORDS.some((keyword) => activityName.includes(keyword)) && !hasGoalEquipment) {
-      missing.add("goals");
-    }
-  }
-
-  return [...missing];
+function getMissingEquipmentForActivities(_activities, _equipment) {
+  // Equipment guides generation and display, but should not block saving a
+  // coach-usable session. No-goal plans are adapted to gates, target lines,
+  // zones, or possession scoring before this validation boundary.
+  return [];
 }
 
 function validateCreateSession(body) {

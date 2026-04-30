@@ -142,6 +142,25 @@ test("generatePack avoids goal-required wording when no goal equipment is select
   assert.match(text, /cone gates|end zones|target lines|passing gates|scoring zones/i);
 });
 
+test("generatePack uses small-goal language when Pugg goals are selected", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 20,
+    theme: "finishing",
+    sessionMode: "drill",
+    coachNotes: "Use the Pugg goals for a small-sided finishing activity.",
+    sessionsCount: 1,
+    equipment: ["balls", "mini disc cones", "Pugg goals"],
+  });
+
+  const [session] = pack.sessions;
+  const text = session.activities.map((activity) => `${activity.name} ${activity.description}`).join(" ");
+
+  assert.deepEqual(session.equipment, ["balls", "mini disc cones", "pugg goals"]);
+  assert.match(text, /pugg goals|mini goals|small goals|target goals|goals/i);
+});
+
 test("generatePack carries OST mixed-age playful context into activity text", () => {
   const pack = generatePack({
     sport: "soccer",

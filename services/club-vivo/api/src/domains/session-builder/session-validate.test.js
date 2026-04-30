@@ -55,23 +55,15 @@ test("validateCreateSession rejects unsupported ageBand with stable reason", () 
   );
 });
 
-test("validateCreateSession rejects incompatible equipment with stable reason", () => {
-  assert.throws(
-    () =>
-      validateCreateSession(
-        makeValidSession({
-          equipment: ["balls", "cones"],
-          activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
-        })
-      ),
-    (err) => {
-      assert.equal(err.code, "invalid_field");
-      assert.equal(err.details.reason, "incompatible_equipment");
-      assert.equal(err.details.field, "equipment");
-      assert.deepEqual(err.details.missingEquipment, ["goals"]);
-      return true;
-    }
+test("validateCreateSession accepts goal wording with balls and cones", () => {
+  const result = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "cones"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
   );
+
+  assert.deepEqual(result.equipment, ["balls", "cones"]);
 });
 
 test("validateCreateSession treats mini goals as goal equipment", () => {
@@ -85,7 +77,7 @@ test("validateCreateSession treats mini goals as goal equipment", () => {
   assert.deepEqual(result.equipment, ["balls", "flat cones", "mini goals"]);
 });
 
-test("validateCreateSession treats Pugg goals as goal equipment", () => {
+test("validateCreateSession treats Pugg goals as goal-compatible equipment", () => {
   const result = validateCreateSession(
     makeValidSession({
       equipment: ["balls", "Pugg goals"],
@@ -94,6 +86,24 @@ test("validateCreateSession treats Pugg goals as goal equipment", () => {
   );
 
   assert.deepEqual(result.equipment, ["balls", "pugg goals"]);
+});
+
+test("validateCreateSession treats small and portable goals as goal-compatible equipment", () => {
+  const smallGoalResult = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "small goals"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
+  );
+  const portableGoalResult = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "portable goals"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
+  );
+
+  assert.deepEqual(smallGoalResult.equipment, ["balls", "small goals"]);
+  assert.deepEqual(portableGoalResult.equipment, ["balls", "portable goals"]);
 });
 
 test("validateCreateSession preserves duration total rule with stable reason", () => {

@@ -4,7 +4,6 @@ const { requireFields, validationError } = require("../../platform/validation/va
 const {
   SUPPORTED_AGE_BANDS,
   normalizeAgeBand,
-  normalizeEquipmentName,
   requireEquipmentArray,
 } = require("./session-validate");
 const {
@@ -14,7 +13,6 @@ const {
 } = require("./diagram-spec-validate");
 const { validateConfirmedProfile } = require("./image-intake-validate");
 
-const GOALS_REQUIRED_THEME_KEYWORDS = ["goal", "goals", "finish", "finishing"];
 const SUPPORTED_SPORT_PACK_IDS = ["fut-soccer"];
 const SUPPORTED_SESSION_MODES = ["full_session", "drill", "quick_activity"];
 
@@ -250,23 +248,11 @@ function validateDiagramWrapper(diagram, activityId, activityIndex, diagramIndex
   return { diagramId, specVersion, diagramType, title, spec };
 }
 
-function getMissingEquipmentForTheme(theme, equipment) {
-  if (!Array.isArray(equipment) || equipment.length === 0) return [];
-
-  const themeKey = normalizeEquipmentName(theme);
-  const provided = new Set(equipment.map(normalizeEquipmentName));
-  const hasGoalEquipment =
-    provided.has("goals") ||
-    provided.has("mini goals") ||
-    provided.has("pug goals") ||
-    provided.has("pugg goals");
-  const missing = new Set();
-
-  if (GOALS_REQUIRED_THEME_KEYWORDS.some((keyword) => themeKey.includes(keyword)) && !hasGoalEquipment) {
-    missing.add("goals");
-  }
-
-  return [...missing];
+function getMissingEquipmentForTheme(_theme, _equipment) {
+  // Equipment is generation context, not a hard request blocker. If the coach
+  // selected cones/balls for a finishing idea, the generator should adapt to
+  // gates, target lines, end zones, or possession points instead of rejecting.
+  return [];
 }
 
 function validateCreateSessionPack(body) {

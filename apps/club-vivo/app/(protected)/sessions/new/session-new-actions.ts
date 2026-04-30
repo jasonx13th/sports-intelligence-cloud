@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Buffer } from "node:buffer";
+import { cookies } from "next/headers";
 
 import {
   analyzeSessionImage,
@@ -9,6 +10,7 @@ import {
   type ImageAnalysisMode,
   type SessionBuilderApiError
 } from "../../../../lib/session-builder-api";
+import { EQUIPMENT_HINTS_COOKIE, getEquipmentItems } from "../../../../lib/equipment-hints";
 import { formatEnvironmentLabel } from "../../../../lib/session-builder-context-hints";
 import type { AnalyzeFormState, GenerateFormState } from "./session-new-flow";
 
@@ -227,6 +229,16 @@ function getErrorMessage(error: unknown, fallback: string) {
       details: formatDevErrorDetails(apiError.details)
     });
 
+    const detailText = formatDevErrorDetails(apiError.details).toLowerCase();
+
+    if (
+      apiError.status === 400 &&
+      (detailText.includes("unsupported_age_band") ||
+        detailText.includes("incompatible_equipment"))
+    ) {
+      return "The session could not be generated because the selected team or equipment is not compatible yet. Try choosing a specific age band or adjusting the equipment selection.";
+    }
+
     return apiError.message || fallback;
   }
 
@@ -335,9 +347,14 @@ export async function generateSessionPackAction(
   const constraints = String(formData.get("constraints") || "").trim();
   const sessionModeValue = String(formData.get("sessionMode") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
-  const equipmentItems = equipment ? parseEquipment(equipment) : [];
+  const selectedEquipmentItems = equipment ? parseEquipment(equipment) : [];
   const confirmedProfileJson = String(formData.get("confirmedProfileJson") || "").trim();
   const sessionMode = sessionModeValue === "drill" ? "drill" : "full_session";
+  const cookieStore = await cookies();
+  const availableEquipmentItems =
+    selectedEquipmentItems.length > 0
+      ? selectedEquipmentItems
+      : getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
 
   const sport = selectedSport === "fut-soccer" ? "soccer" : selectedSport;
   const sportPackId = selectedSport === "fut-soccer" ? "fut-soccer" : undefined;
@@ -389,18 +406,21 @@ export async function generateSessionPackAction(
     const pack = await generateSessionPack({
       sport,
       ...(sportPackId ? { sportPackId } : {}),
-      ageBand,
+      ageBand: safeAgeBand,
       durationMin: durationValue,
       theme: buildGenerationTheme({
-        objective: avoidGoalRequiredThemeWithoutGoals(theme, equipmentItems),
+        objective: avoidGoalRequiredThemeWithoutGoals(theme, availableEquipmentItems),
         environment,
         constraints
       }),
       sessionMode,
       ...(coachNotes ? { coachNotes } : {}),
       sessionsCount: 1,
-      ...(equipmentItems.length ? { equipment: equipmentItems } : {}),
-      ...(confirmedProfile ? { confirmedProfile } : {})
+      ...(availableEquipmentItems.length ? { equipment: availableEquipmentItems } : {}),
+      ...(confirmedProfile ? { confirmedProfile } : {}),
+      ...(teamName ? { teamName } : {}),
+      ...(teamAgeBand ? { teamAgeBand } : {}),
+      ...(teamProgramType ? { programType: teamProgramType } : {})
     });
 
     return {
@@ -410,7 +430,10 @@ export async function generateSessionPackAction(
   } catch (error) {
     return {
       values,
-      error: getErrorMessage(error, "Generation failed. Check the form values and try again.")
+      error: getErrorMessage(
+        error,
+        "The session could not be generated because the selected team or equipment is not compatible yet. Try choosing a specific age band or adjusting the equipment selection."
+      )
     };
   }
 }

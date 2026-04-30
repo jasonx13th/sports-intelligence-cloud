@@ -192,24 +192,150 @@ export class SessionBuilderApiError extends Error {
   }
 }
 
-function hasUnknownNewGenerationFields(details: unknown) {
-  const text =
-    typeof details === "string"
-      ? details
-      : (() => {
-          try {
-            return JSON.stringify(details);
-          } catch {
-            return "";
-          }
-        })();
+const LEGACY_COMPATIBILITY_FIELDS = [
+  "sessionMode",
+  "coachNotes",
+  "sportPackId",
+  "confirmedProfile"
+] as const;
 
-  return text.includes("sessionMode") || text.includes("coachNotes");
+function stringifyErrorDetails(details: unknown) {
+  if (typeof details === "string") {
+    return details;
+  }
+
+  try {
+    return JSON.stringify(details);
+  } catch {
+    return "";
+  }
+}
+
+function collectUnknownFields(details: unknown): string[] {
+  const fields = new Set<string>();
+
+  function visit(value: unknown) {
+    if (!value || typeof value !== "object") {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+
+    const record = value as Record<string, unknown>;
+    const unknown = record.unknown;
+
+    if (Array.isArray(unknown)) {
+      unknown.forEach((field) => {
+        if (typeof field === "string") {
+          fields.add(field);
+        }
+      });
+    }
+
+    Object.values(record).forEach(visit);
+  }
+
+  visit(details);
+  return [...fields];
+}
+
+function hasLegacyCompatibilityUnknownFields(details: unknown) {
+  const unknownFields = collectUnknownFields(details);
+
+  if (
+    unknownFields.some((field) =>
+      (LEGACY_COMPATIBILITY_FIELDS as readonly string[]).includes(field)
+    )
+  ) {
+    return true;
+  }
+
+  const text = stringifyErrorDetails(details);
+  return LEGACY_COMPATIBILITY_FIELDS.some((field) => text.includes(field));
+}
+
+function hasLegacyCompatibilityFields(input: GenerateSessionPackInput) {
+  return Boolean(input.sessionMode || input.coachNotes || input.sportPackId || input.confirmedProfile);
+}
+
+function appendLegacyThemePart(theme: string, part: string) {
+  const normalizedTheme = theme.replace(/\s+/g, " ").trim();
+  const normalizedPart = part.replace(/\s+/g, " ").trim();
+  const maxThemeLength = 60;
+
+  if (!normalizedPart || normalizedTheme.toLowerCase().includes(normalizedPart.toLowerCase())) {
+    return normalizedTheme;
+  }
+
+  const nextTheme = [normalizedTheme, normalizedPart].filter(Boolean).join(" | ");
+  return nextTheme.slice(0, maxThemeLength).trim();
+}
+
+function buildLegacyTheme(input: GenerateSessionPackInput) {
+  let theme = input.theme;
+
+  if (input.sessionMode === "drill") {
+    theme = appendLegacyThemePart(theme, "format:quick_activity");
+  } else if (input.sessionMode === "full_session") {
+    theme = appendLegacyThemePart(theme, "session");
+  }
+
+  if (input.coachNotes) {
+    theme = appendLegacyThemePart(theme, `notes:${input.coachNotes}`);
+  }
+
+  return theme;
 }
 
 function toLegacyGenerateSessionPackInput(input: GenerateSessionPackInput) {
-  const { sessionMode: _sessionMode, coachNotes: _coachNotes, ...legacyInput } = input;
-  return legacyInput;
+  const {
+    sessionMode: _sessionMode,
+    coachNotes: _coachNotes,
+    sportPackId: _sportPackId,
+    confirmedProfile: _confirmedProfile,
+    ...legacyInput
+  } = input;
+
+  return {
+    ...legacyInput,
+    theme: buildLegacyTheme(input)
+  };
+}
+
+function splitDurationByWeights(durationMin: number, weights: number[]) {
+  const weighted = weights.map((weight, index) => {
+    const rawMinutes = durationMin * weight;
+    return {
+      index,
+      minutes: Math.max(1, Math.floor(rawMinutes)),
+      remainder: rawMinutes - Math.floor(rawMinutes)
+    };
+  });
+  let total = weighted.reduce((sum, item) => sum + item.minutes, 0);
+
+  while (total < durationMin) {
+    const item = [...weighted].sort((a, b) => b.remainder - a.remainder || b.index - a.index)[0];
+    item.minutes += 1;
+    total += 1;
+  }
+
+  while (total > durationMin) {
+    const item = [...weighted]
+      .sort((a, b) => b.minutes - a.minutes || b.index - a.index)
+      .find((candidate) => candidate.minutes > 1);
+
+    if (!item) {
+      break;
+    }
+
+    item.minutes -= 1;
+    total -= 1;
+  }
+
+  return weighted.sort((a, b) => a.index - b.index).map((item) => item.minutes);
 }
 
 function shapeLegacySessionToSingleActivity(
@@ -241,6 +367,46 @@ function shapeLegacyPackForRequestedMode(
   pack: SessionPack,
   input: GenerateSessionPackInput
 ): SessionPack {
+  if (input.sessionMode === "full_session") {
+    const minutes = splitDurationByWeights(input.durationMin, [0.2, 0.3, 0.3, 0.2]);
+
+    return {
+      ...pack,
+      durationMin: input.durationMin,
+      sessions: pack.sessions.map((session) => {
+        const activities = session.activities;
+        const first = activities[0] || {
+          name: "Arrival game warm-up",
+          description: "Start with an active arrival game tied to the session focus."
+        };
+        const second = activities[1] || activities[0] || {
+          name: "Main activity",
+          description: "Run the main activity with clear scoring and short coaching cues."
+        };
+        const third = activities[2] || activities[1] || activities[0] || {
+          name: "Conditioned game progression",
+          description: "Progress the activity into a game-like challenge."
+        };
+
+        return {
+          ...session,
+          durationMin: input.durationMin,
+          activities: [
+            { ...first, minutes: minutes[0] },
+            { ...second, minutes: minutes[1] },
+            { ...third, minutes: minutes[2] },
+            {
+              name: "Water break + final soccer game",
+              minutes: minutes[3],
+              description:
+                "Take a brief water break, then finish with a real soccer game. Keep normal direction, goals, restarts, and scoring while coaching only short cues tied to the session focus."
+            }
+          ]
+        };
+      })
+    };
+  }
+
   if (input.sessionMode !== "quick_activity" && input.sessionMode !== "drill") {
     return pack;
   }
@@ -356,8 +522,8 @@ export async function generateSessionPack(input: GenerateSessionPackInput) {
     if (
       error instanceof SessionBuilderApiError &&
       error.status === 400 &&
-      (input.sessionMode || input.coachNotes) &&
-      hasUnknownNewGenerationFields(error.details)
+      hasLegacyCompatibilityFields(input) &&
+      hasLegacyCompatibilityUnknownFields(error.details)
     ) {
       result = await requestJson<{
         pack: SessionPack;

@@ -65,10 +65,23 @@ function getErrorMessage(error: unknown, fallback: string) {
     typeof (error as SessionBuilderApiError).status === "number"
   ) {
     const apiError = error as SessionBuilderApiError;
-    console.error("SessionBuilderApiError", {
+    const detailObject =
+      apiError.details && typeof apiError.details === "object"
+        ? (apiError.details as Record<string, unknown>)
+        : undefined;
+    const nestedError =
+      detailObject?.error && typeof detailObject.error === "object"
+        ? (detailObject.error as Record<string, unknown>)
+        : undefined;
+
+    console.error("Session Builder generation failed", {
       status: apiError.status,
       message: apiError.message,
-      details: apiError.details
+      code: detailObject?.code,
+      detailsMessage: detailObject?.message,
+      nestedErrorMessage: nestedError?.message,
+      nestedErrorDetails: formatDevErrorDetails(nestedError?.details),
+      details: formatDevErrorDetails(apiError.details)
     });
 
     return apiError.message || fallback;
@@ -85,6 +98,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 
   console.error("Unknown generation error", { error });
   return fallback;
+}
+
+function formatDevErrorDetails(details: unknown) {
+  try {
+    return JSON.stringify(details, null, 2);
+  } catch {
+    return String(details);
+  }
 }
 
 function parseConfirmedProfile(rawValue: string) {

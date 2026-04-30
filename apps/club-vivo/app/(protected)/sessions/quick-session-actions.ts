@@ -131,7 +131,7 @@ export async function createQuickSessionAction(
   try {
     const pack = await generateSessionPack({
       sport: QUICK_SESSION_DEFAULTS.sport,
-      ageBand: QUICK_SESSION_DEFAULTS.ageBand,
+      ageBand: quickSessionIntent.ageBand,
       durationMin: quickSessionIntent.durationMin,
       theme: quickSessionIntent.theme,
       sessionMode: quickSessionIntent.sessionMode,
@@ -146,6 +146,7 @@ export async function createQuickSessionAction(
         pack,
         values: {
           ...QUICK_SESSION_DEFAULTS,
+          ageBand: quickSessionIntent.ageBand,
           durationMin: String(quickSessionIntent.durationMin),
           theme: quickSessionIntent.theme,
           equipment: quickSessionIntent.equipment.join(", ")

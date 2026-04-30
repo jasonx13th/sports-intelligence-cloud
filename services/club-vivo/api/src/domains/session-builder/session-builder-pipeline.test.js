@@ -345,10 +345,10 @@ test("processSessionPackRequest carries compact builder notes and environment in
     sessionsCount: 1,
   });
 
-  assert.match(result.validatedPack.sessions[0].activities[0].description, /available turf\./i);
+  assert.match(result.validatedPack.sessions[0].activities[0].description, /Setup: use turf/i);
   assert.match(
     result.validatedPack.sessions[0].activities[1].description,
-    /Coach context: first pass after regain\./i
+    /Coach input: first pass after regain\./i
   );
   assert.equal(result.validatedPack.theme, "pressing | notes:first pass after regain | env:turf");
   assert.equal(Object.hasOwn(result.validatedPack, "promptSignals"), false);
@@ -604,11 +604,11 @@ test("quick-marked themes keep the public pack shape while making the generated 
 
   assert.match(
     result.validatedPack.sessions[0].activities[0].description,
-    /Keep the setup easy to run and let the players get into the activity quickly\./
+    /Setup:|Run:|Cues:/
   );
   assert.match(
     result.validatedPack.sessions[0].activities[1].description,
-    /Use playful competition and simple rules so the session stays fun and game-like\./
+    /Setup:|Run:|Cues:/
   );
   assert.equal(result.validatedPack.theme, "quick | finishing | notes:small teams");
   assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
@@ -711,6 +711,33 @@ test("quick activity-mode requests create one 20-minute activity", async () => {
   assert.equal(session.activities.length, 1);
   assert.equal(session.activities[0].minutes, 20);
   assert.equal(Object.hasOwn(result.validatedPack, "sessionMode"), false);
+});
+
+test("quick activity prompt with under 12 age wording creates one U12 activity", async () => {
+  const result = await processSessionPackRequest({
+    sport: "soccer",
+    ageBand: "under 12",
+    durationMin: 20,
+    theme: "quick | format:quick_activity | duck duck goose",
+    sessionMode: "quick_activity",
+    coachNotes: "Give me a drill similar to duck duck goose for players under 12.",
+    sessionsCount: 1,
+  });
+
+  const [session] = result.validatedPack.sessions;
+  const description = session.activities[0].description;
+
+  assert.equal(result.validatedPack.ageBand, "u12");
+  assert.equal(session.ageBand, "u12");
+  assert.equal(session.activities.length, 1);
+  assert.equal(session.activities[0].minutes, 20);
+  assert.match(description, /Setup:/);
+  assert.match(description, /Run:/);
+  assert.match(description, /Cues:/);
+  assert.match(description, /Watch:/);
+  assert.match(description, /Progress:/);
+  assert.match(description, /Regress:/);
+  assert.match(description, /duck duck goose/i);
 });
 
 test("processSessionImageAnalysisRequest stores one tenant-scoped image and returns a draft profile", async () => {

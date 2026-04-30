@@ -156,6 +156,7 @@ test("generatePack descriptions avoid repeated Today focus copy", () => {
   assert.equal(/Today's focus/i.test(text), false);
   assert.equal(/Theme challenge/i.test(text), false);
   assert.equal(/Score the desired action/i.test(text), false);
+  assert.equal(/Coach note/i.test(text), false);
 });
 
 test("generatePack does not end full sessions with generic cooldown", () => {
@@ -281,8 +282,8 @@ test("generatePack applies compact builder prompt notes and environment to activ
 
   const [session] = pack.sessions;
 
-  assert.match(session.activities[0].description, /available turf\./i);
-  assert.match(session.activities[1].description, /Coach context: first pass after regain\./i);
+  assert.match(session.activities[0].description, /Setup: use turf/i);
+  assert.match(session.activities[1].description, /Coach input: first pass after regain\./i);
 });
 
 test("generatePack applies a quick-session bias that feels playful and easy to run", () => {
@@ -298,15 +299,15 @@ test("generatePack applies a quick-session bias that feels playful and easy to r
 
   assert.match(
     session.activities[0].description,
-    /Keep the setup easy to run and let the players get into the activity quickly\./
+    /Setup:|Run:|Cues:/
   );
   assert.match(
     session.activities[1].description,
-    /Use playful competition and simple rules so the session stays fun and game-like\./
+    /Setup:|Run:|Cues:/
   );
   assert.match(
     session.activities[2].description,
-    /Finish with a free-flowing game that lets the players solve problems and enjoy the session\./
+    /Progress:|Regress:/
   );
 });
 
@@ -330,10 +331,10 @@ test("generatePack derives useful quick-session tags, equipment, and coaching de
     "4v3",
     "overloads",
   ]);
-  assert.match(session.activities[0].description, /Cue first three steps/);
-  assert.match(session.activities[1].description, /Scoring:/);
+  assert.match(session.activities[0].description, /Setup:/);
+  assert.match(session.activities[1].description, /Cues:/);
   assert.match(session.activities.at(-1).name, /Water break \+ .* final game/);
-  assert.match(session.activities.at(-1).description, /real .*final game/i);
+  assert.match(session.activities.at(-1).description, /real .*final game|Run:/i);
 });
 
 test("generatePack uses pressure and possession prompt words instead of falling back to theme-only tags", () => {

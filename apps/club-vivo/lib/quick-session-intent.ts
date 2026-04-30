@@ -6,6 +6,7 @@ const QUICK_SESSION_THEME_MAX_LENGTH = 60;
 const QUICK_SESSION_OBJECTIVE_MAX_LENGTH = 44;
 const QUICK_SESSION_MIN_DURATION_MIN = 5;
 const QUICK_SESSION_MAX_DURATION_MIN = 240;
+const QUICK_SESSION_DEFAULT_AGE_BAND = "u14";
 
 type QuickSessionLike = {
   objectiveTags: string[];
@@ -117,6 +118,36 @@ function detectQuickSessionPlanType(prompt: string) {
   }
 
   return undefined;
+}
+
+export function detectQuickSessionAgeBand(prompt: string) {
+  const normalized = ` ${normalizeText(prompt).toLowerCase().replace(/[-_]+/g, " ")} `;
+  const numberWords: Record<string, number> = {
+    six: 6,
+    eight: 8,
+    ten: 10,
+    twelve: 12,
+    fourteen: 14,
+    sixteen: 16,
+    eighteen: 18
+  };
+  const underWordMatch = normalized.match(/\bunder\s+(six|eight|ten|twelve|fourteen|sixteen|eighteen)\b/);
+
+  if (underWordMatch?.[1]) {
+    return `u${numberWords[underWordMatch[1]]}`;
+  }
+
+  const match =
+    normalized.match(/\bu\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\bunder\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\b([0-9]{1,2})\s*u\b/);
+
+  if (!match?.[1]) {
+    return undefined;
+  }
+
+  const age = Number.parseInt(match[1], 10);
+  return [6, 8, 10, 12, 14, 16, 18].includes(age) ? `u${age}` : undefined;
 }
 
 export function detectQuickSessionFocusTags(prompt: string) {
@@ -340,6 +371,7 @@ export function buildQuickSessionFocusSummary(session: QuickSessionLike & { equi
 export function buildQuickSessionIntent(prompt: string) {
   const duration = extractQuickSessionDuration(prompt);
   const equipment = detectQuickSessionEquipment(prompt);
+  const ageBand = detectQuickSessionAgeBand(prompt) || QUICK_SESSION_DEFAULT_AGE_BAND;
   const requestedActivityCount = detectRequestedActivityCount(prompt);
   const activityFormat =
     requestedActivityCount === 1 ? "quick_activity" : detectQuickSessionActivityFormat(prompt);
@@ -367,6 +399,7 @@ export function buildQuickSessionIntent(prompt: string) {
     durationSource: duration.source,
     theme: buildQuickSessionTheme(prompt, sessionMode === "quick_activity" ? "quick_activity" : activityFormat),
     sessionMode,
+    ageBand,
     focusTags: detectQuickSessionFocusTags(prompt),
     equipment,
     playerCount: detectQuickSessionPlayerCount(prompt),

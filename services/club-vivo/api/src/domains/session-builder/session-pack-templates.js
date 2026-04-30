@@ -3,7 +3,7 @@
 const { validateCreateSession } = require("./session-validate");
 const { validationError } = require("../../platform/validation/validate");
 const { validateSessionPackV2Draft } = require("./session-pack-validate");
-const MAX_ACTIVITY_DESCRIPTION_LENGTH = 280;
+const MAX_ACTIVITY_DESCRIPTION_LENGTH = 700;
 
 // Deterministic templates first. No Bedrock here.
 function normalizeTheme(theme) {
@@ -150,7 +150,7 @@ function buildPromptInfluenceSentences(promptSignals) {
       "Setup: organize the space quickly, demo the first action, and start with high player involvement.",
     ].filter(Boolean),
     middle: [
-      coachNotes ? `Coach context: ${coachNotes}.` : "",
+      coachNotes ? `Coach input: ${coachNotes}.` : "",
       "Scoring: use gates or target players so the win condition is clear.",
       "Cue: scan before receiving, open the support angle, and make the first touch useful.",
     ].filter(Boolean),
@@ -389,6 +389,46 @@ function compactText(value, fallback) {
   return normalized || fallback;
 }
 
+function capDescription(value) {
+  const normalized = compactText(value, "");
+
+  if (normalized.length <= MAX_ACTIVITY_DESCRIPTION_LENGTH) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, MAX_ACTIVITY_DESCRIPTION_LENGTH - 1).trim()}.`;
+}
+
+function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
+  const objective = compactText(promptSignals?.primaryObjective, "the session objective");
+  const environment = compactText(promptSignals?.environment, "the available space");
+  const coachNotes = compactText(promptSignals?.coachNotes, "");
+  const playerCount = Number.isInteger(promptSignals?.playerCount)
+    ? ` for about ${promptSignals.playerCount} players`
+    : "";
+  const noteText = coachNotes ? ` Coach input: ${coachNotes}.` : "";
+  const phaseRun =
+    phase === "final"
+      ? "Run: restart like a real game, keep normal scoring, and coach briefly between balls out."
+      : phase === "arrival"
+        ? "Run: start immediately, keep rounds short, and let late arrivals join without stopping play."
+        : phase === "progression"
+          ? "Run: add pressure or direction so players solve the same problem at game speed."
+          : "Run: coach starts each round, keeps score, and rotates roles every 2-3 minutes.";
+
+  return capDescription(
+    [
+      `Setup: use ${environment} as a clear grid with cones, gates, channels, targets, or goals${playerCount}.`,
+      noteText.trim(),
+      `${phaseRun} ${baseDescription}`,
+      `Cues: scan early, create a support angle, make the first touch useful, and react on transition.`,
+      `Watch: lines getting long, players hiding from the ball, or space becoming too tight.`,
+      `Progress: add a defender, touch limit, transition goal, or smaller channel.`,
+      "Regress: widen the grid, remove pressure, or give an extra support player.",
+    ].join(" ")
+  );
+}
+
 function pickMainActivity(activities, preferredIndex, fallbackName, fallbackDescription) {
   const activity = activities[preferredIndex] || activities.find(Boolean) || {};
   return {
@@ -419,7 +459,11 @@ function buildFinalGameDescription({ promptSignals, ageBand }) {
   const environment = compactText(promptSignals?.environment, "available space");
   const gameName = buildFinalGameName({ promptSignals, ageBand }).replace("Water break + ", "");
 
-  return `Take a brief water break, then play a real ${gameName} in the ${environment}. Keep normal soccer direction, goals, restarts, and scoring. Coach only short cues connected to ${objective}, then let the players solve the game.`;
+  return buildCoachReadyDescription({
+    phase: "final",
+    promptSignals,
+    baseDescription: `After a brief water break, play a real ${gameName}. Keep direction, goals, restarts, and scoring normal so players apply ${objective} in the game.`,
+  });
 }
 
 function normalizeFullSessionShape({ session, promptSignals }) {
@@ -447,9 +491,33 @@ function normalizeFullSessionShape({ session, promptSignals }) {
   return {
     ...session,
     activities: [
-      { ...first, minutes: minutes[0] },
-      { ...second, minutes: minutes[1] },
-      { ...third, minutes: minutes[2] },
+      {
+        ...first,
+        minutes: minutes[0],
+        description: buildCoachReadyDescription({
+          phase: "arrival",
+          baseDescription: first.description,
+          promptSignals,
+        }),
+      },
+      {
+        ...second,
+        minutes: minutes[1],
+        description: buildCoachReadyDescription({
+          phase: "main",
+          baseDescription: second.description,
+          promptSignals,
+        }),
+      },
+      {
+        ...third,
+        minutes: minutes[2],
+        description: buildCoachReadyDescription({
+          phase: "progression",
+          baseDescription: third.description,
+          promptSignals,
+        }),
+      },
       {
         name: buildFinalGameName({ promptSignals, ageBand: session.ageBand }),
         minutes: minutes[3],
@@ -478,7 +546,11 @@ function normalizeQuickActivityShape({ session, promptSignals }) {
         ...main,
         name: compactText(main.name, "Quick activity"),
         minutes: session.durationMin,
-        description: `Set one grid with gates or target players${playerCount}. Play short rounds, keep score, rotate quickly, and coach scan, support angle, first touch, and next action. Progress with a defender, touch limit, or transition target.`,
+        description: buildCoachReadyDescription({
+          phase: "main",
+          promptSignals,
+          baseDescription: `Use a playful game-like rule${playerCount}. If the idea is tag-based, connect it to soccer by having the chaser trigger a ball action, gate score, or transition moment.`,
+        }),
       },
     ],
   };
@@ -503,7 +575,11 @@ function normalizeDrillShape({ session, promptSignals }) {
         ...main,
         name: compactText(main.name, "Main activity"),
         minutes: session.durationMin,
-        description: `Set one clear grid with gates, channels, or target players${playerCount}. Run short competitive rounds, keep score, rotate quickly, and coach scan, support angle, first touch, pressure, and next action. Progress with a defender, time limit, or transition target.`,
+        description: buildCoachReadyDescription({
+          phase: "main",
+          promptSignals,
+          baseDescription: `Run short competitive rounds${playerCount}, keep score, and repeat the key action often enough for a later diagram-ready setup.`,
+        }),
       },
     ],
   };
@@ -696,12 +772,11 @@ function templateQuickOneDrill({ sport, ageBand, durationMin, theme, equipment, 
     typeof promptSignals?.playerCount === "number" && Number.isInteger(promptSignals.playerCount)
       ? `${promptSignals.playerCount} players`
       : "the group";
-  const description = [
-    `Setup: build one clear area for ${playerCount} and demo the first action.`,
-    "Scoring: award points for the focus action and quick positive restarts.",
-    "Cue: be brave, change speed, and recognize when to attack space.",
-    "Progression: add a defender, time limit, or bonus point for creativity.",
-  ].join(" ");
+  const description = buildCoachReadyDescription({
+    phase: "main",
+    promptSignals,
+    baseDescription: `Run a game-like challenge for ${playerCount}. Use scoring for the focus action, quick positive restarts, and rotations so every player gets repeated decisions.`,
+  });
 
   return baseSession({
     sport,

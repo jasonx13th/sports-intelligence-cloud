@@ -14,7 +14,7 @@ const LIMITS = {
   equipmentItemMax: 40,
   activitiesMax: 30,
   activityNameMax: 80,
-  activityDescMax: 280,
+  activityDescMax: 700,
   idMax: 64,
   durationMinMin: 5,
   durationMinMax: 240,
@@ -50,7 +50,36 @@ function requireString(body, field, { max, optional = false } = {}) {
 }
 
 function normalizeAgeBand(value) {
-  return String(value || "").trim().toLowerCase();
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
+  const numberWords = {
+    six: 6,
+    eight: 8,
+    ten: 10,
+    twelve: 12,
+    fourteen: 14,
+    sixteen: 16,
+    eighteen: 18,
+  };
+  const underWordMatch = normalized.match(/\bunder\s+(six|eight|ten|twelve|fourteen|sixteen|eighteen)\b/);
+
+  if (underWordMatch?.[1]) {
+    return `u${numberWords[underWordMatch[1]]}`;
+  }
+
+  const match =
+    normalized.match(/\bu\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\bunder\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\b([0-9]{1,2})\s*u\b/);
+
+  if (match?.[1]) {
+    return `u${Number.parseInt(match[1], 10)}`;
+  }
+
+  return normalized;
 }
 
 function normalizeEquipmentName(value) {

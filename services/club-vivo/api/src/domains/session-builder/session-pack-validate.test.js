@@ -80,6 +80,19 @@ test("validateCreateSessionPack accepts supported ageBand and optional equipment
   assert.deepEqual(result.equipment, ["cones", "balls"]);
 });
 
+test("validateCreateSessionPack normalizes common youth age wording", () => {
+  const result = validateCreateSessionPack({
+    sport: "soccer",
+    ageBand: "under twelve",
+    durationMin: 20,
+    theme: "quick activity",
+    sessionMode: "quick_activity",
+    sessionsCount: 1,
+  });
+
+  assert.equal(result.ageBand, "u12");
+});
+
 test("validateCreateSessionPack accepts soccer with fut-soccer sportPackId", () => {
   const result = validateCreateSessionPack(
     makeValidPackRequest({

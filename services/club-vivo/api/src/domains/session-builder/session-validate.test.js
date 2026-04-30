@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { validateCreateSession } = require("./session-validate");
+const { normalizeAgeBand, validateCreateSession } = require("./session-validate");
 
 function makeValidSession(overrides = {}) {
   return {
@@ -30,6 +30,16 @@ test("validateCreateSession accepts supported ageBand and optional equipment", (
 
   assert.equal(result.ageBand, "u14");
   assert.deepEqual(result.equipment, ["cones", "balls"]);
+});
+
+test("normalizeAgeBand accepts common youth age wording", () => {
+  assert.equal(normalizeAgeBand("u12"), "u12");
+  assert.equal(normalizeAgeBand("U12"), "u12");
+  assert.equal(normalizeAgeBand("under 12"), "u12");
+  assert.equal(normalizeAgeBand("under-12"), "u12");
+  assert.equal(normalizeAgeBand("under twelve"), "u12");
+  assert.equal(normalizeAgeBand("12u"), "u12");
+  assert.equal(normalizeAgeBand("12 U"), "u12");
 });
 
 test("validateCreateSession rejects unsupported ageBand with stable reason", () => {

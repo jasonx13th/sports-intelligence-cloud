@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
+import { ActivityOutput } from "../../../../components/coach/ActivityOutput";
 import {
   QUICK_SESSION_TITLE_HINTS_COOKIE,
   normalizeQuickSessionTitle,
@@ -769,52 +770,17 @@ export default async function SessionDetailPage({
           </div>
 
           <div className="mt-5 grid gap-4">
-            {session.activities.map((activity, index) => {
-              const activityDescription = activity.description?.trim();
-
-              return (
-                <section
-                  key={`${activity.name}-${index}`}
-                  className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-teal-200 bg-teal-50 text-sm font-semibold text-teal-800">
-                        {index + 1}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Activity {index + 1}
-                        </p>
-                        <h3 className="mt-1 text-lg font-semibold text-slate-900">
-                          {activity.name}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 sm:justify-end">
-                      <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800">
-                        {activityTimings[index]?.rangeLabel}
-                      </span>
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                        {activityTimings[index]?.durationLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  {activityDescription ? (
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white/75 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        How to run it
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">
-                        {activityDescription}
-                      </p>
-                    </div>
-                  ) : null}
-                </section>
-              );
-            })}
+            {session.activities.map((activity, index) => (
+              <ActivityOutput
+                key={`${activity.name}-${index}`}
+                activity={activity}
+                activityIndex={index}
+                objective={focusLabel}
+                objectiveTags={session.objectiveTags}
+                timing={activityTimings[index]}
+                compact={isQuickSession}
+              />
+            ))}
           </div>
         </article>
 

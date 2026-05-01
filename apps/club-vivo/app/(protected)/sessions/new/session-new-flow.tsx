@@ -7,6 +7,7 @@ import {
   SessionBuilderTopBlock,
   type SessionEnvironmentOption
 } from "../../../../components/coach/SessionBuilderTopBlock";
+import { ActivityOutput } from "../../../../components/coach/ActivityOutput";
 import { type SessionBuilderMode } from "../../../../components/coach/ModeSelector";
 import { type WorkspaceTeamOption } from "../../../../components/coach/TeamSelector";
 import type {
@@ -150,62 +151,6 @@ function buildSessionContextTitle({
   return parts.length > 0 ? parts.join(" / ") : "Generated session";
 }
 
-function normalizeComparisonText(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-function sentenceRepeatsObjective(sentence: string, objective: string, objectiveTags: string[]) {
-  const match = sentence.match(/^today(?:'|\u2019)?s\s+(?:focus|objective)\s*:\s*(.+)$/i);
-
-  if (!match) {
-    return false;
-  }
-
-  const sentenceObjective = normalizeComparisonText(match[1]);
-  const coachObjective = normalizeComparisonText(objective);
-  const tagObjectives = objectiveTags.map(normalizeComparisonText).filter(Boolean);
-
-  if (!sentenceObjective) {
-    return true;
-  }
-
-  if (
-    coachObjective &&
-    (coachObjective.includes(sentenceObjective) || sentenceObjective.includes(coachObjective))
-  ) {
-    return true;
-  }
-
-  return tagObjectives.some(
-    (tag) => tag.includes(sentenceObjective) || sentenceObjective.includes(tag)
-  );
-}
-
-function splitActivityDescription(
-  description: string,
-  objective: string,
-  objectiveTags: string[]
-) {
-  const normalizedDescription = description.replace(/\s+/g, " ").trim();
-
-  if (!normalizedDescription) {
-    return [];
-  }
-
-  const sentenceMatches = normalizedDescription.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
-
-  if (!sentenceMatches || sentenceMatches.length < 2) {
-    return sentenceRepeatsObjective(normalizedDescription, objective, objectiveTags)
-      ? []
-      : [normalizedDescription];
-  }
-
-  return sentenceMatches
-    .map((sentence) => sentence.trim())
-    .filter(Boolean)
-    .filter((sentence) => !sentenceRepeatsObjective(sentence, objective, objectiveTags));
-}
-
 function LegendSymbol({
   children,
   className = ""
@@ -337,42 +282,6 @@ function DiagramPlaceholder() {
   );
 }
 
-function ActivityCoachGuide({
-  description,
-  objective,
-  objectiveTags
-}: {
-  description?: string;
-  objective: string;
-  objectiveTags: string[];
-}) {
-  const descriptionLines = splitActivityDescription(description ?? "", objective, objectiveTags);
-
-  if (descriptionLines.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-      <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        How to run it
-      </h6>
-
-      {descriptionLines.length > 1 ? (
-        <ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
-          {descriptionLines.map((line) => (
-            <li key={line} className="rounded-xl bg-slate-50/80 px-3 py-2">
-              {line}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-3 text-sm leading-6 text-slate-700">{descriptionLines[0]}</p>
-      )}
-    </section>
-  );
-}
-
 function CandidateCard({
   candidate,
   origin,
@@ -495,37 +404,14 @@ function CandidateCard({
 
         <div className="mt-4 grid gap-4">
           {candidate.activities.map((activity, activityIndex) => (
-            <section
+            <ActivityOutput
               key={`${activity.name}-${activityIndex}`}
-              className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5"
-            >
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-                <div className="min-w-0">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-700 text-sm font-semibold text-white">
-                        {activityIndex + 1}
-                      </span>
-                      <h5 className="min-w-0 text-lg font-semibold text-slate-900">
-                        {activity.name}
-                      </h5>
-                    </div>
-
-                    <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700">
-                      {activity.minutes} minutes
-                    </span>
-                  </div>
-
-                  <ActivityCoachGuide
-                    description={activity.description}
-                    objective={coachObjective}
-                    objectiveTags={objectiveTags}
-                  />
-                </div>
-
-                <DiagramPlaceholder />
-              </div>
-            </section>
+              activity={activity}
+              activityIndex={activityIndex}
+              objective={coachObjective}
+              objectiveTags={objectiveTags}
+              aside={<DiagramPlaceholder />}
+            />
           ))}
         </div>
       </section>

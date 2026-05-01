@@ -416,9 +416,73 @@ test("generatePack preserves meaningful coach notes instead of tiny truncation",
 
   const description = pack.sessions[0].activities[0].description;
 
-  assert.match(description, /duck duck goose/i);
-  assert.match(description, /first-touch escape|first touch escape/i);
+  assert.match(description, /duck, duck, goose|duck duck goose/i);
+  assert.match(description, /first-touch escape|first touch escape|first touch into space/i);
   assert.equal(/give me a drill sim\./i.test(description), false);
+});
+
+function assertDuckDuckGooseSoccerActivity(activity) {
+  assert.match(activity.name, /duck duck goose escape gates/i);
+  assert.match(activity.description, /Setup:/);
+  assert.match(activity.description, /How to start:/);
+  assert.match(activity.description, /How to run it:/);
+  assert.match(activity.description, /Rules \/ scoring:/);
+  assert.match(activity.description, /Coaching cues:/);
+  assert.match(activity.description, /What to watch for:/);
+  assert.match(activity.description, /Progression:/);
+  assert.match(activity.description, /Regression:/);
+  assert.match(activity.description, /Safety \/ space adjustment:/);
+  assert.match(activity.description, /duck, duck, goose/i);
+  assert.match(activity.description, /first touch/i);
+  assert.match(activity.description, /chases? as a defender|defender chases/i);
+  assert.match(activity.description, /cone gates?|gate/i);
+  assert.match(activity.description, /quick|rotate/i);
+}
+
+test("generatePack turns a quick duck-duck-goose prompt into one soccer chase escape activity", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 20,
+    theme: "quick | format:quick_activity | game like duck duck goose",
+    sessionMode: "quick_activity",
+    coachNotes: "create a game like activity similar to duck duck goose",
+    sessionsCount: 1,
+    equipment: ["balls", "cones"],
+  });
+
+  const [session] = pack.sessions;
+  const [activity] = session.activities;
+
+  assert.equal(session.activities.length, 1);
+  assert.equal(activity.minutes, 20);
+  assert.equal(session.objectiveTags.includes("reaction"), true);
+  assert.equal(session.objectiveTags.includes("escape"), true);
+  assertDuckDuckGooseSoccerActivity(activity);
+});
+
+test("generatePack gives full-session duck-duck-goose brainstorm one related soccer activity", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 60,
+    theme: "playful reaction game",
+    sessionMode: "full_session",
+    coachNotes: "i want a game like activity similar to duck duck goose",
+    sessionsCount: 1,
+    equipment: ["balls", "cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+  const relatedActivities = session.activities.filter((activity) =>
+    /duck duck goose escape gates|How to start:.*duck, duck, goose|How to run it:.*chases? as a defender/i.test(
+      `${activity.name} ${activity.description}`
+    )
+  );
+
+  assert.equal(session.activities.length, 4);
+  assert.equal(relatedActivities.length, 1);
+  assertDuckDuckGooseSoccerActivity(relatedActivities[0]);
 });
 
 test("generatePack applies a quick-session bias that feels playful and easy to run", () => {

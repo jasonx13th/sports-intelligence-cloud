@@ -502,6 +502,34 @@ function getProgramStyle(promptSignals) {
   };
 }
 
+function getPromptSignalText(promptSignals) {
+  return normalizeTheme(
+    [
+      promptSignals?.primaryObjective,
+      promptSignals?.coachNotes,
+      promptSignals?.teamContext,
+    ].filter(Boolean).join(" ")
+  );
+}
+
+function detectSoccerActivityArchetype(promptSignals) {
+  const text = getPromptSignalText(promptSignals);
+
+  if (
+    text.includes("duck duck goose") ||
+    text.includes("duck-duck-goose") ||
+    (text.includes("tag") && text.includes("chase") && text.includes("escape"))
+  ) {
+    return {
+      key: "duck-duck-goose-escape",
+      name: "Duck Duck Goose Escape Gates",
+      tags: ["dribbling", "reaction", "1v1", "escape"],
+    };
+  }
+
+  return null;
+}
+
 function capDescription(value) {
   const normalized = compactText(value, "");
 
@@ -512,7 +540,40 @@ function capDescription(value) {
   return `${normalized.slice(0, MAX_ACTIVITY_DESCRIPTION_LENGTH - 1).trim()}.`;
 }
 
+function buildDuckDuckGooseEscapeDescription({ promptSignals, phase = "main" }) {
+  const equipmentText = describeEquipment(promptSignals?.equipment);
+  const playerCount = Number.isInteger(promptSignals?.playerCount)
+    ? ` for about ${promptSignals.playerCount} players`
+    : "";
+  const phaseDetail =
+    phase === "arrival"
+      ? "start unopposed for one round, then add the chase once players understand the route"
+      : phase === "progression"
+        ? "make the chase live from the first touch and add a transition pass after the gate"
+        : "keep every round short, loud, and competitive so players react instead of waiting";
+
+  return capDescription(
+    [
+      `Setup: build a 16x16 yard grid or circle with ${equipmentText}; place four cone gates outside it and give players balls when possible${playerCount}.`,
+      "How to start: players dribble or toe-tap while one caller says duck, duck, goose; on goose, the named player takes a first touch into space.",
+      `How to run it: the goose tries to escape through any cone gate while the caller chases as a defender; ${phaseDetail}.`,
+      "Rules / scoring: attacker scores by dribbling through a gate under control; defender scores by tagging or forcing the ball out.",
+      "Coaching cues: first touch away from pressure, explode on the trigger, keep the ball close, and look up before choosing a gate.",
+      "What to watch for: long lines, the caller camping one gate, collisions, or attackers kicking the ball too far ahead.",
+      "Progression: add a second defender, require a change of direction, or give bonus points for the far gate.",
+      "Regression: widen gates, let the attacker start one step ahead, rehearse without a ball, or make the defender shadow.",
+      "Safety / space adjustment: keep chases outside the circle, rotate the caller every rep, and enlarge the grid if paths cross.",
+    ].join(" ")
+  );
+}
+
 function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
+  const archetype = detectSoccerActivityArchetype(promptSignals);
+
+  if (archetype?.key === "duck-duck-goose-escape" && phase === "main") {
+    return buildDuckDuckGooseEscapeDescription({ promptSignals, phase });
+  }
+
   const objective = compactText(promptSignals?.primaryObjective, "the session objective");
   const environment = compactText(promptSignals?.environment, "the available space");
   const coachNotes = getCoachNotesSnippet(promptSignals?.coachNotes);
@@ -593,6 +654,7 @@ function buildFinalGameDescription({ promptSignals, ageBand }) {
 function normalizeFullSessionShape({ session, promptSignals }) {
   const minutes = splitDurationByWeights(session.durationMin, [0.2, 0.3, 0.3, 0.2]);
   const activities = Array.isArray(session.activities) ? session.activities : [];
+  const archetype = detectSoccerActivityArchetype(promptSignals);
   const first = pickMainActivity(
     activities,
     0,
@@ -602,7 +664,7 @@ function normalizeFullSessionShape({ session, promptSignals }) {
   const second = pickMainActivity(
     activities,
     1,
-    "Main activity",
+    archetype?.name || "Main activity",
     "Build the main activity in a clear area. Explain the scoring rule, let players repeat the key action, and coach spacing, timing, and decisions."
   );
   const third = pickMainActivity(
@@ -626,6 +688,7 @@ function normalizeFullSessionShape({ session, promptSignals }) {
       },
       {
         ...second,
+        name: archetype?.name || second.name,
         minutes: minutes[1],
         description: buildCoachReadyDescription({
           phase: "main",
@@ -653,10 +716,11 @@ function normalizeFullSessionShape({ session, promptSignals }) {
 
 function normalizeQuickActivityShape({ session, promptSignals }) {
   const activities = Array.isArray(session.activities) ? session.activities : [];
+  const archetype = detectSoccerActivityArchetype(promptSignals);
   const main = pickMainActivity(
     activities,
     1,
-    compactText(promptSignals?.primaryObjective, "Quick activity"),
+    archetype?.name || compactText(promptSignals?.primaryObjective, "Quick activity"),
     "Set one grid with clear gates or target players. Play short rounds, keep score, rotate quickly, and coach scanning, first touch, support angle, and the next action."
   );
   const playerCount = Number.isInteger(promptSignals?.playerCount)
@@ -668,7 +732,7 @@ function normalizeQuickActivityShape({ session, promptSignals }) {
     activities: [
       {
         ...main,
-        name: compactText(main.name, "Quick activity"),
+        name: archetype?.name || compactText(main.name, "Quick activity"),
         minutes: session.durationMin,
         description: buildCoachReadyDescription({
           phase: "main",
@@ -889,9 +953,10 @@ function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
 }
 
 function templateQuickOneDrill({ sport, ageBand, durationMin, theme, equipment, promptSignals }) {
+  const archetype = detectSoccerActivityArchetype(promptSignals);
   const objective = normalizeTheme(promptSignals?.primaryObjective || theme) || "quick challenge";
-  const objectiveTags = inferFocusTagsFromText(objective);
-  const displayObjective = titleCase(objective).slice(0, 52) || "Quick Challenge";
+  const objectiveTags = mergeUniqueStrings(archetype?.tags, inferFocusTagsFromText(objective));
+  const displayObjective = archetype?.name || titleCase(objective).slice(0, 52) || "Quick Challenge";
   const playerCount =
     typeof promptSignals?.playerCount === "number" && Number.isInteger(promptSignals.playerCount)
       ? `${promptSignals.playerCount} players`
@@ -911,6 +976,7 @@ function templateQuickOneDrill({ sport, ageBand, durationMin, theme, equipment, 
     activities: [
       {
         name: `${displayObjective} Game`,
+        ...(archetype ? { name: archetype.name } : {}),
         minutes: durationMin,
         description,
       },
@@ -994,13 +1060,20 @@ function generateSessionFromTheme({
                 });
 
   const sessionWithPromptTags = applyPromptFocusTagsToSession(session, promptSignals);
+  const archetype = detectSoccerActivityArchetype(promptSignals);
+  const sessionWithArchetypeTags = archetype
+    ? {
+        ...sessionWithPromptTags,
+        objectiveTags: mergeUniqueStrings(archetype.tags, sessionWithPromptTags.objectiveTags).slice(0, 12),
+      }
+    : sessionWithPromptTags;
 
   const shapedSession =
     promptSignals.sessionMode === "quick_activity"
-      ? normalizeQuickActivityShape({ session: sessionWithPromptTags, promptSignals })
+      ? normalizeQuickActivityShape({ session: sessionWithArchetypeTags, promptSignals })
       : promptSignals.sessionMode === "drill"
-      ? normalizeDrillShape({ session: sessionWithPromptTags, promptSignals })
-      : normalizeFullSessionShape({ session: sessionWithPromptTags, promptSignals });
+      ? normalizeDrillShape({ session: sessionWithArchetypeTags, promptSignals })
+      : normalizeFullSessionShape({ session: sessionWithArchetypeTags, promptSignals });
 
   const validatedSession = validateCreateSession(shapedSession);
 

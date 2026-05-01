@@ -186,12 +186,16 @@ function buildGenerationTheme({
   environment: string;
   constraints: string;
 }) {
-  const objectivePart = clampPromptPart(objective, 32);
+  const objectivePart = clampPromptPart(objective, 52);
   const environmentPart =
     environment && environment !== "grass_field"
       ? clampPromptPart(formatEnvironmentLabel(environment).toLowerCase(), 14)
       : "";
-  const notesPart = clampPromptPart(constraints, 26);
+  const remainingNotesLength = Math.max(
+    0,
+    MAX_GENERATION_THEME_LENGTH - objectivePart.length - (environmentPart ? environmentPart.length + 8 : 0) - 9
+  );
+  const notesPart = clampPromptPart(constraints, Math.min(48, remainingNotesLength));
   const parts = [
     objectivePart,
     notesPart ? `notes:${notesPart}` : "",

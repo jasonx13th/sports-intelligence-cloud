@@ -732,12 +732,13 @@ test("quick activity prompt with under 12 age wording creates one U12 activity",
   assert.equal(session.activities.length, 1);
   assert.equal(session.activities[0].minutes, 20);
   assert.match(description, /Setup:/);
-  assert.match(description, /Run:/);
-  assert.match(description, /Cues:/);
-  assert.match(description, /Watch:/);
-  assert.match(description, /Progress:/);
-  assert.match(description, /Regress:/);
-  assert.match(description, /duck duck goose/i);
+  assert.match(description, /How to start:/);
+  assert.match(description, /How to run it:/);
+  assert.match(description, /Coaching cues:/);
+  assert.match(description, /What to watch for:/);
+  assert.match(description, /Progression:/);
+  assert.match(description, /Regression:/);
+  assert.match(description, /duck, duck, goose|duck duck goose/i);
 });
 
 test("processSessionImageAnalysisRequest stores one tenant-scoped image and returns a draft profile", async () => {

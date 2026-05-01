@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import { ActivityOutput } from "../../../../components/coach/ActivityOutput";
+import { DiagramPlaceholder } from "../../../../components/coach/DiagramPlaceholder";
 import {
   QUICK_SESSION_TITLE_HINTS_COOKIE,
   normalizeQuickSessionTitle,
@@ -778,6 +779,7 @@ export default async function SessionDetailPage({
                 objective={focusLabel}
                 objectiveTags={session.objectiveTags}
                 timing={activityTimings[index]}
+                aside={isBuilderSession ? <DiagramPlaceholder /> : undefined}
                 compact={isQuickSession}
               />
             ))}

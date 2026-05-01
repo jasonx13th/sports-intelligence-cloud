@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { ActivityOutput } from "../../../../components/coach/ActivityOutput";
 import type { GeneratedSession, SessionPack } from "../../../../lib/session-builder-api";
 import {
   buildQuickSessionPromptSummary,
-  buildQuickSessionTitle,
-  extractQuickSessionDuration
+  buildQuickSessionTitle
 } from "../../../../lib/quick-session-intent";
 
 type SaveFormState = {
@@ -48,18 +48,18 @@ function QuickReviewCandidateCard({
     session: candidate
   });
   const promptSummary = buildQuickSessionPromptSummary(prompt);
-  const durationSignal = extractQuickSessionDuration(prompt);
+  const objectiveTags = Array.isArray(candidate.objectiveTags) ? candidate.objectiveTags : [];
 
   return (
     <article className="rounded-3xl border border-slate-200 bg-white/80 p-5">
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Quick session
+            Quick activity
           </p>
           <h2 className="mt-2 text-lg font-semibold text-slate-900">{quickSessionTitle}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            {promptSummary || "No quick-session prompt summary saved."}
+            {promptSummary || "No quick-activity prompt summary saved."}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
@@ -72,11 +72,6 @@ function QuickReviewCandidateCard({
               {candidate.activities.length} activities
             </span>
           </div>
-          <p className="mt-3 text-sm text-slate-600">
-            {durationSignal.source === "prompt"
-              ? `Using ${durationSignal.durationMin} minutes from your prompt.`
-              : `Using the standard ${durationSignal.durationMin}-minute quick-session duration.`}
-          </p>
         </div>
 
         <div className="flex flex-wrap gap-2 sm:shrink-0">
@@ -97,24 +92,14 @@ function QuickReviewCandidateCard({
 
       <div className="mt-5 grid gap-3">
         {candidate.activities.map((activity, activityIndex) => (
-          <section
+          <ActivityOutput
             key={`${activity.name}-${activityIndex}`}
-            className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
-          >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Activity {activityIndex + 1}
-                </p>
-                <h3 className="mt-1 text-base font-semibold text-slate-900">{activity.name}</h3>
-              </div>
-              <p className="text-sm font-medium text-slate-600">{activity.minutes} minutes</p>
-            </div>
-
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              {activity.description?.trim() || "No description provided."}
-            </p>
-          </section>
+            activity={activity}
+            activityIndex={activityIndex}
+            objective={promptSummary}
+            objectiveTags={objectiveTags}
+            compact
+          />
         ))}
       </div>
     </article>
@@ -138,9 +123,9 @@ export function QuickSessionReview({
   if (!quickCandidate) {
     return (
       <div className="mt-8 rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
-        <h2 className="text-base font-semibold text-slate-900">No quick session available</h2>
+        <h2 className="text-base font-semibold text-slate-900">No quick activity available</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Create another quick session or move into Session Builder for the detailed setup flow.
+          Create another quick activity or move into Session Builder for the detailed setup flow.
         </p>
       </div>
     );

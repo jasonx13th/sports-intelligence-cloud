@@ -3,7 +3,7 @@
 const { validateCreateSession } = require("./session-validate");
 const { validationError } = require("../../platform/validation/validate");
 const { validateSessionPackV2Draft } = require("./session-pack-validate");
-const MAX_ACTIVITY_DESCRIPTION_LENGTH = 280;
+const MAX_ACTIVITY_DESCRIPTION_LENGTH = 1200;
 
 // Deterministic templates first. No Bedrock here.
 function normalizeTheme(theme) {
@@ -94,7 +94,7 @@ function isControlThemeSegment(segment) {
   );
 }
 
-function extractPromptSignals(theme) {
+function extractPromptSignals(theme, options = {}) {
   const rawTheme = String(theme || "").trim();
   const segments = splitThemeSegments(rawTheme);
   const playerCountMatch = rawTheme.match(/\b(\d{1,2})\s+players?\b/i);
@@ -108,9 +108,18 @@ function extractPromptSignals(theme) {
     extractDelimitedValue(rawTheme, "Environment context") ||
     extractDelimitedValue(rawTheme, "env");
   const coachNotes =
+    String(options.coachNotes || "").trim() ||
     extractDelimitedValue(rawTheme, "Coach brainstorming and extra details for today") ||
     extractDelimitedValue(rawTheme, "notes");
   const activityFormat = extractDelimitedValue(rawTheme, "format");
+  const inferredThemeMode = segments.some((segment) => isQuickSessionSegment(segment)) ? "quick" : null;
+  const sessionMode =
+    options.sessionMode ||
+    (inferredThemeMode === "quick" && activityFormat === "quick_activity"
+      ? "quick_activity"
+      : inferredThemeMode === "quick" && activityFormat === "one_drill"
+        ? "drill"
+        : "full_session");
 
   return {
     primaryObjective: primaryObjective || rawTheme,
@@ -118,8 +127,12 @@ function extractPromptSignals(theme) {
     environment: environment || null,
     coachNotes: coachNotes || null,
     activityFormat: activityFormat || null,
-    playerCount: playerCountMatch?.[1] ? Number.parseInt(playerCountMatch[1], 10) : null,
-    sessionMode: segments.some((segment) => isQuickSessionSegment(segment)) ? "quick" : null,
+    playerCount:
+      playerCountMatch?.[1] ? Number.parseInt(playerCountMatch[1], 10) : options.playerCount || null,
+    equipment: Array.isArray(options.equipment) ? options.equipment : [],
+    methodologyInfluence: options.methodologyInfluence || null,
+    quickSession: inferredThemeMode === "quick",
+    sessionMode,
   };
 }
 
@@ -135,19 +148,18 @@ function buildPromptInfluenceSentences(promptSignals) {
 
   return {
     first: [
-      objective ? `Today's focus: ${objective}.` : "",
       environment ? `Set the area to fit the available ${environment}.` : "",
-      "Setup: show the first rotation before adding pressure.",
+      "Setup: organize the space quickly, demo the first action, and start with high player involvement.",
     ].filter(Boolean),
     middle: [
-      coachNotes ? `Coach note: ${coachNotes}.` : "",
-      "Scoring: reward the action that matches the focus.",
-      "Cue: scan early, support quickly, then play with purpose.",
+      coachNotes ? `Coach notes: ${getCoachNotesSnippet(coachNotes)}.` : "",
+      "Scoring: use gates or target players so the win condition is clear.",
+      "Cue: scan before receiving, open the support angle, and make the first touch useful.",
     ].filter(Boolean),
     last: [
       playerCount ? `Keep numbers close to ${playerCount}.` : "",
       teamContext ? `Keep the final detail appropriate for ${teamContext}.` : "",
-      "Progression: reduce time or touches.",
+      objective ? `Connect the rules back to ${objective} without stopping the flow too often.` : "",
     ].filter(Boolean),
   };
 }
@@ -347,36 +359,354 @@ function fitActivityDurationsToDuration({ durationMin, activities }) {
     }));
 }
 
-function padWithCoolDown({ durationMin, activities }) {
-  const fittedActivities = fitActivityDurationsToDuration({ durationMin, activities });
-  const used = minutesSum(fittedActivities);
-  const remaining = durationMin - used;
-  const cooldownCap = 10;
+function splitDurationByWeights(durationMin, weights) {
+  const weighted = weights.map((weight, index) => {
+    const rawMinutes = durationMin * weight;
+    return {
+      index,
+      minutes: Math.max(1, Math.floor(rawMinutes)),
+      remainder: rawMinutes - Math.floor(rawMinutes),
+    };
+  });
+  let total = weighted.reduce((sum, item) => sum + item.minutes, 0);
 
-  if (remaining <= 0) return fittedActivities;
-
-  if (remaining <= cooldownCap) {
-    return fittedActivities.concat([
-      {
-        name: "Cooldown",
-        minutes: remaining,
-        description: "Low-intensity cooldown.",
-      },
-    ]);
+  while (total < durationMin) {
+    const item = [...weighted].sort((a, b) => b.remainder - a.remainder || b.index - a.index)[0];
+    item.minutes += 1;
+    total += 1;
   }
 
-  return fittedActivities.concat([
-    {
-      name: "Low-intensity technical reps",
-      minutes: remaining - cooldownCap,
-      description: "Low-intensity technical reps.",
-    },
-    {
-      name: "Cooldown",
-      minutes: cooldownCap,
-      description: "Low-intensity cooldown.",
-    },
-  ]);
+  while (total > durationMin) {
+    const item = [...weighted].sort((a, b) => b.minutes - a.minutes || b.index - a.index).find((candidate) => candidate.minutes > 1);
+    if (!item) break;
+    item.minutes -= 1;
+    total -= 1;
+  }
+
+  return weighted.sort((a, b) => a.index - b.index).map((item) => item.minutes);
+}
+
+function compactText(value, fallback) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  return normalized || fallback;
+}
+
+function hasGoalEquipment(equipment) {
+  return (Array.isArray(equipment) ? equipment : []).some((item) => {
+    const normalized = normalizeTheme(item);
+    return (
+      normalized.includes("goal") ||
+      normalized.includes("pug goal") ||
+      normalized.includes("pugg goal")
+    );
+  });
+}
+
+function describeEquipment(equipment) {
+  const items = mergeUniqueStrings(equipment).slice(0, 5);
+  return items.length ? items.join(", ") : "available equipment";
+}
+
+function getScoringTargets(equipment) {
+  if (!hasGoalEquipment(equipment)) {
+    return "cone goals, cone gates, target lines, end zones, scoring zones, passing gates, or possession points";
+  }
+
+  const normalized = (Array.isArray(equipment) ? equipment : []).map((item) => normalizeTheme(item));
+
+  if (normalized.some((item) => item.includes("pugg") || item.includes("pug goal"))) {
+    return "Pugg goals, small goals, target goals, or cone gates";
+  }
+
+  if (normalized.some((item) => item.includes("mini goal"))) {
+    return "mini goals, target goals, or cone gates";
+  }
+
+  if (normalized.some((item) => item.includes("small goal") || item.includes("portable goal"))) {
+    return "small goals, portable goals, target goals, or cone gates";
+  }
+
+  return "goals, target goals, or cone gates";
+}
+
+function getCoachNotesSnippet(value) {
+  const normalized = compactText(value, "").replace(/\.+$/, "");
+
+  if (normalized.length <= 240) {
+    return normalized;
+  }
+
+  const sentenceEnd = normalized.slice(0, 240).search(/[.!?]\s[^.!?]*$/);
+
+  if (sentenceEnd > 80) {
+    return normalized.slice(0, sentenceEnd + 1).trim();
+  }
+
+  const wordSafe = normalized.slice(0, 240).replace(/\s+\S*$/, "").trim();
+  return wordSafe || normalized.slice(0, 240).trim();
+}
+
+function getProgramStyle(promptSignals) {
+  const methodologyStyleBias = promptSignals?.methodologyInfluence?.styleBias || "default";
+  const context = normalizeTheme(
+    [
+      promptSignals?.teamContext,
+      promptSignals?.coachNotes,
+      promptSignals?.primaryObjective,
+    ].filter(Boolean).join(" ")
+  );
+
+  if (
+    methodologyStyleBias === "ost" ||
+    context.includes("programtype:ost") ||
+    context.includes("mixedage:true") ||
+    context.includes("playful") ||
+    context.includes("beginner-friendly")
+  ) {
+    return {
+      setup: methodologyStyleBias === "ost"
+        ? "Keep the setup simple, explain one rule at a time, and let the players learn through play"
+        : "Keep the space simple and visible so mixed-skill players can understand it quickly",
+      run: "use playful competition, short rounds, and inclusive restarts so everyone stays involved",
+      cues: "eyes up, find space, try the brave touch, help a teammate",
+      watch: "players waiting too long, rules becoming confusing, or stronger players taking over",
+      progress: "add a bonus point, a safe defender, or a second gate once the group understands it",
+      regress: "make the grid bigger, remove pressure, or let partners work together"
+    };
+  }
+
+  if (
+    methodologyStyleBias === "travel" ||
+    context.includes("programtype:travel") ||
+    context.includes("tactical") ||
+    context.includes("decision-making") ||
+    context.includes("game-realistic")
+  ) {
+    return {
+      setup: "Build the session with clear spacing, scanning detail, and a progression the group can grow into",
+      run: "coach the trigger, tempo, support angle, and transition after each repetition",
+      cues: "scan early, receive side-on, play away from pressure, react on the next action",
+      watch: "flat support angles, slow decisions, poor body shape, or players missing the press trigger",
+      progress: "limit touches, add a recovering defender, or shorten the time to score",
+      regress: "add a neutral, increase space, or freeze once to show the decision picture"
+    };
+  }
+
+  return {
+    setup: "Use a clear grid with channels, gates, target players, or scoring zones",
+    run: "play short competitive rounds with quick restarts, clear rotations, and everyone active",
+    cues: "scan early, open the support angle, make the first touch useful, react on transition",
+    watch: "long lines, hidden players, unclear scoring, or the space getting too tight",
+    progress: "add pressure, a time limit, a transition target, or a bonus point",
+    regress: "widen the space, remove pressure, allow an extra touch, or add a support player"
+  };
+}
+
+function capDescription(value) {
+  const normalized = compactText(value, "");
+
+  if (normalized.length <= MAX_ACTIVITY_DESCRIPTION_LENGTH) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, MAX_ACTIVITY_DESCRIPTION_LENGTH - 1).trim()}.`;
+}
+
+function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
+  const objective = compactText(promptSignals?.primaryObjective, "the session objective");
+  const environment = compactText(promptSignals?.environment, "the available space");
+  const coachNotes = getCoachNotesSnippet(promptSignals?.coachNotes);
+  const playerCount = Number.isInteger(promptSignals?.playerCount)
+    ? ` for about ${promptSignals.playerCount} players`
+    : "";
+  const equipmentText = describeEquipment(promptSignals?.equipment);
+  const scoringTargets = getScoringTargets(promptSignals?.equipment);
+  const style = getProgramStyle(promptSignals);
+  const noteText = coachNotes ? `Coach notes: ${coachNotes}.` : "";
+  const phaseRun =
+    phase === "final"
+      ? "Run: restart like a real game, keep score, and coach briefly on balls out."
+      : phase === "arrival"
+        ? "Run: start as players arrive, keep rounds short, and let late arrivals join."
+        : phase === "progression"
+          ? "Run: add pressure or direction so players solve it closer to game speed."
+          : "Run: start each round, keep score, and rotate roles every 2-3 minutes.";
+  const baseSnippet = compactText(baseDescription, "").slice(0, 135).replace(/\s+\S*$/, "").trim();
+
+  return capDescription(
+    [
+      `Setup: use ${environment} with ${equipmentText}; ${style.setup}.`,
+      playerCount ? `Numbers: organize it${playerCount}.` : "",
+      noteText.trim(),
+      `${phaseRun}${baseSnippet ? ` ${baseSnippet}.` : ""}`,
+      `Scoring: use ${scoringTargets}; rotate after scores, turnovers, or short rounds.`,
+      `Cues: ${style.cues}.`,
+      `Watch: ${style.watch}.`,
+      `Progress: ${style.progress}.`,
+      `Regress: ${style.regress}.`,
+      `Challenge: reward the action that best supports ${objective}.`,
+    ].join(" ")
+  );
+}
+
+function pickMainActivity(activities, preferredIndex, fallbackName, fallbackDescription) {
+  const activity = activities[preferredIndex] || activities.find(Boolean) || {};
+  return {
+    name: compactText(activity.name, fallbackName),
+    description: compactText(activity.description, fallbackDescription),
+  };
+}
+
+function buildFinalGameName({ promptSignals, ageBand }) {
+  const playerCount = Number.isInteger(promptSignals?.playerCount) ? promptSignals.playerCount : null;
+  const normalizedAgeBand = normalizeTheme(ageBand);
+
+  if (playerCount && playerCount >= 22) return "Water break + 11v11 final game";
+  if (playerCount && playerCount >= 18) return "Water break + 9v9 final game";
+  if (playerCount && playerCount >= 14) return "Water break + 7v7 final game";
+  if (playerCount && playerCount >= 10) return "Water break + 5v5 final game";
+  if (normalizedAgeBand === "adult" || normalizedAgeBand === "u18" || normalizedAgeBand === "u16") {
+    return "Water break + 9v9 final game";
+  }
+  if (normalizedAgeBand === "u14" || normalizedAgeBand === "u12") {
+    return "Water break + 7v7 final game";
+  }
+  return "Water break + small-sided final game";
+}
+
+function buildFinalGameDescription({ promptSignals, ageBand }) {
+  const objective = compactText(promptSignals?.primaryObjective, "the session theme");
+  const environment = compactText(promptSignals?.environment, "available space");
+  const gameName = buildFinalGameName({ promptSignals, ageBand }).replace("Water break + ", "");
+
+  const scoringTargetText = hasGoalEquipment(promptSignals?.equipment)
+    ? getScoringTargets(promptSignals?.equipment)
+    : "end zones, cone goals, cone gates, target lines, or possession points";
+
+  return buildCoachReadyDescription({
+    phase: "final",
+    promptSignals,
+    baseDescription: `After a brief water break, play a real ${gameName}. Keep direction, restarts, and scoring through ${scoringTargetText} so players apply ${objective} in the game.`,
+  });
+}
+
+function normalizeFullSessionShape({ session, promptSignals }) {
+  const minutes = splitDurationByWeights(session.durationMin, [0.2, 0.3, 0.3, 0.2]);
+  const activities = Array.isArray(session.activities) ? session.activities : [];
+  const first = pickMainActivity(
+    activities,
+    0,
+    "Arrival game warm-up",
+    "Set a simple arrival game with every player active, clear boundaries, and fast restarts. Use a scoring rule that gets players moving and ready for the main theme."
+  );
+  const second = pickMainActivity(
+    activities,
+    1,
+    "Main activity",
+    "Build the main activity in a clear area. Explain the scoring rule, let players repeat the key action, and coach spacing, timing, and decisions."
+  );
+  const third = pickMainActivity(
+    activities,
+    2,
+    "Conditioned game progression",
+    "Progress into a more game-like challenge. Add pressure, direction, or scoring constraints so players use the main idea while making real decisions."
+  );
+
+  return {
+    ...session,
+    activities: [
+      {
+        ...first,
+        minutes: minutes[0],
+        description: buildCoachReadyDescription({
+          phase: "arrival",
+          baseDescription: first.description,
+          promptSignals,
+        }),
+      },
+      {
+        ...second,
+        minutes: minutes[1],
+        description: buildCoachReadyDescription({
+          phase: "main",
+          baseDescription: second.description,
+          promptSignals,
+        }),
+      },
+      {
+        ...third,
+        minutes: minutes[2],
+        description: buildCoachReadyDescription({
+          phase: "progression",
+          baseDescription: third.description,
+          promptSignals,
+        }),
+      },
+      {
+        name: buildFinalGameName({ promptSignals, ageBand: session.ageBand }),
+        minutes: minutes[3],
+        description: buildFinalGameDescription({ promptSignals, ageBand: session.ageBand }),
+      },
+    ],
+  };
+}
+
+function normalizeQuickActivityShape({ session, promptSignals }) {
+  const activities = Array.isArray(session.activities) ? session.activities : [];
+  const main = pickMainActivity(
+    activities,
+    1,
+    compactText(promptSignals?.primaryObjective, "Quick activity"),
+    "Set one grid with clear gates or target players. Play short rounds, keep score, rotate quickly, and coach scanning, first touch, support angle, and the next action."
+  );
+  const playerCount = Number.isInteger(promptSignals?.playerCount)
+    ? ` for about ${promptSignals.playerCount} players`
+    : "";
+
+  return {
+    ...session,
+    activities: [
+      {
+        ...main,
+        name: compactText(main.name, "Quick activity"),
+        minutes: session.durationMin,
+        description: buildCoachReadyDescription({
+          phase: "main",
+          promptSignals,
+          baseDescription: `Use a playful game-like rule${playerCount}. If the idea is tag-based, connect it to soccer by having the chaser trigger a ball action, gate score, or transition moment.`,
+        }),
+      },
+    ],
+  };
+}
+
+function normalizeDrillShape({ session, promptSignals }) {
+  const activities = Array.isArray(session.activities) ? session.activities : [];
+  const main = pickMainActivity(
+    activities,
+    1,
+    compactText(promptSignals?.primaryObjective, "Main drill"),
+    "Run one clear activity with a simple setup, frequent repetitions, a scoring rule, and one or two direct coaching cues."
+  );
+  const playerCount = Number.isInteger(promptSignals?.playerCount)
+    ? ` for about ${promptSignals.playerCount} players`
+    : "";
+
+  return {
+    ...session,
+    activities: [
+      {
+        ...main,
+        name: compactText(main.name, "Main activity"),
+        minutes: session.durationMin,
+        description: buildCoachReadyDescription({
+          phase: "main",
+          promptSignals,
+          baseDescription: `Run short competitive rounds${playerCount}, keep score, and repeat the key action often enough for a later diagram-ready setup.`,
+        }),
+      },
+    ],
+  };
 }
 
 function baseSession({ sport, ageBand, durationMin, objectiveTags, equipment, activities }) {
@@ -386,21 +716,11 @@ function baseSession({ sport, ageBand, durationMin, objectiveTags, equipment, ac
     durationMin,
     objectiveTags: objectiveTags || [],
     ...(Array.isArray(equipment) && equipment.length ? { equipment } : {}),
-    activities: padWithCoolDown({ durationMin, activities }),
+    activities: fitActivityDurationsToDuration({ durationMin, activities }),
   };
 
   // Fail closed: validate generator output with the same validator used for user input.
-  const validated = validateCreateSession(session);
-
-  if (minutesSum(validated.activities) !== durationMin) {
-    throw validationError("invalid_field", "Generated session duration total must equal durationMin", {
-      reason: "invalid_generated_duration_total",
-      durationMin,
-      totalMinutes: minutesSum(validated.activities),
-    });
-  }
-
-  return validated;
+  return validateCreateSession(session);
 }
 
 function applyMethodologyInfluenceToSession(session, methodologyInfluence) {
@@ -431,7 +751,7 @@ function applyPromptInfluenceToSession(session, promptSignals) {
 }
 
 function applySessionModeInfluenceToSession(session, promptSignals) {
-  if (promptSignals?.sessionMode !== "quick") {
+  if (!promptSignals?.quickSession) {
     return session;
   }
 
@@ -446,7 +766,7 @@ function templatePassingShape({ sport, ageBand, durationMin, equipment }) {
   const activities = [
     { name: "Dynamic warmup + ball mastery", minutes: 10, description: "Set a small grid, pair movement with touches, and cue players to check shoulders before receiving." },
     { name: "Rondo (numbers up)", minutes: 15, description: "Score by splitting defenders or completing a target number of passes. Cue angles, scanning, and first touch away from pressure." },
-    { name: "Passing pattern to goals", minutes: 20, description: "Build from unopposed pattern to passive pressure, then active pressure. Reward timing, support angle, and clean final pass." },
+    { name: "Passing pattern to targets", minutes: 20, description: "Build from unopposed pattern to passive pressure, then active pressure. Reward timing, support angle, and clean final pass." },
   ];
 
   return baseSession({
@@ -554,8 +874,8 @@ function templateFutSoccerPressing({ sport, ageBand, durationMin, equipment }) {
 function templateFallback({ sport, ageBand, durationMin, theme, equipment }) {
   const activities = [
     { name: "Ball mastery arrival game", minutes: 10, description: "Set a simple grid, give each player a ball where possible, and add an easy scoring target to get the group moving." },
-    { name: `Theme challenge: ${theme}`, minutes: 20, description: "Create one clear rule tied to the theme. Score the desired action and pause briefly to name the coaching cue." },
-    { name: "End game challenge", minutes: 20, description: "Use game-like constraints tied to the main theme. Progress by changing space, numbers, or touch limits." },
+    { name: `${titleCase(theme)} channels game`, minutes: 20, description: "Create channels or gates that reward the key soccer action. Play short rounds, keep score through target players or end zones, and coach scanning, support angles, and first touch." },
+    { name: "Conditioned final game", minutes: 20, description: "Use a game-like format with one constraint, such as bonus points for a quick transition or a successful pass through a gate. Progress by changing space, numbers, or touch limits." },
   ];
 
   return baseSession({
@@ -576,12 +896,11 @@ function templateQuickOneDrill({ sport, ageBand, durationMin, theme, equipment, 
     typeof promptSignals?.playerCount === "number" && Number.isInteger(promptSignals.playerCount)
       ? `${promptSignals.playerCount} players`
       : "the group";
-  const description = [
-    `Setup: build one clear area for ${playerCount} and demo the first action.`,
-    "Scoring: award points for the focus action and quick positive restarts.",
-    "Cue: be brave, change speed, and recognize when to attack space.",
-    "Progression: add a defender, time limit, or bonus point for creativity.",
-  ].join(" ");
+  const description = buildCoachReadyDescription({
+    phase: "main",
+    promptSignals,
+    baseDescription: `Run a game-like challenge for ${playerCount}. Use scoring for the focus action, quick positive restarts, and rotations so every player gets repeated decisions.`,
+  });
 
   return baseSession({
     sport,
@@ -631,15 +950,30 @@ function generateSessionFromTheme({
   ageBand,
   durationMin,
   theme,
+  sessionMode,
+  coachNotes,
   equipment,
   methodologyInfluence,
+  resolvedPlayerCount,
 }) {
-  const promptSignals = extractPromptSignals(theme);
+  const promptSignals = extractPromptSignals(theme, {
+    sessionMode,
+    coachNotes,
+    playerCount: resolvedPlayerCount,
+    equipment,
+    methodologyInfluence,
+  });
   const themeKey = normalizeTheme(promptSignals.primaryObjective || theme);
-  const t = pickSportPackTemplate({ sportPackId, themeKey });
+  const t = pickSportPackTemplate({
+    sportPackId,
+    themeKey: !hasGoalEquipment(equipment) && pickTemplate(themeKey) === "finishing"
+      ? "attacking gates"
+      : themeKey,
+  });
 
   const session =
-    promptSignals.sessionMode === "quick" && promptSignals.activityFormat === "one_drill"
+    (promptSignals.sessionMode === "quick_activity" || promptSignals.sessionMode === "drill") &&
+    (promptSignals.activityFormat === "quick_activity" || promptSignals.activityFormat === "one_drill")
       ? templateQuickOneDrill({ sport, ageBand, durationMin, theme, equipment, promptSignals })
       : t === "passing"
       ? templatePassingShape({ sport, ageBand, durationMin, equipment })
@@ -661,13 +995,24 @@ function generateSessionFromTheme({
 
   const sessionWithPromptTags = applyPromptFocusTagsToSession(session, promptSignals);
 
-  return applyPromptInfluenceToSession(
-    applySessionModeInfluenceToSession(
-      applyMethodologyInfluenceToSession(sessionWithPromptTags, methodologyInfluence),
-      promptSignals
-    ),
-    promptSignals
-  );
+  const shapedSession =
+    promptSignals.sessionMode === "quick_activity"
+      ? normalizeQuickActivityShape({ session: sessionWithPromptTags, promptSignals })
+      : promptSignals.sessionMode === "drill"
+      ? normalizeDrillShape({ session: sessionWithPromptTags, promptSignals })
+      : normalizeFullSessionShape({ session: sessionWithPromptTags, promptSignals });
+
+  const validatedSession = validateCreateSession(shapedSession);
+
+  if (minutesSum(validatedSession.activities) !== durationMin) {
+    throw validationError("invalid_field", "Generated session duration total must equal durationMin", {
+      reason: "invalid_generated_duration_total",
+      durationMin,
+      totalMinutes: minutesSum(validatedSession.activities),
+    });
+  }
+
+  return validatedSession;
 }
 
 function applyEnvironmentProfileToSession(session, confirmedProfile) {
@@ -795,10 +1140,13 @@ function generatePack({
   ageBand,
   durationMin,
   theme,
+  sessionMode,
+  coachNotes,
   sessionsCount,
   equipment,
   confirmedProfile,
   methodologyInfluence,
+  resolvedPlayerCount,
 }) {
   const packId = require("crypto").randomUUID();
   const createdAt = new Date().toISOString();
@@ -813,8 +1161,11 @@ function generatePack({
       ageBand,
       durationMin,
       theme,
+      sessionMode,
+      coachNotes,
       equipment: mergedEquipment,
       methodologyInfluence,
+      resolvedPlayerCount,
     });
 
     if (confirmedProfile?.mode === "environment_profile") {

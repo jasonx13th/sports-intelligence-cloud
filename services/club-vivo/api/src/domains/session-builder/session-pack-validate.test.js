@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  getMissingEquipmentForTheme,
   validateCreateSessionPack,
   validateSessionPackV2Draft,
   SUPPORTED_SPORT_PACK_IDS,
@@ -80,6 +81,19 @@ test("validateCreateSessionPack accepts supported ageBand and optional equipment
   assert.deepEqual(result.equipment, ["cones", "balls"]);
 });
 
+test("validateCreateSessionPack normalizes common youth age wording", () => {
+  const result = validateCreateSessionPack({
+    sport: "soccer",
+    ageBand: "under twelve",
+    durationMin: 20,
+    theme: "quick activity",
+    sessionMode: "quick_activity",
+    sessionsCount: 1,
+  });
+
+  assert.equal(result.ageBand, "u12");
+});
+
 test("validateCreateSessionPack accepts soccer with fut-soccer sportPackId", () => {
   const result = validateCreateSessionPack(
     makeValidPackRequest({
@@ -89,6 +103,30 @@ test("validateCreateSessionPack accepts soccer with fut-soccer sportPackId", () 
 
   assert.equal(result.sport, "soccer");
   assert.equal(result.sportPackId, "fut-soccer");
+});
+
+test("validateCreateSessionPack accepts explicit generation mode and coach notes", () => {
+  const result = validateCreateSessionPack(
+    makeValidPackRequest({
+      sessionMode: "quick_activity",
+      coachNotes: "Use the players' request for more finishing repetition.",
+    })
+  );
+
+  assert.equal(result.sessionMode, "quick_activity");
+  assert.equal(result.coachNotes, "Use the players' request for more finishing repetition.");
+});
+
+test("validateCreateSessionPack rejects unsupported generation mode", () => {
+  assert.throws(
+    () => validateCreateSessionPack(makeValidPackRequest({ sessionMode: "quick" })),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.reason, "unsupported_session_mode");
+      assert.equal(err.details.field, "sessionMode");
+      return true;
+    }
+  );
 });
 
 test("validateCreateSessionPack rejects unsupported ageBand with stable reason", () => {
@@ -104,26 +142,19 @@ test("validateCreateSessionPack rejects unsupported ageBand with stable reason",
   );
 });
 
-test("validateCreateSessionPack rejects incompatible finishing theme equipment", () => {
-  assert.throws(
-    () =>
-      validateCreateSessionPack(
-        makeValidPackRequest({
-          theme: "Finishing",
-          equipment: ["balls", "cones"],
-        })
-      ),
-    (err) => {
-      assert.equal(err.code, "invalid_field");
-      assert.equal(err.details.reason, "incompatible_equipment");
-      assert.equal(err.details.field, "equipment");
-      assert.deepEqual(err.details.missingEquipment, ["goals"]);
-      return true;
-    }
+test("validateCreateSessionPack accepts balls and cones for finishing without requiring goals", () => {
+  const result = validateCreateSessionPack(
+    makeValidPackRequest({
+      theme: "Finishing",
+      equipment: ["balls", "cones"],
+    })
   );
+
+  assert.deepEqual(result.equipment, ["balls", "cones"]);
+  assert.deepEqual(getMissingEquipmentForTheme("Finishing", ["balls", "cones"]), []);
 });
 
-test("validateCreateSessionPack treats pug and mini goals as goal equipment", () => {
+test("validateCreateSessionPack treats pug, pugg, mini, small, and portable goals as goal-compatible", () => {
   const miniGoalResult = validateCreateSessionPack(
     makeValidPackRequest({
       theme: "Finishing",
@@ -136,9 +167,30 @@ test("validateCreateSessionPack treats pug and mini goals as goal equipment", ()
       equipment: ["balls", "pug goals"],
     })
   );
+  const puggGoalResult = validateCreateSessionPack(
+    makeValidPackRequest({
+      theme: "Finishing",
+      equipment: ["balls", "Pugg goals"],
+    })
+  );
+  const smallGoalResult = validateCreateSessionPack(
+    makeValidPackRequest({
+      theme: "Finishing",
+      equipment: ["balls", "small goals"],
+    })
+  );
+  const portableGoalResult = validateCreateSessionPack(
+    makeValidPackRequest({
+      theme: "Finishing",
+      equipment: ["balls", "portable goals"],
+    })
+  );
 
   assert.deepEqual(miniGoalResult.equipment, ["balls", "mini goals"]);
   assert.deepEqual(pugGoalResult.equipment, ["balls", "pug goals"]);
+  assert.deepEqual(puggGoalResult.equipment, ["balls", "pugg goals"]);
+  assert.deepEqual(smallGoalResult.equipment, ["balls", "small goals"]);
+  assert.deepEqual(portableGoalResult.equipment, ["balls", "portable goals"]);
 });
 
 test("validateCreateSessionPack does not fail equipment compatibility when equipment is omitted", () => {

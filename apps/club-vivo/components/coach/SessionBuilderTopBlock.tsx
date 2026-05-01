@@ -42,6 +42,9 @@ type SessionBuilderTopBlockProps = {
     value: string
   ) => Promise<{ items: string[]; error?: string; message?: string }>;
   selectedTeamName: string;
+  selectedTeamAgeBand?: string;
+  selectedTeamProgramType?: "travel" | "ost";
+  selectedTeamPlayerCount?: number;
   actions: ReactNode;
 };
 
@@ -76,6 +79,9 @@ export function SessionBuilderTopBlock({
   equipmentOptions,
   onSaveEquipmentOption,
   selectedTeamName,
+  selectedTeamAgeBand,
+  selectedTeamProgramType,
+  selectedTeamPlayerCount,
   actions
 }: SessionBuilderTopBlockProps) {
   const [isAddingEnvironment, setIsAddingEnvironment] = useState(false);
@@ -97,30 +103,25 @@ export function SessionBuilderTopBlock({
 
   return (
     <form action={formAction} className="club-vivo-shell rounded-[2rem] border p-6 backdrop-blur">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">Start here</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Choose the team, set the build direction, and add the coaching context for today.
-        </p>
-      </div>
-
       <input type="hidden" name="sport" value={sport} />
       <input type="hidden" name="ageBand" value={ageBand} />
       <input type="hidden" name="teamId" value={selectedTeamId} />
       <input type="hidden" name="teamName" value={selectedTeamName} />
+      <input type="hidden" name="teamAgeBand" value={selectedTeamAgeBand || ""} />
+      <input type="hidden" name="teamProgramType" value={selectedTeamProgramType || ""} />
+      <input
+        type="hidden"
+        name="teamPlayerCount"
+        value={selectedTeamPlayerCount ? String(selectedTeamPlayerCount) : ""}
+      />
+      <input
+        type="hidden"
+        name="sessionMode"
+        value={mode === "quick_drill" ? "drill" : "full_session"}
+      />
       <input type="hidden" name="confirmedProfileJson" value={confirmedProfileJson} />
 
-      <div className="mt-6 grid gap-6">
-        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">Team</h3>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Choose the team you are planning for today.
-            </p>
-          </div>
-          <TeamSelector teams={teams} value={selectedTeamId} onChange={onTeamChange} />
-        </section>
-
+      <div className="grid gap-5">
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
           <div>
             <h3 className="text-base font-semibold text-slate-900">Build mode</h3>
@@ -131,102 +132,119 @@ export function SessionBuilderTopBlock({
           <ModeSelector value={mode} onChange={onModeChange} />
         </section>
 
-        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">Set-up</h3>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Set the time, objective, and the practical details that matter for today&apos;s
-              group.
-            </p>
-          </div>
-
-          <div className="grid gap-4">
-            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <label className="grid flex-1 gap-2 text-sm text-slate-700">
-                  <span className="font-medium">Environment</span>
-                  <select
-                    name="environment"
-                    value={environment}
-                    onChange={(event) => onEnvironmentChange(event.target.value)}
-                    className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-                  >
-                    {environmentOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => setIsAddingEnvironment(true)}
-                  className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Add environment
-                </button>
-              </div>
-
-              {isAddingEnvironment ? (
-                <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-                  <label className="grid gap-2 text-sm text-slate-700">
-                    <span className="font-medium">Custom environment</span>
-                    <input
-                      type="text"
-                      value={environmentDraft}
-                      onChange={(event) => setEnvironmentDraft(event.target.value)}
-                      placeholder="Parking lot"
-                      className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={handleAddEnvironment}
-                    className="inline-flex rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800"
-                  >
-                    Save
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEnvironmentDraft("");
-                      setIsAddingEnvironment(false);
-                    }}
-                    className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : null}
-
-              <span className="text-xs leading-5 text-slate-500">
-                Environment helps the builder reflect the real training surface and space. Added
-                environments stay in this builder page for now.
-              </span>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">Team</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Choose the team you are planning for today.
+              </p>
             </div>
+            <TeamSelector teams={teams} value={selectedTeamId} onChange={onTeamChange} />
+          </section>
 
+          <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
             <DurationSelector
               value={durationMin}
               onChange={onDurationMinChange}
               minimumDuration={minimumDuration}
               mode={mode}
             />
+          </section>
+        </div>
+
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <label className="grid gap-2 text-sm text-slate-700">
+            <span className="font-medium">Objective</span>
+            <input
+              name="theme"
+              value={objective}
+              onChange={(event) => onObjectiveChange(event.target.value)}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+              placeholder="Pressing in midfield, first touch under pressure, finishing from cutbacks"
+              required
+            />
+            <span className="text-xs leading-5 text-slate-500">
+              Keep the session goal short and specific so the generated plan is easier to use.
+            </span>
+          </label>
+        </section>
+
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <label className="grid flex-1 gap-2 text-sm text-slate-700">
+              <span className="font-medium">Environment</span>
+              <select
+                name="environment"
+                value={environment}
+                onChange={(event) => onEnvironmentChange(event.target.value)}
+                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+              >
+                {environmentOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setIsAddingEnvironment(true)}
+              className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Add environment
+            </button>
           </div>
 
-          <ObjectiveConstraintsInputs
-            objective={objective}
-            onObjectiveChange={onObjectiveChange}
-            constraints={constraints}
-            onConstraintsChange={onConstraintsChange}
-            equipment={equipment}
-            onEquipmentChange={onEquipmentChange}
-            equipmentOptions={equipmentOptions}
-            onSaveEquipmentOption={onSaveEquipmentOption}
-          />
+          {isAddingEnvironment ? (
+            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+              <label className="grid gap-2 text-sm text-slate-700">
+                <span className="font-medium">Custom environment</span>
+                <input
+                  type="text"
+                  value={environmentDraft}
+                  onChange={(event) => setEnvironmentDraft(event.target.value)}
+                  placeholder="Parking lot"
+                  className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={handleAddEnvironment}
+                className="inline-flex rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800"
+              >
+                Save
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEnvironmentDraft("");
+                  setIsAddingEnvironment(false);
+                }}
+                className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : null}
+
+          <span className="text-xs leading-5 text-slate-500">
+            Environment helps the builder reflect the real training surface and space. Added
+            environments stay in this builder page for now.
+          </span>
         </section>
+
+        <ObjectiveConstraintsInputs
+          constraints={constraints}
+          onConstraintsChange={onConstraintsChange}
+          equipment={equipment}
+          onEquipmentChange={onEquipmentChange}
+          equipmentOptions={equipmentOptions}
+          onSaveEquipmentOption={onSaveEquipmentOption}
+        />
       </div>
 
       {error ? (

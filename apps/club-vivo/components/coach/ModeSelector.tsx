@@ -55,7 +55,7 @@ export function ModeSelector({ value, onChange }: ModeSelectorProps) {
             onChange={() => onChange("quick_drill")}
             className="sr-only"
           />
-          <span className="text-sm font-semibold text-slate-900">Quick Drill</span>
+          <span className="text-sm font-semibold text-slate-900">Drill</span>
           <span className="text-xs leading-5 text-slate-600">
             Use a lighter drill-first planning frame while staying on the same generation path.
           </span>

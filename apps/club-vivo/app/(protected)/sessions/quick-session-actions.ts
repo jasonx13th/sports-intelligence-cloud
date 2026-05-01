@@ -92,7 +92,7 @@ function getQuickSessionErrorMessage(error: unknown) {
           ? (detailObject.error as Record<string, unknown>)
           : undefined;
 
-      console.error("Quick session generation failed", {
+      console.error("Quick activity generation failed", {
         status: error.status,
         message: error.message,
         code: detailObject?.code,
@@ -103,14 +103,14 @@ function getQuickSessionErrorMessage(error: unknown) {
       });
     }
 
-    return detailMessage || apiMessage || `Quick session generation failed (${error.status}).`;
+    return detailMessage || apiMessage || `Quick activity generation failed (${error.status}).`;
   }
 
   if (error instanceof Error && error.message) {
     return error.message;
   }
 
-  return "Quick session generation failed. Try a more specific prompt or switch to Session Builder.";
+  return "Quick activity generation failed. Try a more specific prompt or switch to Session Builder.";
 }
 
 export async function createQuickSessionAction(
@@ -124,16 +124,18 @@ export async function createQuickSessionAction(
 
   if (!prompt) {
     return {
-      error: "Add a quick prompt before creating a session."
+      error: "Add a quick prompt before creating an activity."
     };
   }
 
   try {
     const pack = await generateSessionPack({
       sport: QUICK_SESSION_DEFAULTS.sport,
-      ageBand: QUICK_SESSION_DEFAULTS.ageBand,
+      ageBand: quickSessionIntent.ageBand,
       durationMin: quickSessionIntent.durationMin,
       theme: quickSessionIntent.theme,
+      sessionMode: quickSessionIntent.sessionMode,
+      coachNotes: prompt,
       ...(quickSessionIntent.equipment.length ? { equipment: quickSessionIntent.equipment } : {})
     });
 
@@ -144,6 +146,7 @@ export async function createQuickSessionAction(
         pack,
         values: {
           ...QUICK_SESSION_DEFAULTS,
+          ageBand: quickSessionIntent.ageBand,
           durationMin: String(quickSessionIntent.durationMin),
           theme: quickSessionIntent.theme,
           equipment: quickSessionIntent.equipment.join(", ")

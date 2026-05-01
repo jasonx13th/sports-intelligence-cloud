@@ -76,7 +76,7 @@ export function QuickSessionTitleEditor({
     <article className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
       <form ref={formRef} action={formAction} className="grid gap-3">
         <label className="grid gap-2 text-sm text-slate-700">
-          <span className="font-medium">Session title</span>
+          <span className="font-medium">Activity title</span>
           <input
             name="title"
             type="text"
@@ -98,7 +98,7 @@ export function QuickSessionTitleEditor({
             }}
             maxLength={80}
             className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-            placeholder="Add a title for this quick session"
+            placeholder="Add a title for this quick activity"
           />
         </label>
 

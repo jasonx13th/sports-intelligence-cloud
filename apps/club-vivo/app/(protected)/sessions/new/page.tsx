@@ -65,6 +65,7 @@ function mapBackendTeamToOption(team: TeamRecord): WorkspaceTeamOption {
     sport: team.sport,
     ageBand: team.ageBand,
     programType: team.programType,
+    playerCount: team.playerCount,
     defaultDurationMin: getDefaultDurationMin(team.programType)
   };
 }
@@ -76,6 +77,7 @@ function getFallbackTeamOptions(rawCookieValue: string | undefined): WorkspaceTe
     sport: "soccer",
     ageBand: team.ageBand,
     programType: team.teamType,
+    playerCount: team.playerCount,
     defaultDurationMin: getDefaultDurationMin(team.teamType)
   }));
 }
@@ -150,7 +152,7 @@ export default async function NewSessionPage({
       <CoachPageHeader
         badge="Session Builder"
         title="Build your session"
-        description="Use the detailed setup flow here when you want more control than Home Quick session."
+        description="Specify the team and build mode you want to work with, then set up your session."
       />
 
       <NewSessionFlow

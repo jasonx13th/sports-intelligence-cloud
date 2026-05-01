@@ -1,10 +1,12 @@
 import { buildBuilderSessionLabel } from "./builder-session-label";
 
 export const QUICK_SESSION_DEFAULT_DURATION_MIN = 60;
+const QUICK_ACTIVITY_DEFAULT_DURATION_MIN = 20;
 const QUICK_SESSION_THEME_MAX_LENGTH = 60;
 const QUICK_SESSION_OBJECTIVE_MAX_LENGTH = 44;
 const QUICK_SESSION_MIN_DURATION_MIN = 5;
 const QUICK_SESSION_MAX_DURATION_MIN = 240;
+const QUICK_SESSION_DEFAULT_AGE_BAND = "u14";
 
 type QuickSessionLike = {
   objectiveTags: string[];
@@ -81,10 +83,71 @@ function detectQuickSessionActivityFormat(prompt: string) {
       /\bsingle\s+(?:drill|activity|exercise)\b/,
     ])
   ) {
-    return "one_drill";
+    return "quick_activity";
   }
 
   return "";
+}
+
+function detectRequestedActivityCount(prompt: string) {
+  const normalized = normalizeText(prompt).toLowerCase();
+  const numericMatch = normalized.match(/\b([1-4])\s+(?:activities|activity|drills|drill|exercises|exercise)\b/);
+
+  if (numericMatch?.[1]) {
+    return Number.parseInt(numericMatch[1], 10);
+  }
+
+  if (/\b(?:one|single)\s+(?:activity|drill|exercise)\b/.test(normalized)) return 1;
+  if (/\btwo\s+(?:activities|drills|exercises)\b/.test(normalized)) return 2;
+  if (/\bthree\s+(?:activities|drills|exercises)\b/.test(normalized)) return 3;
+  if (/\bfour\s+(?:activities|drills|exercises)\b/.test(normalized)) return 4;
+
+  return undefined;
+}
+
+function detectQuickSessionPlanType(prompt: string) {
+  const normalized = ` ${normalizeText(prompt).toLowerCase()} `;
+
+  if (
+    includesAny(normalized, [
+      /\bfull\s+(?:session|practice|training)\b/,
+      /\b(?:session|practice|training session|training plan|practice plan)\b/,
+    ])
+  ) {
+    return "full_session" as const;
+  }
+
+  return undefined;
+}
+
+export function detectQuickSessionAgeBand(prompt: string) {
+  const normalized = ` ${normalizeText(prompt).toLowerCase().replace(/[-_]+/g, " ")} `;
+  const numberWords: Record<string, number> = {
+    six: 6,
+    eight: 8,
+    ten: 10,
+    twelve: 12,
+    fourteen: 14,
+    sixteen: 16,
+    eighteen: 18
+  };
+  const underWordMatch = normalized.match(/\bunder\s+(six|eight|ten|twelve|fourteen|sixteen|eighteen)\b/);
+
+  if (underWordMatch?.[1]) {
+    return `u${numberWords[underWordMatch[1]]}`;
+  }
+
+  const match =
+    normalized.match(/\bu\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\bunder\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\b([0-9]{1,2})\s*u\b/);
+
+  if (!match?.[1]) {
+    return undefined;
+  }
+
+  const age = Number.parseInt(match[1], 10);
+  return [6, 8, 10, 12, 14, 16, 18].includes(age) ? `u${age}` : undefined;
 }
 
 export function detectQuickSessionFocusTags(prompt: string) {
@@ -214,7 +277,7 @@ export function buildQuickSessionObjective(prompt: string) {
     .map((part) => part.trim())
     .find(Boolean);
 
-  return clampPromptPart(firstClause || normalized || "quick session", QUICK_SESSION_OBJECTIVE_MAX_LENGTH);
+  return clampPromptPart(firstClause || normalized || "quick activity", QUICK_SESSION_OBJECTIVE_MAX_LENGTH);
 }
 
 export function buildQuickSessionNotes(prompt: string) {
@@ -231,12 +294,12 @@ export function buildQuickSessionNotes(prompt: string) {
   return clampPromptPart(clauses.slice(1).join(", "), 26);
 }
 
-export function buildQuickSessionTheme(prompt: string) {
+export function buildQuickSessionTheme(prompt: string, activityFormatOverride = "") {
   const objectivePart = buildQuickSessionObjective(prompt);
   const notesPart = buildQuickSessionNotes(prompt);
   const environmentPart = clampPromptPart(detectEnvironment(prompt), 14);
   const playerCount = detectQuickSessionPlayerCount(prompt);
-  const activityFormat = detectQuickSessionActivityFormat(prompt);
+  const activityFormat = activityFormatOverride || detectQuickSessionActivityFormat(prompt);
   const compactTheme = [
     "quick",
     activityFormat ? `format:${activityFormat}` : "",
@@ -248,7 +311,7 @@ export function buildQuickSessionTheme(prompt: string) {
     .filter(Boolean)
     .join(" | ");
 
-  return clampPromptPart(compactTheme || "quick session", QUICK_SESSION_THEME_MAX_LENGTH);
+  return clampPromptPart(compactTheme || "quick activity", QUICK_SESSION_THEME_MAX_LENGTH);
 }
 
 export function buildQuickSessionTitle({
@@ -262,7 +325,7 @@ export function buildQuickSessionTitle({
   const objective = normalizedPrompt ? buildQuickSessionObjective(normalizedPrompt) : undefined;
 
   if (!session) {
-    return objective || "Quick Session";
+    return objective || "Quick Activity";
   }
 
   return buildBuilderSessionLabel({
@@ -298,7 +361,7 @@ export function buildQuickSessionFocusSummary(session: QuickSessionLike & { equi
     : [];
   const activityCount = Array.isArray(session.activities) ? session.activities.length : 0;
 
-  const focusText = focusTags.length ? focusTags.join(", ") : "the quick-session objective";
+  const focusText = focusTags.length ? focusTags.join(", ") : "the quick-activity objective";
   const equipmentText = equipment.length ? ` using ${equipment.join(", ")}` : "";
   const activityText = activityCount > 0 ? ` across ${activityCount} activities` : "";
 
@@ -308,11 +371,35 @@ export function buildQuickSessionFocusSummary(session: QuickSessionLike & { equi
 export function buildQuickSessionIntent(prompt: string) {
   const duration = extractQuickSessionDuration(prompt);
   const equipment = detectQuickSessionEquipment(prompt);
+  const ageBand = detectQuickSessionAgeBand(prompt) || QUICK_SESSION_DEFAULT_AGE_BAND;
+  const requestedActivityCount = detectRequestedActivityCount(prompt);
+  const activityFormat =
+    requestedActivityCount === 1 ? "quick_activity" : detectQuickSessionActivityFormat(prompt);
+  const planType = detectQuickSessionPlanType(prompt);
+  // Custom 2- or 3-activity requests are intentionally kept as quick_activity for now.
+  // The shared response shape supports any activities array, but the deterministic
+  // generator only has stable product rules for one quick activity and four-part sessions.
+  const sessionMode: "drill" | "full_session" | "quick_activity" =
+    requestedActivityCount === 4
+      ? "full_session"
+      : requestedActivityCount === 1
+        ? "quick_activity"
+        : activityFormat === "quick_activity"
+          ? "quick_activity"
+          : planType === "full_session"
+            ? "full_session"
+            : "quick_activity";
+  const durationMin =
+    sessionMode === "quick_activity" && duration.source === "default"
+      ? QUICK_ACTIVITY_DEFAULT_DURATION_MIN
+      : duration.durationMin;
 
   return {
-    durationMin: duration.durationMin,
+    durationMin,
     durationSource: duration.source,
-    theme: buildQuickSessionTheme(prompt),
+    theme: buildQuickSessionTheme(prompt, sessionMode === "quick_activity" ? "quick_activity" : activityFormat),
+    sessionMode,
+    ageBand,
     focusTags: detectQuickSessionFocusTags(prompt),
     equipment,
     playerCount: detectQuickSessionPlayerCount(prompt),

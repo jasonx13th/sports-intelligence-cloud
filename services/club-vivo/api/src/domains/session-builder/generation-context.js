@@ -11,6 +11,12 @@ function buildGenerationContext(normalizedRequest) {
     ageBand: normalizedRequest.ageBand,
     durationMin: normalizedRequest.durationMin,
     theme: normalizedRequest.theme,
+    ...(normalizedRequest.sessionMode !== undefined
+      ? { sessionMode: normalizedRequest.sessionMode }
+      : {}),
+    ...(normalizedRequest.coachNotes !== undefined
+      ? { coachNotes: normalizedRequest.coachNotes }
+      : {}),
     sessionsCount: normalizedRequest.sessionsCount,
     equipment: Array.isArray(normalizedRequest.equipment) ? normalizedRequest.equipment : [],
     ...(normalizedRequest.confirmedProfile !== undefined

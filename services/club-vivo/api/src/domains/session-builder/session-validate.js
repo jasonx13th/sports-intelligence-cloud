@@ -3,7 +3,6 @@
 const { requireFields, validationError } = require("../../platform/validation/validate");
 
 const SUPPORTED_AGE_BANDS = ["u6", "u8", "u10", "u12", "u14", "u16", "u18", "adult"];
-const GOALS_REQUIRED_KEYWORDS = ["goal", "goals", "finish", "finishing"];
 
 const LIMITS = {
   sportMax: 40,
@@ -14,7 +13,7 @@ const LIMITS = {
   equipmentItemMax: 40,
   activitiesMax: 30,
   activityNameMax: 80,
-  activityDescMax: 280,
+  activityDescMax: 1200,
   idMax: 64,
   durationMinMin: 5,
   durationMinMax: 240,
@@ -50,7 +49,36 @@ function requireString(body, field, { max, optional = false } = {}) {
 }
 
 function normalizeAgeBand(value) {
-  return String(value || "").trim().toLowerCase();
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
+  const numberWords = {
+    six: 6,
+    eight: 8,
+    ten: 10,
+    twelve: 12,
+    fourteen: 14,
+    sixteen: 16,
+    eighteen: 18,
+  };
+  const underWordMatch = normalized.match(/\bunder\s+(six|eight|ten|twelve|fourteen|sixteen|eighteen)\b/);
+
+  if (underWordMatch?.[1]) {
+    return `u${numberWords[underWordMatch[1]]}`;
+  }
+
+  const match =
+    normalized.match(/\bu\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\bunder\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\b([0-9]{1,2})\s*u\b/);
+
+  if (match?.[1]) {
+    return `u${Number.parseInt(match[1], 10)}`;
+  }
+
+  return normalized;
 }
 
 function normalizeEquipmentName(value) {
@@ -132,23 +160,11 @@ function requireEquipmentArray(body, field = "equipment") {
   return [...new Set(arr.map(normalizeEquipmentName))];
 }
 
-function getMissingEquipmentForActivities(activities, equipment) {
-  if (!Array.isArray(equipment) || equipment.length === 0) return [];
-
-  const provided = new Set(equipment.map(normalizeEquipmentName));
-  const hasGoalEquipment =
-    provided.has("goals") || provided.has("mini goals") || provided.has("pug goals");
-  const missing = new Set();
-
-  for (const activity of activities || []) {
-    const activityName = normalizeEquipmentName(activity?.name);
-
-    if (GOALS_REQUIRED_KEYWORDS.some((keyword) => activityName.includes(keyword)) && !hasGoalEquipment) {
-      missing.add("goals");
-    }
-  }
-
-  return [...missing];
+function getMissingEquipmentForActivities(_activities, _equipment) {
+  // Equipment guides generation and display, but should not block saving a
+  // coach-usable session. No-goal plans are adapted to gates, target lines,
+  // zones, or possession scoring before this validation boundary.
+  return [];
 }
 
 function validateCreateSession(body) {

@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { validateCreateSession } = require("./session-validate");
+const { normalizeAgeBand, validateCreateSession } = require("./session-validate");
 
 function makeValidSession(overrides = {}) {
   return {
@@ -32,6 +32,16 @@ test("validateCreateSession accepts supported ageBand and optional equipment", (
   assert.deepEqual(result.equipment, ["cones", "balls"]);
 });
 
+test("normalizeAgeBand accepts common youth age wording", () => {
+  assert.equal(normalizeAgeBand("u12"), "u12");
+  assert.equal(normalizeAgeBand("U12"), "u12");
+  assert.equal(normalizeAgeBand("under 12"), "u12");
+  assert.equal(normalizeAgeBand("under-12"), "u12");
+  assert.equal(normalizeAgeBand("under twelve"), "u12");
+  assert.equal(normalizeAgeBand("12u"), "u12");
+  assert.equal(normalizeAgeBand("12 U"), "u12");
+});
+
 test("validateCreateSession rejects unsupported ageBand with stable reason", () => {
   assert.throws(
     () => validateCreateSession(makeValidSession({ ageBand: "u7" })),
@@ -45,23 +55,15 @@ test("validateCreateSession rejects unsupported ageBand with stable reason", () 
   );
 });
 
-test("validateCreateSession rejects incompatible equipment with stable reason", () => {
-  assert.throws(
-    () =>
-      validateCreateSession(
-        makeValidSession({
-          equipment: ["balls", "cones"],
-          activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
-        })
-      ),
-    (err) => {
-      assert.equal(err.code, "invalid_field");
-      assert.equal(err.details.reason, "incompatible_equipment");
-      assert.equal(err.details.field, "equipment");
-      assert.deepEqual(err.details.missingEquipment, ["goals"]);
-      return true;
-    }
+test("validateCreateSession accepts goal wording with balls and cones", () => {
+  const result = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "cones"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
   );
+
+  assert.deepEqual(result.equipment, ["balls", "cones"]);
 });
 
 test("validateCreateSession treats mini goals as goal equipment", () => {
@@ -73,6 +75,35 @@ test("validateCreateSession treats mini goals as goal equipment", () => {
   );
 
   assert.deepEqual(result.equipment, ["balls", "flat cones", "mini goals"]);
+});
+
+test("validateCreateSession treats Pugg goals as goal-compatible equipment", () => {
+  const result = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "Pugg goals"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
+  );
+
+  assert.deepEqual(result.equipment, ["balls", "pugg goals"]);
+});
+
+test("validateCreateSession treats small and portable goals as goal-compatible equipment", () => {
+  const smallGoalResult = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "small goals"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
+  );
+  const portableGoalResult = validateCreateSession(
+    makeValidSession({
+      equipment: ["balls", "portable goals"],
+      activities: [{ name: "1v1 to goal", minutes: 20, description: "Attack the goal." }],
+    })
+  );
+
+  assert.deepEqual(smallGoalResult.equipment, ["balls", "small goals"]);
+  assert.deepEqual(portableGoalResult.equipment, ["balls", "portable goals"]);
 });
 
 test("validateCreateSession preserves duration total rule with stable reason", () => {

@@ -28,7 +28,7 @@ export function DurationSelector({
       />
       <span className="text-xs leading-5 text-slate-500">
         {mode === "quick_drill"
-          ? "Quick Drill starts at 20 minutes in the UI, with a frontend minimum of 10. You can still adjust it."
+          ? "Drill starts at 20 minutes in the UI, with a frontend minimum of 10. You can still adjust it."
           : "Full Session starts at 60 minutes in the UI, with a frontend minimum of 30. You can still adjust it."}
       </span>
     </label>

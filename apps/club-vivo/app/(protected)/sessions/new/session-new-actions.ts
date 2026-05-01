@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Buffer } from "node:buffer";
+import { cookies } from "next/headers";
 
 import {
   analyzeSessionImage,
@@ -9,17 +10,161 @@ import {
   type ImageAnalysisMode,
   type SessionBuilderApiError
 } from "../../../../lib/session-builder-api";
+import { EQUIPMENT_HINTS_COOKIE, getEquipmentItems } from "../../../../lib/equipment-hints";
 import { formatEnvironmentLabel } from "../../../../lib/session-builder-context-hints";
 import type { AnalyzeFormState, GenerateFormState } from "./session-new-flow";
 
 const SUPPORTED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_GENERATION_THEME_LENGTH = 60;
+const SUPPORTED_API_AGE_BANDS = new Set(["u6", "u8", "u10", "u12", "u14", "u16", "u18", "adult"]);
 
 function parseEquipment(rawValue: string) {
   return rawValue
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function normalizeSupportedAgeBand(value: string) {
+  const normalized = value
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  const numberWords: Record<string, number> = {
+    six: 6,
+    eight: 8,
+    ten: 10,
+    twelve: 12,
+    fourteen: 14,
+    sixteen: 16,
+    eighteen: 18
+  };
+  const underWordMatch = normalized.match(/\bunder\s+(six|eight|ten|twelve|fourteen|sixteen|eighteen)\b/);
+
+  if (underWordMatch?.[1]) {
+    return `u${numberWords[underWordMatch[1]]}`;
+  }
+
+  const match =
+    normalized.match(/\bu\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\bunder\s*([0-9]{1,2})\b/) ||
+    normalized.match(/\b([0-9]{1,2})\s*u\b/);
+  const candidate = match?.[1] ? `u${Number.parseInt(match[1], 10)}` : normalized;
+
+  return SUPPORTED_API_AGE_BANDS.has(candidate) ? candidate : "";
+}
+
+function parseAgeBandFromText(value: string) {
+  return normalizeSupportedAgeBand(value);
+}
+
+function isMixedAge(value: string) {
+  return value.replace(/[-\s]+/g, "_").trim().toLowerCase() === "mixed_age";
+}
+
+function normalizeProgramType(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return normalized === "ost" || normalized === "travel" ? normalized : "";
+}
+
+function buildSafeAgeBand({
+  teamAgeBand,
+  formAgeBand,
+  constraints,
+  programType
+}: {
+  teamAgeBand: string;
+  formAgeBand: string;
+  constraints: string;
+  programType: string;
+}) {
+  const normalizedTeamAgeBand = normalizeSupportedAgeBand(teamAgeBand);
+
+  if (normalizedTeamAgeBand) {
+    return normalizedTeamAgeBand;
+  }
+
+  const normalizedFormAgeBand = normalizeSupportedAgeBand(formAgeBand);
+
+  if (normalizedFormAgeBand) {
+    return normalizedFormAgeBand;
+  }
+
+  const notesAgeBand = parseAgeBandFromText(constraints);
+
+  if (notesAgeBand) {
+    return notesAgeBand;
+  }
+
+  if (isMixedAge(teamAgeBand) && programType === "ost") {
+    return "u10";
+  }
+
+  return "u14";
+}
+
+function hasGoalEquipment(items: string[]) {
+  return items.some((item) => {
+    const normalized = item.toLowerCase().replace(/\s+/g, " ").trim();
+    return (
+      normalized.includes("goal") ||
+      normalized.includes("pugg") ||
+      normalized.includes("pug")
+    );
+  });
+}
+
+function avoidGoalRequiredThemeWithoutGoals(theme: string, equipment: string[]) {
+  if (hasGoalEquipment(equipment)) {
+    return theme;
+  }
+
+  return theme.replace(/\b(finishing|finish|shooting|shoot|goals?|scoring)\b/gi, "attacking gates");
+}
+
+function buildTeamContextNotes({
+  teamName,
+  teamAgeBand,
+  safeAgeBand,
+  programType,
+  playerCount
+}: {
+  teamName: string;
+  teamAgeBand: string;
+  safeAgeBand: string;
+  programType: string;
+  playerCount: string;
+}) {
+  const notes = [];
+  const parsedPlayerCount = Number.parseInt(playerCount, 10);
+
+  if (teamName) notes.push(`team:${teamName}`);
+  if (teamAgeBand) notes.push(`originalTeamAgeBand:${teamAgeBand}`);
+  notes.push(`apiAgeBand:${safeAgeBand}`);
+
+  if (isMixedAge(teamAgeBand)) {
+    notes.push("mixedAge:true");
+  }
+
+  if (isMixedAge(teamAgeBand) && programType === "ost") {
+    notes.push("assumedAgeRange:6-11");
+    notes.push("coachingStyle:playful game-like simple inclusive high-engagement love-of-the-game");
+  }
+
+  if (programType === "travel") {
+    notes.push("programType:Travel");
+    notes.push("coachingStyle:soccer-specific technical tactical decision-making game-realistic");
+  } else if (programType === "ost") {
+    notes.push("programType:OST");
+    notes.push("coachingStyle:playful beginner-friendly inclusive simple rules easy/harder variations");
+  }
+
+  if (Number.isInteger(parsedPlayerCount) && parsedPlayerCount > 0) {
+    notes.push(`${parsedPlayerCount} players`);
+  }
+
+  return notes.join(" | ");
 }
 
 function clampPromptPart(value: string, maxLength: number) {
@@ -65,11 +210,34 @@ function getErrorMessage(error: unknown, fallback: string) {
     typeof (error as SessionBuilderApiError).status === "number"
   ) {
     const apiError = error as SessionBuilderApiError;
-    console.error("SessionBuilderApiError", {
+    const detailObject =
+      apiError.details && typeof apiError.details === "object"
+        ? (apiError.details as Record<string, unknown>)
+        : undefined;
+    const nestedError =
+      detailObject?.error && typeof detailObject.error === "object"
+        ? (detailObject.error as Record<string, unknown>)
+        : undefined;
+
+    console.error("Session Builder generation failed", {
       status: apiError.status,
       message: apiError.message,
-      details: apiError.details
+      code: detailObject?.code,
+      detailsMessage: detailObject?.message,
+      nestedErrorMessage: nestedError?.message,
+      nestedErrorDetails: formatDevErrorDetails(nestedError?.details),
+      details: formatDevErrorDetails(apiError.details)
     });
+
+    const detailText = formatDevErrorDetails(apiError.details).toLowerCase();
+
+    if (
+      apiError.status === 400 &&
+      (detailText.includes("unsupported_age_band") ||
+        detailText.includes("incompatible_equipment"))
+    ) {
+      return "The session could not be generated because the selected team or equipment is not compatible yet. Try choosing a specific age band or adjusting the equipment selection.";
+    }
 
     return apiError.message || fallback;
   }
@@ -85,6 +253,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 
   console.error("Unknown generation error", { error });
   return fallback;
+}
+
+function formatDevErrorDetails(details: unknown) {
+  try {
+    return JSON.stringify(details, null, 2);
+  } catch {
+    return String(details);
+  }
 }
 
 function parseConfirmedProfile(rawValue: string) {
@@ -161,26 +337,52 @@ export async function generateSessionPackAction(
 
   const selectedSport = String(formData.get("sport") || "").trim();
   const ageBand = String(formData.get("ageBand") || "").trim();
+  const teamAgeBand = String(formData.get("teamAgeBand") || "").trim();
+  const teamName = String(formData.get("teamName") || "").trim();
+  const teamProgramType = normalizeProgramType(String(formData.get("teamProgramType") || ""));
+  const teamPlayerCount = String(formData.get("teamPlayerCount") || "").trim();
   const durationMin = String(formData.get("durationMin") || "").trim();
   const environment = String(formData.get("environment") || "").trim();
   const theme = String(formData.get("theme") || "").trim();
   const constraints = String(formData.get("constraints") || "").trim();
+  const sessionModeValue = String(formData.get("sessionMode") || "").trim();
   const equipment = String(formData.get("equipment") || "").trim();
+  const selectedEquipmentItems = equipment ? parseEquipment(equipment) : [];
   const confirmedProfileJson = String(formData.get("confirmedProfileJson") || "").trim();
+  const sessionMode = sessionModeValue === "drill" ? "drill" : "full_session";
+  const cookieStore = await cookies();
+  const availableEquipmentItems =
+    selectedEquipmentItems.length > 0
+      ? selectedEquipmentItems
+      : getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
 
   const sport = selectedSport === "fut-soccer" ? "soccer" : selectedSport;
   const sportPackId = selectedSport === "fut-soccer" ? "fut-soccer" : undefined;
+  const safeAgeBand = buildSafeAgeBand({
+    teamAgeBand,
+    formAgeBand: ageBand,
+    constraints,
+    programType: teamProgramType
+  });
+  const teamContextNotes = buildTeamContextNotes({
+    teamName,
+    teamAgeBand,
+    safeAgeBand,
+    programType: teamProgramType,
+    playerCount: teamPlayerCount
+  });
+  const coachNotes = [constraints, teamContextNotes].filter(Boolean).join(" | ");
 
   const values = {
     sport: selectedSport,
-    ageBand,
+    ageBand: safeAgeBand,
     durationMin,
     environment,
     theme,
     equipment
   };
 
-  if (!sport || !ageBand || !durationMin || !theme) {
+  if (!sport || !safeAgeBand || !durationMin || !theme) {
     return {
       values,
       error: "Complete the required fields before generating a session pack."
@@ -204,16 +406,21 @@ export async function generateSessionPackAction(
     const pack = await generateSessionPack({
       sport,
       ...(sportPackId ? { sportPackId } : {}),
-      ageBand,
+      ageBand: safeAgeBand,
       durationMin: durationValue,
       theme: buildGenerationTheme({
-        objective: theme,
+        objective: avoidGoalRequiredThemeWithoutGoals(theme, availableEquipmentItems),
         environment,
         constraints
       }),
+      sessionMode,
+      ...(coachNotes ? { coachNotes } : {}),
       sessionsCount: 1,
-      ...(equipment ? { equipment: parseEquipment(equipment) } : {}),
-      ...(confirmedProfile ? { confirmedProfile } : {})
+      ...(availableEquipmentItems.length ? { equipment: availableEquipmentItems } : {}),
+      ...(confirmedProfile ? { confirmedProfile } : {}),
+      ...(teamName ? { teamName } : {}),
+      ...(teamAgeBand ? { teamAgeBand } : {}),
+      ...(teamProgramType ? { programType: teamProgramType } : {})
     });
 
     return {
@@ -223,7 +430,10 @@ export async function generateSessionPackAction(
   } catch (error) {
     return {
       values,
-      error: getErrorMessage(error, "Generation failed. Check the form values and try again.")
+      error: getErrorMessage(
+        error,
+        "The session could not be generated because the selected team or equipment is not compatible yet. Try choosing a specific age band or adjusting the equipment selection."
+      )
     };
   }
 }

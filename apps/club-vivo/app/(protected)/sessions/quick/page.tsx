@@ -19,9 +19,9 @@ export default async function QuickSessionPage({
   return (
     <div className="grid gap-6">
       <CoachPageHeader
-        badge="Quick session"
-        title="Quick session"
-        description="Use one prompt to generate a fast session draft, then review it before saving or revising the quick prompt."
+        badge="Quick activity"
+        title="Quick activity"
+        description="Use one prompt to generate a fast text-first activity. Ask for a session or full practice when you want a longer plan."
       />
 
       <HomeSessionStartCard

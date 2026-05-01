@@ -58,7 +58,7 @@ export class SicApiStack extends Stack {
 
     // Lambda: /me
     const meFn = new lambda.Function(this, "MeFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "me/handler.handler",
       functionName: `sic-club-vivo-me-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
@@ -70,7 +70,7 @@ export class SicApiStack extends Stack {
 
     // Lambda: /athletes
     const athletesFn = new lambda.Function(this, "AthletesFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "athletes/handler.handler",
       functionName: `sic-club-vivo-athletes-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
@@ -83,7 +83,7 @@ export class SicApiStack extends Stack {
 
     // Lambda: /sessions
     const sessionsFn = new lambda.Function(this, "SessionsFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "sessions/handler.handler",
       functionName: `sic-club-vivo-sessions-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
@@ -98,7 +98,7 @@ export class SicApiStack extends Stack {
 
     // Lambda: /templates
     const templatesFn = new lambda.Function(this, "TemplatesFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "templates/handler.handler",
       functionName: `sic-club-vivo-templates-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
@@ -112,7 +112,7 @@ export class SicApiStack extends Stack {
     // Lambda: /session-packs
     // NOTE: Session packs are stateless today (no domain table needed). Keep env minimal.
     const sessionPacksFn = new lambda.Function(this, "SessionPacksFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "session-packs/handler.handler",
       functionName: `sic-club-vivo-session-packs-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
@@ -126,7 +126,7 @@ export class SicApiStack extends Stack {
 
     // Lambda: /teams
     const teamsFn = new lambda.Function(this, "TeamsFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "teams/handler.handler",
       functionName: `sic-club-vivo-teams-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),
@@ -139,7 +139,7 @@ export class SicApiStack extends Stack {
 
     // Lambda: /methodology
     const methodologyFn = new lambda.Function(this, "MethodologyFn", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "methodology/handler.handler",
       functionName: `sic-club-vivo-methodology-${envName}`,
       code: lambda.Code.fromAsset(path.join(__dirname, "../../../services/club-vivo/api")),

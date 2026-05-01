@@ -348,7 +348,7 @@ test("processSessionPackRequest carries compact builder notes and environment in
   assert.match(result.validatedPack.sessions[0].activities[0].description, /Setup: use turf/i);
   assert.match(
     result.validatedPack.sessions[0].activities[1].description,
-    /Coach input: first pass after regain\./i
+    /Coach notes: first pass after regain\./i
   );
   assert.equal(result.validatedPack.theme, "pressing | notes:first pass after regain | env:turf");
   assert.equal(Object.hasOwn(result.validatedPack, "promptSignals"), false);

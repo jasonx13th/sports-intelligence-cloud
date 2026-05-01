@@ -13,7 +13,7 @@ const LIMITS = {
   equipmentItemMax: 40,
   activitiesMax: 30,
   activityNameMax: 80,
-  activityDescMax: 700,
+  activityDescMax: 1200,
   idMax: 64,
   durationMinMin: 5,
   durationMinMax: 240,

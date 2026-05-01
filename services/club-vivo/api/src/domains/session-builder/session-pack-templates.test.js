@@ -120,7 +120,12 @@ test("generatePack creates one 20-minute quick activity when requested", () => {
   assert.equal(session.durationMin, 20);
   assert.equal(session.activities.length, 1);
   assert.equal(session.activities[0].minutes, 20);
-  assert.match(session.activities[0].description, /grid|gates|target players/i);
+  assert.match(session.activities[0].description, /Setup:/);
+  assert.match(session.activities[0].description, /Scoring:/);
+  assert.match(session.activities[0].description, /Cues:/);
+  assert.match(session.activities[0].description, /Watch:/);
+  assert.match(session.activities[0].description, /Progress:/);
+  assert.match(session.activities[0].description, /Regress:/);
 });
 
 test("generatePack avoids goal-required wording when no goal equipment is selected", () => {
@@ -138,7 +143,7 @@ test("generatePack avoids goal-required wording when no goal equipment is select
   const [session] = pack.sessions;
   const text = session.activities.map((activity) => `${activity.name} ${activity.description}`).join(" ");
 
-  assert.equal(/to goal|goals\b|mini goals|pugg goals/i.test(text), false);
+  assert.equal(/to goal|full-size goals?|mini goals|pugg goals/i.test(text), false);
   assert.match(text, /cone gates|end zones|target lines|passing gates|scoring zones/i);
 });
 
@@ -236,7 +241,36 @@ test("generatePack descriptions avoid repeated Today focus copy", () => {
   assert.equal(/Today's focus/i.test(text), false);
   assert.equal(/Theme challenge/i.test(text), false);
   assert.equal(/Score the desired action/i.test(text), false);
-  assert.equal(/Coach note/i.test(text), false);
+  assert.equal(/Coach note:/i.test(text), false);
+});
+
+test("generatePack gives every full-session activity coach-ready sections", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 45,
+    theme: "attacking overloads",
+    sessionMode: "full_session",
+    coachNotes: "Use 2v3 attacking with cones and balls, 20 players, and quick transition moments.",
+    sessionsCount: 1,
+    equipment: ["balls", "cones"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(session.activities.length, 4);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [9, 13, 14, 9]);
+
+  for (const activity of session.activities) {
+    assert.match(activity.description, /Setup:/);
+    assert.match(activity.description, /Run:/);
+    assert.match(activity.description, /Scoring:/);
+    assert.match(activity.description, /Cues:/);
+    assert.match(activity.description, /Watch:/);
+    assert.match(activity.description, /Progress:/);
+    assert.match(activity.description, /Regress:/);
+    assert.equal(/full-size goals?/i.test(activity.description), false);
+  }
 });
 
 test("generatePack does not end full sessions with generic cooldown", () => {
@@ -363,7 +397,28 @@ test("generatePack applies compact builder prompt notes and environment to activ
   const [session] = pack.sessions;
 
   assert.match(session.activities[0].description, /Setup: use turf/i);
-  assert.match(session.activities[1].description, /Coach input: first pass after regain\./i);
+  assert.match(session.activities[1].description, /Coach notes: first pass after regain\./i);
+});
+
+test("generatePack preserves meaningful coach notes instead of tiny truncation", () => {
+  const notes =
+    "Give me a drill similar to duck duck goose for players under 12, but make the tag moment become a first-touch escape through cone gates with quick rotations.";
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 20,
+    theme: "quick | format:quick_activity | first touch escape",
+    sessionMode: "quick_activity",
+    coachNotes: notes,
+    sessionsCount: 1,
+    equipment: ["balls", "cones"],
+  });
+
+  const description = pack.sessions[0].activities[0].description;
+
+  assert.match(description, /duck duck goose/i);
+  assert.match(description, /first-touch escape|first touch escape/i);
+  assert.equal(/give me a drill sim\./i.test(description), false);
 });
 
 test("generatePack applies a quick-session bias that feels playful and easy to run", () => {

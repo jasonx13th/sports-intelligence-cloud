@@ -52,6 +52,18 @@ They can create teams, use Quick Activity and Session Builder, view their own sa
 
 The Methodology page should show the SIC brain summary and any personal source context available to the individual coach. It should explain what source mode is influencing generation without exposing the raw SIC knowledge bank.
 
+### Individual Coach Workspace vs Club Workspace
+
+A coach can have an individual Coach Workspace or belong to a club workspace.
+
+The individual Coach Workspace is open for coaches to sign up and use for their own planning. A coach who signs up freely should land in an individual workspace experience unless the backend confirms a club membership.
+
+A club workspace is invite/approval based. A random coach who signs up freely must not automatically enter a club workspace such as KSC. A coach enters a club workspace only when the club has invited or approved that coach and the backend has verified the membership.
+
+KSC remains the pilot model. Jason can manage KSC as the example club admin/admin coach during the pilot, but KSC access should come from approved pilot membership, not from public signup or a public role choice.
+
+Public role/start choices are onboarding intent only. They can help explain where a user is trying to go, but they do not authorize access to a club workspace.
+
 ### Club Admin Portal
 
 - Club overview
@@ -75,6 +87,8 @@ Source settings should eventually support:
 - SIC knowledge bank
 - Club methodology only
 - SIC + club methodology
+
+The future Coaches and admins page owns staff access workflows: adding coach emails, assigning roles, optionally assigning teams, sending invite links or invite codes, and approving coach access. The backend must verify the invite/email and create the club membership before a coach can enter that club workspace.
 
 ## Methodology And Source Mode Model
 

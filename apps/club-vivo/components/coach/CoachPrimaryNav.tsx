@@ -33,12 +33,15 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function CoachPrimaryNav() {
+export function CoachPrimaryNav({ showClubPortal = false }: { showClubPortal?: boolean }) {
   const pathname = usePathname();
+  const items = showClubPortal
+    ? [{ href: "/club", label: "Club Portal" }, ...PRIMARY_ITEMS]
+    : PRIMARY_ITEMS;
 
   return (
     <nav className="flex flex-wrap gap-2" aria-label="Primary">
-      {PRIMARY_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = isActive(pathname, item.href);
 
         return (

@@ -110,8 +110,8 @@ export default async function MethodologyPage() {
     <div className="grid gap-6">
       <CoachPageHeader
         badge="Methodology"
-        title="KSC Club Methodology"
-        description="This is the tenant knowledge area for KSC club methodology. Regular coaches can read published guidance; admin coaches can maintain the current draft and publish flow. Over time, admins should be able to manage club documents such as philosophy, mission, teaching methodology, soccer learning model, and other guidance that can influence generation. Future generation modes should support SIC platform repository only, club methodology only, or SIC platform repository plus club methodology. SIC platform repository data remains private and is never exposed as raw content to clubs or coaches."
+        title="Club Methodology"
+        description="This is the Club Vivo methodology and source summary area. Individual coaches can read the SIC brain summary and the personal or club source context currently shaping generation. Club admins and delegated admin coaches can maintain club methodology when that capability is available. Future source modes should support the SIC knowledge bank, club methodology only, or SIC plus club methodology. SIC bank knowledge can improve session generation, but it is not exposed to clubs or coaches as raw content."
       />
 
       <MethodologyWorkspace

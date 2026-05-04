@@ -8,14 +8,14 @@ import { isAdminLikeRole } from "../../../lib/roles";
 const PORTAL_CARDS = [
   {
     title: "Coach Workspace",
-    copy: "Create sessions, quick activities, teams, and saved coaching work.",
+    copy: "Included in your club workspace for creating sessions, quick activities, teams, and saved coaching work.",
     href: "/home",
     status: "Open"
   },
   {
     title: "Coaches and admins",
     copy:
-      "Invite, approve, and manage staff access. Future club invites will let approved coaches join the right club workspace.",
+      "Future verified and supported clubs can invite, approve, and manage staff access.",
     status: "Coming soon"
   },
   {
@@ -48,8 +48,8 @@ const PORTAL_CARDS = [
     status: "Coming soon"
   },
   {
-    title: "Billing",
-    copy: "Manage plan and subscription when billing is enabled.",
+    title: "Verified setup / plans",
+    copy: "Manage verified setup, support, and plan options when they are enabled.",
     status: "Later"
   }
 ];
@@ -66,7 +66,7 @@ export default async function ClubPortalPage() {
       <CoachPageHeader
         badge="Club Portal"
         title="Club command center"
-        description="Manage your club setup, coach access, methodology, teams, equipment, and saved sessions from one place."
+        description="Manage your club workspace, coaching tools, methodology, teams, equipment, and saved sessions from one place."
       />
 
       <section className="grid gap-4 md:grid-cols-2">

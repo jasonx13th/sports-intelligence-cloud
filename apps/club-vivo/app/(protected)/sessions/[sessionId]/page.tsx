@@ -62,6 +62,10 @@ function formatEquipmentCount(value: number) {
   return `${value} ${value === 1 ? "item" : "items"}`;
 }
 
+function formatEquipmentUsed(equipment: string[]) {
+  return equipment.length > 0 ? equipment.join(", ") : "Use the simplest field setup that fits the activity.";
+}
+
 function buildActivityTimings(activities: SessionDetail["activities"]) {
   let elapsedMinutes = 0;
 
@@ -229,6 +233,7 @@ export default async function SessionDetailPage({
     .filter((value): value is string => Boolean(value))
     .join(" / ");
   const equipmentCountLabel = formatEquipmentCount(session.equipment.length);
+  const equipmentUsedLabel = formatEquipmentUsed(session.equipment);
 
   async function exportSessionPdfAction(
     _previousState: {
@@ -470,10 +475,10 @@ export default async function SessionDetailPage({
                   <p className="mt-1 text-sm font-medium text-slate-900">{activityCountLabel}</p>
                 </div>
 
-                {focusLabel ? (
+                {!isQuickSession && focusLabel ? (
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Coach Focus
+                      Focus
                     </p>
                     <p className="mt-1 text-sm font-medium text-slate-900">{focusLabel}</p>
                   </div>
@@ -491,11 +496,9 @@ export default async function SessionDetailPage({
                 {session.equipment.length > 0 ? (
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Setup Needs
+                      Equipment Used
                     </p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
-                      {equipmentCountLabel}
-                    </p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{equipmentCountLabel}</p>
                   </div>
                 ) : null}
               </div>
@@ -516,17 +519,44 @@ export default async function SessionDetailPage({
           </div>
         </section>
 
+        <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Coach-ready practice plan
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900">Run order</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Use this sequence on the field, moving from one activity to the next by time block.
+              </p>
+            </div>
+            <p className="text-sm font-medium text-slate-600">{outputSummary}</p>
+          </div>
+
+          <div className="mt-5 grid gap-4">
+            {session.activities.map((activity, index) => (
+              <ActivityOutput
+                key={`${activity.name}-${index}`}
+                activity={activity}
+                activityIndex={index}
+                objective={focusLabel}
+                objectiveTags={session.objectiveTags}
+                timing={activityTimings[index]}
+                aside={isBuilderSession ? <DiagramPlaceholder /> : undefined}
+                compact={isQuickSession}
+              />
+            ))}
+          </div>
+        </article>
+
         {isBuilderSession ? (
           <>
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="mt-8 grid gap-4 lg:grid-cols-3">
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created By</h2>
-                <p className="mt-2 break-all text-sm text-slate-800">{createdByLabel}</p>
-              </article>
-
-              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created At</h2>
-                <p className="mt-2 text-sm text-slate-800">{formatCreatedAt(session.createdAt)}</p>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Team</h2>
+                <p className="mt-2 text-sm text-slate-800">
+                  {builderContext?.teamName || "Team context not saved"}
+                </p>
               </article>
 
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
@@ -537,36 +567,40 @@ export default async function SessionDetailPage({
               </article>
 
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Session Focus</h2>
-                <p className="mt-2 text-sm text-slate-800">
-                  {builderSessionLabel || "No saved builder focus available."}
-                </p>
-              </article>
-
-              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Team Context</h2>
-                <p className="mt-2 text-sm text-slate-800">
-                  {builderContext?.teamName || "No saved team context"}
-                </p>
-              </article>
-
-              <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</h2>
                 <p className="mt-2 text-sm text-slate-800">{formatMinuteLabel(session.durationMin)}</p>
               </article>
 
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">SIC engine</h2>
-                <p className="mt-2 text-sm text-slate-800">v{session.schemaVersion}</p>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Equipment used</h2>
+                <p className="mt-2 text-sm text-slate-800">{equipmentUsedLabel}</p>
               </article>
             </div>
 
             <div className="mt-8 grid gap-4 lg:grid-cols-2">
               <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-                <h2 className="text-lg font-semibold text-slate-900">Coach Focus</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Session details</h2>
                 <p className="mt-4 text-sm leading-6 text-slate-700">
                   {builderContext?.objective || "No saved objective context for this session."}
                 </p>
+                <dl className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created by</dt>
+                    <dd className="mt-1 break-all">{createdByLabel}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created</dt>
+                    <dd className="mt-1">{formatCreatedAt(session.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Source</dt>
+                    <dd className="mt-1">{sourceLabel}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">SIC engine</dt>
+                    <dd className="mt-1">v{session.schemaVersion}</dd>
+                  </div>
+                </dl>
               </article>
 
               <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
@@ -574,24 +608,6 @@ export default async function SessionDetailPage({
                 <p className="mt-4 text-sm leading-6 text-slate-700">
                   {builderSessionShapeSummary || "No saved session shape available."}
                 </p>
-              </article>
-
-              <article className="rounded-3xl border border-slate-200 bg-white/70 p-5 lg:col-span-2">
-                <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {session.equipment.length > 0 ? (
-                    session.equipment.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-                      >
-                        {item}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-slate-500">No equipment listed</span>
-                  )}
-                </div>
               </article>
 
               <article className="rounded-3xl border border-slate-200 bg-white/70 p-5 lg:col-span-2">
@@ -617,15 +633,18 @@ export default async function SessionDetailPage({
           <>
             <div className={`grid gap-4 ${isQuickSession ? "sm:grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
               <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created By</h2>
-                <p className="mt-2 break-all text-sm text-slate-800">{createdByLabel}</p>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Session details
+                </h2>
 
                 {isQuickSession ? (
                   <QuickSessionTitleEditor
                     initialTitle={displayQuickSessionTitle}
                     saveTitleAction={saveQuickSessionTitleAction}
                   />
-                ) : null}
+                ) : (
+                  <p className="mt-2 break-all text-sm text-slate-800">{createdByLabel}</p>
+                )}
               </article>
 
               {isQuickSession ? (
@@ -637,10 +656,8 @@ export default async function SessionDetailPage({
 
               {isQuickSession ? (
                 <article className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Session Focus</h2>
-                  <p className="mt-2 text-sm text-slate-800">
-                    {quickSessionFocusSummary || displayQuickSessionTitle}
-                  </p>
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Equipment used</h2>
+                  <p className="mt-2 text-sm text-slate-800">{equipmentUsedLabel}</p>
                 </article>
               ) : null}
 
@@ -696,7 +713,7 @@ export default async function SessionDetailPage({
                   </article>
 
                   <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-                    <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
+                    <h2 className="text-lg font-semibold text-slate-900">Equipment used</h2>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {session.equipment.length > 0 ? (
                         session.equipment.map((item) => (
@@ -708,7 +725,9 @@ export default async function SessionDetailPage({
                           </span>
                         ))
                       ) : (
-                        <span className="text-sm text-slate-500">No equipment listed</span>
+                        <span className="text-sm text-slate-500">
+                          Use the simplest field setup that fits the activity.
+                        </span>
                       )}
                     </div>
                   </article>
@@ -735,7 +754,7 @@ export default async function SessionDetailPage({
                 </article>
 
                 <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-                  <h2 className="text-lg font-semibold text-slate-900">Equipment</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">Equipment used</h2>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {session.equipment.length > 0 ? (
                       session.equipment.map((item) => (
@@ -747,7 +766,9 @@ export default async function SessionDetailPage({
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">No equipment listed</span>
+                      <span className="text-sm text-slate-500">
+                        Use the simplest field setup that fits the activity.
+                      </span>
                     )}
                   </div>
                 </article>
@@ -755,36 +776,6 @@ export default async function SessionDetailPage({
             )}
           </>
         )}
-
-        <article className="mt-8 rounded-3xl border border-slate-200 bg-white/75 p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Coach-ready practice plan
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-900">Run order</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Use this sequence on the field, moving from one activity to the next by time block.
-              </p>
-            </div>
-            <p className="text-sm font-medium text-slate-600">{outputSummary}</p>
-          </div>
-
-          <div className="mt-5 grid gap-4">
-            {session.activities.map((activity, index) => (
-              <ActivityOutput
-                key={`${activity.name}-${index}`}
-                activity={activity}
-                activityIndex={index}
-                objective={focusLabel}
-                objectiveTags={session.objectiveTags}
-                timing={activityTimings[index]}
-                aside={isBuilderSession ? <DiagramPlaceholder /> : undefined}
-                compact={isQuickSession}
-              />
-            ))}
-          </div>
-        </article>
 
         <SessionFeedbackPanel
           initialState={INITIAL_FEEDBACK_PANEL_STATE}

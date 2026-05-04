@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 
 const {
   buildCoachLiteDraftFromPack,
+  capDescription,
   generatePack,
   minutesSum,
   normalizeTheme,
@@ -46,6 +47,14 @@ test("normalizeTheme trims, lowercases, and collapses whitespace deterministical
 test("minutesSum totals activity minutes deterministically", () => {
   assert.equal(minutesSum([{ minutes: 10 }, { minutes: 15 }, { minutes: 20 }]), 45);
   assert.equal(minutesSum([]), 0);
+});
+
+test("capDescription avoids ending with a cut-off word", () => {
+  const capped = capDescription(`${"Keep the activity flowing. ".repeat(48)}Enlarge the grid if paths cross.`);
+
+  assert.equal(capped.length <= 1200, true);
+  assert.equal(capped.endsWith("Enl."), false);
+  assert.equal(capped.endsWith("Keep the activity flowing."), true);
 });
 
 test("generatePack shapes full sessions to four exact activity blocks", () => {

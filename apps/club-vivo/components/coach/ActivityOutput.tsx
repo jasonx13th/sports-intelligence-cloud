@@ -73,11 +73,50 @@ function sentenceRepeatsObjective(sentence: string, objective: string, objective
   );
 }
 
+function removeControlFragments(value: string) {
+  return value
+    .split("|")
+    .map((segment) => segment.trim())
+    .filter((segment) => {
+      const normalized = normalizeComparisonText(segment);
+
+      return !(
+        normalized.startsWith("team ") ||
+        normalized.startsWith("team context ") ||
+        normalized.startsWith("env ") ||
+        normalized.startsWith("environment context ") ||
+        normalized.startsWith("primary session objective ") ||
+        normalized.startsWith("coach brainstorming and extra details for today ") ||
+        normalized.startsWith("format ") ||
+        normalized.startsWith("mode ") ||
+        normalized.startsWith("notes ") ||
+        normalized.startsWith("originalteamageband ") ||
+        normalized.startsWith("programtype ") ||
+        normalized.startsWith("coachingstyle ") ||
+        normalized.startsWith("mixedage ") ||
+        normalized.startsWith("assumedagerange ")
+      );
+    })
+    .join(" ");
+}
+
+function sanitizeCoachFacingText(value: string) {
+  return removeControlFragments(value)
+    .replace(/\b(?:team|env|environment context|team context|format|mode|notes)\s*:\s*[^.;|]+[.;]?/gi, " ")
+    .replace(/\bPrimary session objective\s*:\s*[^.;|]+[.;]?/gi, " ")
+    .replace(/\bCoach brainstorming and extra details for today\s*:\s*[^.;|]+[.;]?/gi, " ")
+    .replace(/\boriginalTeamAgeBand\s*:\s*[^.;|]+[.;]?/gi, " ")
+    .replace(/\b(?:programType|coachingStyle|mixedAge|assumedAgeRange)\s*:\s*[^.;|]+[.;]?/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function splitSentences(description: string, objective: string, objectiveTags: string[]) {
   const sentenceMatches = description.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
 
   return (sentenceMatches || [description])
     .map((sentence) => sentence.trim())
+    .map(sanitizeCoachFacingText)
     .filter(Boolean)
     .filter((sentence) => !sentenceRepeatsObjective(sentence, objective, objectiveTags));
 }
@@ -130,7 +169,7 @@ function buildActivitySections(
   objective: string,
   objectiveTags: string[]
 ): ActivitySection[] {
-  const normalizedDescription = String(description || "").replace(/\s+/g, " ").trim();
+  const normalizedDescription = sanitizeCoachFacingText(String(description || ""));
 
   if (!normalizedDescription) {
     return [];
@@ -139,9 +178,16 @@ function buildActivitySections(
   const labeledSections = parseLabeledSections(normalizedDescription);
 
   if (labeledSections.length > 0) {
-    return labeledSections.filter(
-      (section) => !sentenceRepeatsObjective(`${section.label}: ${section.text}`, objective, objectiveTags)
-    );
+    return labeledSections
+      .map((section) => ({
+        ...section,
+        text: sanitizeCoachFacingText(section.text)
+      }))
+      .filter((section) => section.text)
+      .filter((section) => normalizeComparisonText(section.label) !== "coach notes")
+      .filter(
+        (section) => !sentenceRepeatsObjective(`${section.label}: ${section.text}`, objective, objectiveTags)
+      );
   }
 
   return splitSentences(normalizedDescription, objective, objectiveTags).map((text) => ({

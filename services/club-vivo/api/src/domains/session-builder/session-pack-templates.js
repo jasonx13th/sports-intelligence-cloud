@@ -537,7 +537,22 @@ function capDescription(value) {
     return normalized;
   }
 
-  return `${normalized.slice(0, MAX_ACTIVITY_DESCRIPTION_LENGTH - 1).trim()}.`;
+  const capped = normalized.slice(0, MAX_ACTIVITY_DESCRIPTION_LENGTH - 1);
+  const sentenceEnd = Math.max(
+    capped.lastIndexOf("."),
+    capped.lastIndexOf("!"),
+    capped.lastIndexOf("?"),
+    capped.lastIndexOf(";")
+  );
+
+  if (sentenceEnd > Math.floor(MAX_ACTIVITY_DESCRIPTION_LENGTH * 0.7)) {
+    return capped.slice(0, sentenceEnd + 1).trim();
+  }
+
+  const sentenceSafe = capped.replace(/\s+[^.!?;\s]*$/, "").trim();
+  const fallback = capped.trim();
+
+  return `${sentenceSafe || fallback}.`;
 }
 
 function buildDuckDuckGooseEscapeDescription({ promptSignals, phase = "main" }) {
@@ -1268,6 +1283,7 @@ function generatePack({
 module.exports = {
   generatePack,
   buildCoachLiteDraftFromPack,
+  capDescription,
   normalizeTheme,
   minutesSum,
 };

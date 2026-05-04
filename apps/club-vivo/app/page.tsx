@@ -11,12 +11,13 @@ export default function Home() {
 
           <div className="max-w-3xl">
             <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-              Step into a more playful coach workspace.
+              Club Vivo
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
-              Club Vivo brings the current SIC coach workflow into one shared place for planning,
-              reviewing, and returning to sessions without extra product sprawl.
+              The SIC Coach Workspace inside Club Vivo helps coaches plan Quick Activities,
+              build sessions, manage teams and equipment, and return to saved work in one place.
+              Club and organization setup is coming as the admin side of the same platform.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-3">
@@ -25,7 +26,7 @@ export default function Home() {
                 prefetch={false}
                 className="inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
               >
-                Open coach workspace
+                Coach workspace
               </Link>
 
               <Link
@@ -33,13 +34,13 @@ export default function Home() {
                 prefetch={false}
                 className="inline-flex rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-white"
               >
-                Start access
+                Club / organization setup
               </Link>
             </div>
 
             <p className="mt-6 max-w-2xl text-sm leading-6 text-slate-600">
-              Sign in to return to the current workspace, or start access through the same hosted
-              path used for the pilot.
+              These start paths capture onboarding intent only. Real workspace access continues
+              to come from the secure Club Vivo account and club permissions behind sign-in.
             </p>
           </div>
         </section>

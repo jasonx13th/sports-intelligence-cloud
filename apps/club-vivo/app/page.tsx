@@ -15,8 +15,9 @@ export default function Home() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
-              Club Vivo helps coaches and sports organizations plan sessions, organize teams,
-              manage equipment, shape methodology, and keep coaching work in one clean place.
+              Club Vivo gives coaches, teams, academies, and sports organizations a simple place
+              to plan sessions, organize teams, manage equipment, shape methodology, and keep
+              coaching work together.
             </p>
 
             <div className="mt-10 grid gap-4 md:grid-cols-2">
@@ -38,15 +39,15 @@ export default function Home() {
               <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
                 <h2 className="text-lg font-semibold text-slate-900">Club</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  Take control of your sports organization, coaches, teams, methodology, and
-                  session planning.
+                  Create a free club workspace for your team, academy, or sports organization.
+                  Coach Workspace is included.
                 </p>
                 <Link
                   href="/club/start"
                   prefetch={false}
                   className="mt-5 inline-flex rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-white"
                 >
-                  Start club setup
+                  Start club workspace
                 </Link>
               </article>
             </div>

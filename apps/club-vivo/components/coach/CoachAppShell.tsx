@@ -5,10 +5,12 @@ import { CoachPrimaryNav } from "./CoachPrimaryNav";
 
 export function CoachAppShell({
   children,
-  coachIdentity
+  coachIdentity,
+  showClubPortal = false
 }: {
   children: ReactNode;
   coachIdentity: string | null;
+  showClubPortal?: boolean;
 }) {
   return (
     <div className="min-h-screen px-6 py-6 sm:py-8">
@@ -41,7 +43,7 @@ export function CoachAppShell({
             </div>
 
             <div className="border-t border-slate-200/80 pt-4">
-              <CoachPrimaryNav />
+              <CoachPrimaryNav showClubPortal={showClubPortal} />
             </div>
           </div>
         </header>

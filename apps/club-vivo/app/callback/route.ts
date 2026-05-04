@@ -10,11 +10,31 @@ import {
   setAccessTokenCookie,
   setIdentityTokenCookie
 } from "../../lib/auth";
+import { apiGet } from "../../lib/api";
+import { isAdminLikeRole } from "../../lib/roles";
 
 function redirectToLogin(request: NextRequest) {
   const response = NextResponse.redirect(new URL("/login", request.url));
   clearAuthCookies(response);
   return response;
+}
+
+async function getPostLoginPath(accessToken: string) {
+  const response = await apiGet<{ ok?: boolean; role?: unknown }>("/me", {
+    accessToken
+  });
+
+  if (
+    response.status === 200 &&
+    response.body &&
+    typeof response.body === "object" &&
+    typeof response.body.role === "string" &&
+    isAdminLikeRole(response.body.role)
+  ) {
+    return "/club";
+  }
+
+  return "/home";
 }
 
 export async function GET(request: NextRequest) {
@@ -42,7 +62,7 @@ export async function GET(request: NextRequest) {
       return redirectToLogin(request);
     }
 
-    const response = NextResponse.redirect(buildAppUrl("/home"));
+    const response = NextResponse.redirect(buildAppUrl(await getPostLoginPath(tokenResult.accessToken)));
 
     setAccessTokenCookie(response, {
       accessToken: tokenResult.accessToken,

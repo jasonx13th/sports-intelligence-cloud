@@ -514,12 +514,29 @@ function getPromptSignalText(promptSignals) {
 
 function detectSoccerActivityArchetype(promptSignals) {
   const text = getPromptSignalText(promptSignals);
-
-  if (
+  const hasDuckDuckGoose =
     text.includes("duck duck goose") ||
     text.includes("duck-duck-goose") ||
-    (text.includes("tag") && text.includes("chase") && text.includes("escape"))
-  ) {
+    (text.includes("tag") && text.includes("chase") && text.includes("escape"));
+  const hasDefending =
+    /\bdefend(?:ing|er|ers)?\b/.test(text) ||
+    text.includes("defensive") ||
+    text.includes("delay") ||
+    text.includes("pressure and cover");
+  const has3v3 = /\b3\s*v\s*3\b/.test(text) || /\bthree\s*v\s*three\b/.test(text);
+
+  if (hasDuckDuckGoose && hasDefending) {
+    return {
+      key: "duck-duck-goose-defending-gates",
+      name: has3v3 ? "3v3 Duck Duck Goose Defending Gates" : "Duck Duck Goose Defending Gates",
+      tags: mergeUniqueStrings(
+        ["defending", "pressure", "reaction", "chase", "escape"],
+        has3v3 ? ["3v3", "overloads"] : []
+      ),
+    };
+  }
+
+  if (hasDuckDuckGoose) {
     return {
       key: "duck-duck-goose-escape",
       name: "Duck Duck Goose Escape Gates",
@@ -556,6 +573,8 @@ function capDescription(value) {
 }
 
 function buildDuckDuckGooseEscapeDescription({ promptSignals, phase = "main" }) {
+  const archetype = detectSoccerActivityArchetype(promptSignals);
+  const isDefendingActivity = archetype?.key === "duck-duck-goose-defending-gates";
   const equipmentText = describeEquipment(promptSignals?.equipment);
   const playerCount = Number.isInteger(promptSignals?.playerCount)
     ? ` for about ${promptSignals.playerCount} players`
@@ -564,19 +583,33 @@ function buildDuckDuckGooseEscapeDescription({ promptSignals, phase = "main" }) 
     phase === "arrival"
       ? "start unopposed for one round, then add the chase once players understand the route"
       : phase === "progression"
-        ? "make the chase live from the first touch and add a transition pass after the gate"
-        : "keep every round short, loud, and competitive so players react instead of waiting";
+        ? "make the chase live from the first touch and add a recovery run after the gate"
+        : isDefendingActivity
+          ? "play 3v3 waves when numbers allow, with one defender released by the goose call to pressure, delay, and recover"
+          : "keep every round short, loud, and competitive so players react instead of waiting";
 
   return capDescription(
     [
-      `Setup: build a 16x16 yard grid or circle with ${equipmentText}; place four cone gates outside it and give players balls when possible${playerCount}.`,
+      isDefendingActivity
+        ? `Setup: build a 20x18 yard area with two end gates and two side gates using ${equipmentText}; split players into 3v3 groups when possible and place spare balls beside the coach for fast restarts${playerCount}.`
+        : `Setup: build a 16x16 yard grid or circle with ${equipmentText}; place four cone gates outside it and give players balls when possible${playerCount}.`,
       "How to start: players dribble or toe-tap while one caller says duck, duck, goose; on goose, the named player takes a first touch into space.",
-      `How to run it: the goose tries to escape through any cone gate while the caller chases as a defender; ${phaseDetail}.`,
-      "Rules / scoring: attacker scores by dribbling through a gate under control; defender scores by tagging or forcing the ball out.",
-      "Coaching cues: first touch away from pressure, explode on the trigger, keep the ball close, and look up before choosing a gate.",
+      isDefendingActivity
+        ? `How to run it: the goose tries to escape through a gate while the first defender chases and the other defenders recover to cover angles; ${phaseDetail}.`
+        : `How to run it: the goose tries to escape through any cone gate while the caller chases as a defender; ${phaseDetail}.`,
+      isDefendingActivity
+        ? "Rules / scoring: attackers score by escaping through a gate or connecting two passes after the trigger; defenders score by delaying for five seconds, winning the ball, tagging safely, or forcing play out."
+        : "Rules / scoring: attacker scores by dribbling through a gate under control; defender scores by tagging or forcing the ball out.",
+      isDefendingActivity
+        ? "Coaching cues: close space fast, slow down under control, angle the run, recover goal-side, communicate cover, and win the ball when the touch gets loose."
+        : "Coaching cues: first touch away from pressure, explode on the trigger, keep the ball close, and look up before choosing a gate.",
       "What to watch for: long lines, the caller camping one gate, collisions, or attackers kicking the ball too far ahead.",
-      "Progression: add a second defender, require a change of direction, or give bonus points for the far gate.",
-      "Regression: widen gates, let the attacker start one step ahead, rehearse without a ball, or make the defender shadow.",
+      isDefendingActivity
+        ? "Progression: make it live 3v3 after the chase, add a counter gate for defenders, or give bonus points for forcing play into help."
+        : "Progression: add a second defender, require a change of direction, or give bonus points for the far gate.",
+      isDefendingActivity
+        ? "Regression: widen gates, start with 2v2 plus a coach server, let defenders shadow first, or give the attacker one step of separation."
+        : "Regression: widen gates, let the attacker start one step ahead, rehearse without a ball, or make the defender shadow.",
       "Safety / space adjustment: keep chases outside the circle, rotate the caller every rep, and enlarge the grid if paths cross.",
     ].join(" ")
   );
@@ -585,7 +618,11 @@ function buildDuckDuckGooseEscapeDescription({ promptSignals, phase = "main" }) 
 function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
   const archetype = detectSoccerActivityArchetype(promptSignals);
 
-  if (archetype?.key === "duck-duck-goose-escape" && phase === "main") {
+  if (
+    (archetype?.key === "duck-duck-goose-escape" ||
+      archetype?.key === "duck-duck-goose-defending-gates") &&
+    phase === "main"
+  ) {
     return buildDuckDuckGooseEscapeDescription({ promptSignals, phase });
   }
 
@@ -609,9 +646,18 @@ function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
           : "Run: start each round, keep score, and rotate roles every 2-3 minutes.";
   const baseSnippet = compactText(baseDescription, "").slice(0, 135).replace(/\s+\S*$/, "").trim();
 
+  const setupByPhase =
+    phase === "final"
+      ? `Setup: build a game field with clear touchlines, ${scoringTargets}, and quick restart balls; keep teams balanced and ready to compete`
+      : phase === "arrival"
+        ? `Setup: build a small arrival grid with two or four gates using ${equipmentText}; start with every player moving and no long lines`
+        : phase === "progression"
+          ? `Setup: build a directional area with two scoring targets, one recovery line, and space for the next group to rotate in`
+          : `Setup: build a 20x18 yard area with two end gates and two side gates using ${equipmentText}; place spare balls beside the coach`;
+
   return capDescription(
     [
-      `Setup: use ${environment} with ${equipmentText}; ${style.setup}.`,
+      `${setupByPhase}. Space note: use ${environment}; ${style.setup}.`,
       playerCount ? `Numbers: organize it${playerCount}.` : "",
       noteText.trim(),
       `${phaseRun}${baseSnippet ? ` ${baseSnippet}.` : ""}`,
@@ -636,24 +682,26 @@ function pickMainActivity(activities, preferredIndex, fallbackName, fallbackDesc
 function buildFinalGameName({ promptSignals, ageBand }) {
   const playerCount = Number.isInteger(promptSignals?.playerCount) ? promptSignals.playerCount : null;
   const normalizedAgeBand = normalizeTheme(ageBand);
+  const archetype = detectSoccerActivityArchetype(promptSignals);
 
-  if (playerCount && playerCount >= 22) return "Water break + 11v11 final game";
-  if (playerCount && playerCount >= 18) return "Water break + 9v9 final game";
-  if (playerCount && playerCount >= 14) return "Water break + 7v7 final game";
-  if (playerCount && playerCount >= 10) return "Water break + 5v5 final game";
+  if (archetype?.key === "duck-duck-goose-defending-gates") return "Defending Gates Tournament";
+  if (playerCount && playerCount >= 22) return "11v11 Defending Tournament";
+  if (playerCount && playerCount >= 18) return "9v9 Gate Battle Final Game";
+  if (playerCount && playerCount >= 14) return "7v7 Gate Battle Final Game";
+  if (playerCount && playerCount >= 10) return "5v5 Gate Battle Final Game";
   if (normalizedAgeBand === "adult" || normalizedAgeBand === "u18" || normalizedAgeBand === "u16") {
-    return "Water break + 9v9 final game";
+    return "9v9 Competitive Final Game";
   }
   if (normalizedAgeBand === "u14" || normalizedAgeBand === "u12") {
-    return "Water break + 7v7 final game";
+    return "7v7 Competitive Final Game";
   }
-  return "Water break + small-sided final game";
+  return "Small-Sided Competitive Final Game";
 }
 
 function buildFinalGameDescription({ promptSignals, ageBand }) {
   const objective = compactText(promptSignals?.primaryObjective, "the session theme");
   const environment = compactText(promptSignals?.environment, "available space");
-  const gameName = buildFinalGameName({ promptSignals, ageBand }).replace("Water break + ", "");
+  const gameName = buildFinalGameName({ promptSignals, ageBand });
 
   const scoringTargetText = hasGoalEquipment(promptSignals?.equipment)
     ? getScoringTargets(promptSignals?.equipment)
@@ -662,8 +710,29 @@ function buildFinalGameDescription({ promptSignals, ageBand }) {
   return buildCoachReadyDescription({
     phase: "final",
     promptSignals,
-    baseDescription: `After a brief water break, play a real ${gameName}. Keep direction, restarts, and scoring through ${scoringTargetText} so players apply ${objective} in the game.`,
+    baseDescription: `Play a real ${gameName}. Keep direction, restarts, and scoring through ${scoringTargetText} so players apply ${objective} in the game.`,
   });
+}
+
+function buildDefendingGatesMainDescription({ promptSignals, phase }) {
+  const phaseDetail =
+    phase === "progression"
+      ? "Progression: after the first regain or escape, transition immediately to the opposite gate so defenders must recover, cover, and press again."
+      : "Progression: add a second ball from the coach after each score so defenders must reset pressure and cover quickly.";
+
+  return capDescription(
+    [
+      "Setup: build a 24x20 yard field with two end gates and two side gates; play 3v3 with spare balls beside the coach and waiting teams ready on the outside.",
+      "How to start: coach serves to the attacking team and calls a gate color or side to create the first defending decision.",
+      "How to run it: defenders press the ball, one covers the closest gate, and the third protects the far-side escape while attackers try to split or dribble through a gate.",
+      "Rules / scoring: attackers score by crossing a gate under control; defenders score by winning the ball and countering through any gate within six seconds.",
+      "Coaching cues: pressure the first touch, angle the run, delay without diving in, cover the gate, recover goal-side, and win it when support arrives.",
+      "What to watch for: defenders sprinting past the ball, no cover behind pressure, attackers waiting too long, or the same gate being left open.",
+      phaseDetail,
+      "Regression: make the space bigger, start 3v2 for the defending team, or freeze once to show pressure-cover balance.",
+      "Safety / space adjustment: keep gates wide enough for safe escapes and rotate teams every two or three rounds before fatigue breaks the shape.",
+    ].join(" ")
+  );
 }
 
 function normalizeFullSessionShape({ session, promptSignals }) {
@@ -694,31 +763,45 @@ function normalizeFullSessionShape({ session, promptSignals }) {
     activities: [
       {
         ...first,
+        name: archetype?.key === "duck-duck-goose-defending-gates" ? "Chase, Delay, Escape" : first.name,
         minutes: minutes[0],
         description: buildCoachReadyDescription({
-          phase: "arrival",
+          phase: archetype?.key === "duck-duck-goose-defending-gates" ? "main" : "arrival",
           baseDescription: first.description,
           promptSignals,
         }),
       },
       {
         ...second,
-        name: archetype?.name || second.name,
+        name:
+          archetype?.key === "duck-duck-goose-defending-gates"
+            ? "3v3 Pressure and Cover Gates"
+            : archetype?.name || second.name,
         minutes: minutes[1],
-        description: buildCoachReadyDescription({
-          phase: "main",
-          baseDescription: second.description,
-          promptSignals,
-        }),
+        description:
+          archetype?.key === "duck-duck-goose-defending-gates"
+            ? buildDefendingGatesMainDescription({ promptSignals, phase: "main" })
+            : buildCoachReadyDescription({
+                phase: "main",
+                baseDescription: second.description,
+                promptSignals,
+              }),
       },
       {
         ...third,
+        name:
+          archetype?.key === "duck-duck-goose-defending-gates"
+            ? "Recover, Delay, Win It Back"
+            : third.name,
         minutes: minutes[2],
-        description: buildCoachReadyDescription({
-          phase: "progression",
-          baseDescription: third.description,
-          promptSignals,
-        }),
+        description:
+          archetype?.key === "duck-duck-goose-defending-gates"
+            ? buildDefendingGatesMainDescription({ promptSignals, phase: "progression" })
+            : buildCoachReadyDescription({
+                phase: "progression",
+                baseDescription: third.description,
+                promptSignals,
+              }),
       },
       {
         name: buildFinalGameName({ promptSignals, ageBand: session.ageBand }),
@@ -761,6 +844,7 @@ function normalizeQuickActivityShape({ session, promptSignals }) {
 
 function normalizeDrillShape({ session, promptSignals }) {
   const activities = Array.isArray(session.activities) ? session.activities : [];
+  const archetype = detectSoccerActivityArchetype(promptSignals);
   const main = pickMainActivity(
     activities,
     1,
@@ -776,7 +860,7 @@ function normalizeDrillShape({ session, promptSignals }) {
     activities: [
       {
         ...main,
-        name: compactText(main.name, "Main activity"),
+        name: archetype?.name || compactText(main.name, "Main activity"),
         minutes: session.durationMin,
         description: buildCoachReadyDescription({
           phase: "main",

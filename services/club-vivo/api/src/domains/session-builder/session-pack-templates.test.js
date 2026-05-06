@@ -73,7 +73,7 @@ test("generatePack shapes full sessions to four exact activity blocks", () => {
     assert.equal(minutesSum(session.activities), 65);
     assert.equal(session.activities.length, 4);
     assert.deepEqual(session.activities.map((activity) => activity.minutes), [13, 19, 20, 13]);
-    assert.match(session.activities.at(-1).name, /Water break \+ .* final game/);
+    assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive/i);
   }
 });
 
@@ -92,7 +92,7 @@ test("generatePack splits a 60-minute full session into 12 / 18 / 18 / 12", () =
 
   assert.equal(session.activities.length, 4);
   assert.deepEqual(session.activities.map((activity) => activity.minutes), [12, 18, 18, 12]);
-  assert.match(session.activities.at(-1).name, /Water break \+ 7v7 final game/);
+  assert.match(session.activities.at(-1).name, /7v7 .*Final Game|Tournament|Competitive/i);
 });
 
 test("generatePack creates one 30-minute drill activity", () => {
@@ -295,7 +295,7 @@ test("generatePack does not end full sessions with generic cooldown", () => {
   assert.equal(minutesSum(session.activities), 50);
   assert.equal(session.activities.length, 4);
   assert.deepEqual(session.activities.map((activity) => activity.minutes), [10, 15, 15, 10]);
-  assert.match(session.activities.at(-1).name, /Water break \+ .* final game/);
+  assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive/i);
   assert.equal(
     session.activities.some((activity) => activity.name === "Cooldown"),
     false
@@ -405,7 +405,7 @@ test("generatePack applies compact builder prompt notes and environment to activ
 
   const [session] = pack.sessions;
 
-  assert.match(session.activities[0].description, /Setup: use turf/i);
+  assert.match(session.activities[0].description, /Space note: use turf/i);
   assert.match(session.activities[1].description, /Coach notes: first pass after regain\./i);
 });
 
@@ -541,8 +541,92 @@ test("generatePack derives useful quick-session tags, equipment, and coaching de
   ]);
   assert.match(session.activities[0].description, /Setup:/);
   assert.match(session.activities[1].description, /Cues:/);
-  assert.match(session.activities.at(-1).name, /Water break \+ .* final game/);
+  assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive/i);
   assert.match(session.activities.at(-1).description, /real .*final game|Run:/i);
+});
+
+test("generatePack combines quick 3v3 defending and duck-duck-goose into one strong activity", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 20,
+    theme: "quick | format:quick_activity | 3v3 defending duck duck goose",
+    sessionMode: "quick_activity",
+    coachNotes:
+      "create a drill 3v3 focus of defending, also add a game like drill similar to duck duck goose",
+    sessionsCount: 1,
+    equipment: ["balls", "cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+  const [activity] = session.activities;
+
+  assert.equal(session.activities.length, 1);
+  assert.equal(activity.name, "3v3 Duck Duck Goose Defending Gates");
+  assert.equal(session.objectiveTags.includes("3v3"), true);
+  assert.equal(session.objectiveTags.includes("defending"), true);
+  assert.equal(session.objectiveTags.includes("reaction"), true);
+  assert.match(activity.description, /duck, duck, goose/i);
+  assert.match(activity.description, /3v3/i);
+  assert.match(activity.description, /defenders score by delaying|defender/i);
+  assert.match(activity.description, /pressure|delay|angle|recover|win the ball/i);
+  assert.match(activity.description, /gate/i);
+});
+
+test("generatePack distributes full-session multi-intent defending chase ideas across run order", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "3v3 defending with duck duck goose reaction chase",
+    sessionMode: "full_session",
+    coachNotes:
+      "create a drill 3v3 focus of defending, also add a game like drill similar to duck duck goose",
+    sessionsCount: 1,
+    equipment: ["balls", "cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+  const names = session.activities.map((activity) => activity.name);
+  const descriptions = session.activities.map((activity) => activity.description);
+
+  assert.deepEqual(names, [
+    "Chase, Delay, Escape",
+    "3v3 Pressure and Cover Gates",
+    "Recover, Delay, Win It Back",
+    "Defending Gates Tournament",
+  ]);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [12, 18, 18, 12]);
+  assert.match(descriptions[0], /duck, duck, goose|chase/i);
+  assert.match(descriptions[1], /3v3|pressure|cover|gate/i);
+  assert.match(descriptions[2], /recover|delay|transition|opposite gate/i);
+  assert.match(descriptions[3], /real Defending Gates Tournament|competitive|Run:/i);
+  assert.doesNotMatch(names[2], /placeholder|cooldown|water break/i);
+  assert.match(names[3], /Tournament|Final Game|Competitive/i);
+  assert.equal(/Water break/i.test(names.join(" ") + descriptions.join(" ")), false);
+});
+
+test("generatePack avoids repeating one generic setup across all full-session activities", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "defending pressure",
+    sessionMode: "full_session",
+    coachNotes: "Keep it game-like with gates and quick transition.",
+    sessionsCount: 1,
+    equipment: ["balls", "cones"],
+  });
+
+  const setupLines = pack.sessions[0].activities.map((activity) =>
+    activity.description.match(/Setup: [^.]+\./)?.[0]
+  );
+
+  assert.equal(new Set(setupLines).size, setupLines.length);
+  assert.equal(
+    setupLines.every((setup) => /use the available space with balls, tall cones, flat cones/i.test(setup || "")),
+    false
+  );
 });
 
 test("generatePack uses pressure and possession prompt words instead of falling back to theme-only tags", () => {

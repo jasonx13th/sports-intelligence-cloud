@@ -311,7 +311,13 @@ function CandidateCard({
               activityIndex={activityIndex}
               objective={coachObjective}
               objectiveTags={objectiveTags}
-              aside={<DiagramPlaceholder />}
+              aside={
+                <DiagramPlaceholder
+                  activity={activity}
+                  activityIndex={activityIndex}
+                  totalActivities={candidate.activities.length}
+                />
+              }
             />
           ))}
         </div>

@@ -566,7 +566,15 @@ export default async function SessionDetailPage({
                 objective={focusLabel}
                 objectiveTags={session.objectiveTags}
                 timing={activityTimings[index]}
-                aside={isBuilderSession ? <DiagramPlaceholder /> : undefined}
+                aside={
+                  isBuilderSession ? (
+                    <DiagramPlaceholder
+                      activity={activity}
+                      activityIndex={index}
+                      totalActivities={session.activities.length}
+                    />
+                  ) : undefined
+                }
                 compact={isQuickSession}
               />
             ))}

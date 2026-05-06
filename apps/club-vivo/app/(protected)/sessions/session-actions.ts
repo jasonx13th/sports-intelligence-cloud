@@ -21,6 +21,8 @@ import {
   QUICK_SESSION_TITLE_HINTS_COOKIE,
   withQuickSessionTitleHint
 } from "../../../lib/quick-session-title-hints";
+import { getCurrentUser } from "../../../lib/get-current-user";
+import { getWorkspaceCookieName } from "../../../lib/workspace-local-cookies";
 
 export type SaveGeneratedSessionState = {
   error?: string;
@@ -101,11 +103,25 @@ export async function saveGeneratedSessionAction(
   }
 
   if (origin) {
+    const currentUser = await getCurrentUser();
     const cookieStore = await cookies();
-    cookieStore.set(
+    const sessionOriginHintsCookieName = getWorkspaceCookieName(
       SESSION_ORIGIN_HINTS_COOKIE,
+      currentUser
+    );
+    const quickSessionTitleHintsCookieName = getWorkspaceCookieName(
+      QUICK_SESSION_TITLE_HINTS_COOKIE,
+      currentUser
+    );
+    const sessionBuilderContextHintsCookieName = getWorkspaceCookieName(
+      SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
+      currentUser
+    );
+
+    cookieStore.set(
+      sessionOriginHintsCookieName,
       withSessionOriginHint(
-        cookieStore.get(SESSION_ORIGIN_HINTS_COOKIE)?.value,
+        cookieStore.get(sessionOriginHintsCookieName)?.value,
         sessionId,
         origin
       ),
@@ -119,9 +135,9 @@ export async function saveGeneratedSessionAction(
 
     if (origin === "quick_session" && quickSessionTitle) {
       cookieStore.set(
-        QUICK_SESSION_TITLE_HINTS_COOKIE,
+        quickSessionTitleHintsCookieName,
         withQuickSessionTitleHint(
-          cookieStore.get(QUICK_SESSION_TITLE_HINTS_COOKIE)?.value,
+          cookieStore.get(quickSessionTitleHintsCookieName)?.value,
           sessionId,
           quickSessionTitle
         ),
@@ -136,9 +152,9 @@ export async function saveGeneratedSessionAction(
 
     if (origin === "full_session" || origin === "quick_drill") {
       cookieStore.set(
-        SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
+        sessionBuilderContextHintsCookieName,
         withSessionBuilderContextHint(
-          cookieStore.get(SESSION_BUILDER_CONTEXT_HINTS_COOKIE)?.value,
+          cookieStore.get(sessionBuilderContextHintsCookieName)?.value,
           sessionId,
           {
             objective,

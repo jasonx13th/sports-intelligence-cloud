@@ -17,9 +17,11 @@ import {
   getEquipmentItems,
   serializeEquipmentHints
 } from "../../../../lib/equipment-hints";
+import { getCurrentUser } from "../../../../lib/get-current-user";
 import { listTeams, type TeamRecord } from "../../../../lib/team-api";
 import { saveGeneratedSessionAction } from "../session-actions";
 import { type WorkspaceTeamOption } from "../../../../components/coach/TeamSelector";
+import { getWorkspaceCookieName } from "../../../../lib/workspace-local-cookies";
 
 const INITIAL_ANALYZE_STATE: AnalyzeFormState = {
   values: {
@@ -112,9 +114,12 @@ export default async function NewSessionPage({
   const requestedDurationMin = parseSearchParam(resolvedSearchParams?.durationMin)?.trim() || "";
   const requestedNotes = parseSearchParam(resolvedSearchParams?.notes)?.trim() || "";
   const initialConstraints = requestedNotes || undefined;
+  const currentUser = await getCurrentUser();
   const cookieStore = await cookies();
-  const teamOptions = await getTeamOptions(cookieStore.get(COACH_TEAM_HINTS_COOKIE)?.value);
-  const initialEquipmentOptions = getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
+  const teamHintsCookieName = getWorkspaceCookieName(COACH_TEAM_HINTS_COOKIE, currentUser);
+  const equipmentCookieName = getWorkspaceCookieName(EQUIPMENT_HINTS_COOKIE, currentUser);
+  const teamOptions = await getTeamOptions(cookieStore.get(teamHintsCookieName)?.value);
+  const initialEquipmentOptions = getEquipmentItems(cookieStore.get(equipmentCookieName)?.value);
 
   const initialGenerateState: GenerateFormState = {
     values: {
@@ -130,11 +135,13 @@ export default async function NewSessionPage({
   async function saveEquipmentOptionsAction(items: string[]) {
     "use server";
 
+    const currentUser = await getCurrentUser();
+    const equipmentCookieName = getWorkspaceCookieName(EQUIPMENT_HINTS_COOKIE, currentUser);
     const serializedItems = serializeEquipmentHints(items);
     const nextItems = getEquipmentItems(serializedItems);
 
     const responseCookieStore = await cookies();
-    responseCookieStore.set(EQUIPMENT_HINTS_COOKIE, serializedItems, {
+    responseCookieStore.set(equipmentCookieName, serializedItems, {
       httpOnly: true,
       maxAge: 60 * 60 * 24 * 7,
       path: "/",

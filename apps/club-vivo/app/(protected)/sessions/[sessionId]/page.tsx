@@ -15,6 +15,7 @@ import {
   buildQuickSessionFocusSummary,
   buildQuickSessionTitle
 } from "../../../../lib/quick-session-intent";
+import { getCurrentUser } from "../../../../lib/get-current-user";
 import {
   SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
   buildBuilderSessionDetailTitle,
@@ -26,7 +27,11 @@ import {
   buildBuilderSessionShapeSummary
 } from "../../../../lib/builder-session-label";
 import { getCurrentUserIdentity } from "../../../../lib/get-current-user-identity";
-import { SESSION_ORIGIN_HINTS_COOKIE, getSessionOriginLabel, parseSessionOriginHints } from "../../../../lib/session-origin-hints";
+import {
+  SESSION_ORIGIN_HINTS_COOKIE,
+  getSessionOriginLabel,
+  parseSessionOriginHints
+} from "../../../../lib/session-origin-hints";
 import {
   getSession,
   getSessionPdf,
@@ -36,6 +41,7 @@ import {
   type SessionFeedbackFlowMode,
   type SessionFeedbackImageAnalysisAccuracy
 } from "../../../../lib/session-builder-api";
+import { getWorkspaceCookieName } from "../../../../lib/workspace-local-cookies";
 import {
   SessionFeedbackPanel,
   type FeedbackPanelState
@@ -142,18 +148,31 @@ export default async function SessionDetailPage({
     throw error;
   }
 
+  const currentUser = await getCurrentUser();
   const cookieStore = await cookies();
+  const sessionOriginHintsCookieName = getWorkspaceCookieName(
+    SESSION_ORIGIN_HINTS_COOKIE,
+    currentUser
+  );
+  const quickSessionTitleHintsCookieName = getWorkspaceCookieName(
+    QUICK_SESSION_TITLE_HINTS_COOKIE,
+    currentUser
+  );
+  const sessionBuilderContextHintsCookieName = getWorkspaceCookieName(
+    SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
+    currentUser
+  );
   const sessionOrigins = parseSessionOriginHints(
-    cookieStore.get(SESSION_ORIGIN_HINTS_COOKIE)?.value
+    cookieStore.get(sessionOriginHintsCookieName)?.value
   );
   const origin = sessionOrigins[sessionId];
   const isQuickSession = origin === "quick_session";
   const isBuilderSession = origin === "full_session" || origin === "quick_drill";
   const quickSessionTitles = parseQuickSessionTitleHints(
-    cookieStore.get(QUICK_SESSION_TITLE_HINTS_COOKIE)?.value
+    cookieStore.get(quickSessionTitleHintsCookieName)?.value
   );
   const builderContexts = parseSessionBuilderContextHints(
-    cookieStore.get(SESSION_BUILDER_CONTEXT_HINTS_COOKIE)?.value
+    cookieStore.get(sessionBuilderContextHintsCookieName)?.value
   );
   const quickSessionTitle = quickSessionTitles[sessionId];
   const derivedQuickSessionTitle = isQuickSession
@@ -292,11 +311,16 @@ export default async function SessionDetailPage({
       };
     }
 
+    const currentUser = await getCurrentUser();
     const responseCookieStore = await cookies();
-    responseCookieStore.set(
+    const quickSessionTitleHintsCookieName = getWorkspaceCookieName(
       QUICK_SESSION_TITLE_HINTS_COOKIE,
+      currentUser
+    );
+    responseCookieStore.set(
+      quickSessionTitleHintsCookieName,
       withQuickSessionTitleHint(
-        responseCookieStore.get(QUICK_SESSION_TITLE_HINTS_COOKIE)?.value,
+        responseCookieStore.get(quickSessionTitleHintsCookieName)?.value,
         sessionId,
         nextTitle
       ),

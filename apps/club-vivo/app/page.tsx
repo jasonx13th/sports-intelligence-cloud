@@ -29,22 +29,22 @@ export default function Home() {
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
-                <h2 className="text-lg font-semibold text-slate-900">Start as a coach</h2>
+                <h2 className="text-lg font-semibold text-teal-800">Coach Workspace</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  Create your team, build game-like sessions, and turn practice ideas into
-                  activities that help athletes learn, play, and grow.
+                  Start as a coach by creating your team, building game-like sessions, and turning
+                  practice ideas into activities that help athletes learn, play, and grow.
                 </p>
                 <Link
                   href="/login/start?mode=signup"
                   prefetch={false}
                   className="mt-5 inline-flex rounded-full bg-teal-700 px-5 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
                 >
-                  Start coach workspace
+                  Sign up here
                 </Link>
               </article>
 
               <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
-                <h2 className="text-lg font-semibold text-slate-900">Start as a club</h2>
+                <h2 className="text-lg font-semibold text-teal-800">Club&apos;s Workspace</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
                   Take control of your organization, manage coaches, teams, equipment inventory,
                   and see how your club is growing.
@@ -54,7 +54,7 @@ export default function Home() {
                   prefetch={false}
                   className="mt-5 inline-flex rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-white"
                 >
-                  Start club workspace
+                  Sign up here
                 </Link>
               </article>
             </div>

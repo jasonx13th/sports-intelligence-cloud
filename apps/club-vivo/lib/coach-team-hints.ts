@@ -33,30 +33,6 @@ export const COACH_TEAM_AGE_BAND_OPTIONS = [
   "adult"
 ] as const;
 
-const DEFAULT_COACH_TEAMS: CoachTeamSetup[] = [
-  {
-    id: "team-ksc-travel-u14",
-    teamName: "KSC Travel U14",
-    ageBand: "u14",
-    teamType: "travel",
-    playerCount: 18
-  },
-  {
-    id: "team-ksc-travel-u12",
-    teamName: "KSC Travel U12",
-    ageBand: "u12",
-    teamType: "travel",
-    playerCount: 16
-  },
-  {
-    id: "team-ksc-ost-u10",
-    teamName: "KSC OST U10",
-    ageBand: "u10",
-    teamType: "ost",
-    playerCount: 14
-  }
-];
-
 function normalizeTeamName(value: string | undefined) {
   if (!value) {
     return undefined;
@@ -144,8 +120,7 @@ export function parseCoachTeamHints(rawValue: string | undefined): CoachTeamSetu
 }
 
 export function getCoachTeams(rawValue: string | undefined) {
-  const parsed = parseCoachTeamHints(rawValue);
-  return parsed.length > 0 ? parsed : DEFAULT_COACH_TEAMS;
+  return parseCoachTeamHints(rawValue);
 }
 
 export function serializeCoachTeamHints(teams: CoachTeamSetup[]) {

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { CoachPageHeader } from "../../../components/coach/CoachPageHeader";
+import { getCurrentUser } from "../../../lib/get-current-user";
 import {
   QUICK_SESSION_TITLE_HINTS_COOKIE,
   parseQuickSessionTitleHints
@@ -20,6 +21,7 @@ import {
   shouldShowObjectiveTagsForOrigin
 } from "../../../lib/session-origin-hints";
 import { getSessions } from "../../../lib/session-builder-api";
+import { getWorkspaceCookieName } from "../../../lib/workspace-local-cookies";
 
 function formatCreatedAt(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -29,16 +31,29 @@ function formatCreatedAt(value: string) {
 }
 
 export default async function SessionsPage() {
+  const currentUser = await getCurrentUser();
   const { items } = await getSessions();
   const cookieStore = await cookies();
+  const sessionOriginHintsCookieName = getWorkspaceCookieName(
+    SESSION_ORIGIN_HINTS_COOKIE,
+    currentUser
+  );
+  const quickSessionTitleHintsCookieName = getWorkspaceCookieName(
+    QUICK_SESSION_TITLE_HINTS_COOKIE,
+    currentUser
+  );
+  const sessionBuilderContextHintsCookieName = getWorkspaceCookieName(
+    SESSION_BUILDER_CONTEXT_HINTS_COOKIE,
+    currentUser
+  );
   const sessionOrigins = parseSessionOriginHints(
-    cookieStore.get(SESSION_ORIGIN_HINTS_COOKIE)?.value
+    cookieStore.get(sessionOriginHintsCookieName)?.value
   );
   const quickSessionTitles = parseQuickSessionTitleHints(
-    cookieStore.get(QUICK_SESSION_TITLE_HINTS_COOKIE)?.value
+    cookieStore.get(quickSessionTitleHintsCookieName)?.value
   );
   const sessionBuilderContexts = parseSessionBuilderContextHints(
-    cookieStore.get(SESSION_BUILDER_CONTEXT_HINTS_COOKIE)?.value
+    cookieStore.get(sessionBuilderContextHintsCookieName)?.value
   );
 
   return (

@@ -9,10 +9,12 @@ import {
   QUICK_SESSION_COOKIE,
   serializeQuickSessionPayload
 } from "../../../lib/quick-session-payload";
+import { getCurrentUser } from "../../../lib/get-current-user";
 import {
   buildQuickSessionIntent,
   QUICK_SESSION_DEFAULT_DURATION_MIN
 } from "../../../lib/quick-session-intent";
+import { getWorkspaceCookieName } from "../../../lib/workspace-local-cookies";
 
 const QUICK_SESSION_DEFAULTS = {
   sport: "soccer",
@@ -140,8 +142,10 @@ export async function createQuickSessionAction(
     });
 
     const cookieStore = await cookies();
+    const currentUser = await getCurrentUser();
+    const quickSessionCookieName = getWorkspaceCookieName(QUICK_SESSION_COOKIE, currentUser);
     cookieStore.set(
-      QUICK_SESSION_COOKIE,
+      quickSessionCookieName,
       serializeQuickSessionPayload({
         pack,
         values: {

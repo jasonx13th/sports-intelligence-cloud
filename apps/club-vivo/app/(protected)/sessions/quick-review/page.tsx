@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { CoachPageHeader } from "../../../../components/coach/CoachPageHeader";
 import { getCurrentUser } from "../../../../lib/get-current-user";
 import { parseQuickSessionPayload, QUICK_SESSION_COOKIE } from "../../../../lib/quick-session-payload";
+import { getWorkspaceCookieName } from "../../../../lib/workspace-local-cookies";
 import { saveGeneratedSessionAction } from "../session-actions";
 import { QuickSessionReview } from "./quick-session-review";
 
@@ -18,10 +19,11 @@ function buildQuickEditHref(notes?: string) {
 }
 
 export default async function QuickReviewPage() {
-  await getCurrentUser();
+  const currentUser = await getCurrentUser();
+  const quickSessionCookieName = getWorkspaceCookieName(QUICK_SESSION_COOKIE, currentUser);
 
   const quickSessionPayload = parseQuickSessionPayload(
-    (await cookies()).get(QUICK_SESSION_COOKIE)?.value
+    (await cookies()).get(quickSessionCookieName)?.value
   );
 
   if (!quickSessionPayload) {

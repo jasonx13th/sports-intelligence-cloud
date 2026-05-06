@@ -11,7 +11,9 @@ import {
   type SessionBuilderApiError
 } from "../../../../lib/session-builder-api";
 import { EQUIPMENT_HINTS_COOKIE, getEquipmentItems } from "../../../../lib/equipment-hints";
+import { getCurrentUser } from "../../../../lib/get-current-user";
 import { formatEnvironmentLabel } from "../../../../lib/session-builder-context-hints";
+import { getWorkspaceCookieName } from "../../../../lib/workspace-local-cookies";
 import type { AnalyzeFormState, GenerateFormState } from "./session-new-flow";
 
 const SUPPORTED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -354,11 +356,13 @@ export async function generateSessionPackAction(
   const selectedEquipmentItems = equipment ? parseEquipment(equipment) : [];
   const confirmedProfileJson = String(formData.get("confirmedProfileJson") || "").trim();
   const sessionMode = sessionModeValue === "drill" ? "drill" : "full_session";
+  const currentUser = await getCurrentUser();
   const cookieStore = await cookies();
+  const equipmentCookieName = getWorkspaceCookieName(EQUIPMENT_HINTS_COOKIE, currentUser);
   const availableEquipmentItems =
     selectedEquipmentItems.length > 0
       ? selectedEquipmentItems
-      : getEquipmentItems(cookieStore.get(EQUIPMENT_HINTS_COOKIE)?.value);
+      : getEquipmentItems(cookieStore.get(equipmentCookieName)?.value);
 
   const sport = selectedSport === "fut-soccer" ? "soccer" : selectedSport;
   const sportPackId = selectedSport === "fut-soccer" ? "fut-soccer" : undefined;

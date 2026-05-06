@@ -11,21 +11,28 @@ export default function Home() {
 
           <div className="max-w-3xl">
             <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-              Where sports organizations start.
+              Welcome to Club Vivo
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
-              Club Vivo gives coaches, teams, academies, and sports organizations a simple place
-              to plan sessions, organize teams, manage equipment, shape methodology, and keep
-              coaching work together.
+              Where sports organizations start.
             </p>
 
-            <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
+              Plan practices, organize teams, and give coaches a cleaner way to help athletes
+              learn, compete, and enjoy the game.
+            </p>
+
+            <p className="mt-8 text-sm font-medium uppercase tracking-wide text-teal-800">
+              Two spaces built for what you need.
+            </p>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
               <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
-                <h2 className="text-lg font-semibold text-slate-900">Coach</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Start as a coach</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  Create game-like sessions, manage your teams, and keep your practice ideas
-                  organized.
+                  Create your team, build game-like sessions, and turn practice ideas into
+                  activities that help athletes learn, play, and grow.
                 </p>
                 <Link
                   href="/login/start?mode=signup"
@@ -37,10 +44,10 @@ export default function Home() {
               </article>
 
               <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
-                <h2 className="text-lg font-semibold text-slate-900">Club</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Start as a club</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  Create a free club workspace for your team, academy, or sports organization.
-                  Coach Workspace is included.
+                  Take control of your organization, manage coaches, teams, equipment inventory,
+                  and see how your club is growing.
                 </p>
                 <Link
                   href="/club/start"

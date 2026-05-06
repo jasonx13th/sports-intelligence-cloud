@@ -15,27 +15,26 @@ export default function ClubStartPage() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
-              Anyone can start a free club workspace for a team, academy, school, nonprofit, or
-              sports organization. Coach planning tools are included, so your club can create
-              sessions, quick activities, teams, equipment lists, and saved coaching work from one
-              shared place.
+              Start a free club workspace for your team, academy, school, nonprofit, or sports
+              organization. Coach planning tools are included, so your club can organize teams,
+              equipment, methodology, sessions, and saved coaching work in one shared place.
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-2">
               <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
                 <h2 className="text-lg font-semibold text-slate-900">Free club workspace</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  Create a place for your club to organize coaching work and keep the Coach
-                  Workspace close to your teams, equipment, methodology, and saved sessions.
+                  Create a home for your club&apos;s coaching work, teams, equipment, methodology,
+                  and saved sessions.
                 </p>
               </article>
 
               <article className="rounded-3xl border border-slate-200 bg-white/75 p-5">
                 <h2 className="text-lg font-semibold text-slate-900">Verified setup</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  Clubs that want official structure, custom methodology, coach and admin
-                  management, and future advanced features can move into a verified or supported
-                  setup later.
+                  Clubs that want official structure, custom methodology, hands-on setup,
+                  coach/admin management, and future advanced features can move into a verified or
+                  supported setup.
                 </p>
               </article>
             </div>
@@ -59,8 +58,15 @@ export default function ClubStartPage() {
             </div>
 
             <p className="mt-6 max-w-2xl text-sm leading-6 text-slate-600">
-              If your club wants verified setup or hands-on support, contact the Club Vivo pilot
-              operator.
+              If your club wants verified setup and hands-on support, contact the Club Vivo
+              operator at{" "}
+              <a
+                href="mailto:ja.cloud.son@gmail.com"
+                className="font-medium text-teal-800 transition hover:text-teal-900 hover:underline"
+              >
+                ja.cloud.son@gmail.com
+              </a>
+              .
             </p>
           </div>
         </section>

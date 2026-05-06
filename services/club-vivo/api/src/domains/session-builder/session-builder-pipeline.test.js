@@ -345,7 +345,7 @@ test("processSessionPackRequest carries compact builder notes and environment in
     sessionsCount: 1,
   });
 
-  assert.match(result.validatedPack.sessions[0].activities[0].description, /Setup: use turf/i);
+  assert.match(result.validatedPack.sessions[0].activities[0].description, /Space note: use turf/i);
   assert.match(
     result.validatedPack.sessions[0].activities[1].description,
     /Coach notes: first pass after regain\./i
@@ -673,7 +673,8 @@ test("quick session-mode requests create a four-activity full session", async ()
 
   assert.equal(session.activities.length, 4);
   assert.deepEqual(session.activities.map((activity) => activity.minutes), [12, 18, 18, 12]);
-  assert.match(session.activities.at(-1).name, /Water break \+ 7v7 final game/);
+  assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive|Gate Battle/i);
+  assert.equal(/Water break/i.test(session.activities.at(-1).name), false);
 });
 
 test("quick drill-mode requests create one main activity", async () => {

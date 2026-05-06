@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DurationSelector } from "./DurationSelector";
 import { ModeSelector, type SessionBuilderMode } from "./ModeSelector";
@@ -52,6 +52,100 @@ function normalizeCustomEnvironment(value: string) {
   return value.replace(/\s+/g, " ").trim().slice(0, 48).trim();
 }
 
+const OBJECTIVE_FOCUS_OPTIONS: Record<string, string[]> = {
+  Attacking: [
+    "Create chances",
+    "Play forward",
+    "Combination play",
+    "Wide play",
+    "Finishing from cutbacks"
+  ],
+  Defending: [
+    "Pressure and cover",
+    "Delay and recover",
+    "Defend wide areas",
+    "Protect the box",
+    "Win the ball back"
+  ],
+  "Transition to attack": [
+    "First pass after regain",
+    "Escape pressure after winning the ball",
+    "Counter attack quickly",
+    "Secure possession after regain",
+    "Play out from own box after regain"
+  ],
+  "Transition to defend": [
+    "Counterpress after losing the ball",
+    "Recovery runs",
+    "Protect central space",
+    "Delay the counter attack"
+  ],
+  "Possession / build up": [
+    "Build from the back",
+    "Support angles",
+    "Switch play",
+    "Play through pressure"
+  ],
+  Finishing: [
+    "Finish from cutbacks",
+    "Shoot early",
+    "Rebounds",
+    "Combinations to finish"
+  ],
+  Pressing: [
+    "Pressing triggers",
+    "Force play wide",
+    "Win the ball high",
+    "Press and cover balance"
+  ],
+  "1v1 / small-sided duels": [
+    "Beat the defender",
+    "Defend 1v1",
+    "Shield and escape",
+    "Small-sided decision-making"
+  ],
+  "Team shape": [
+    "Compact defending",
+    "Attacking width",
+    "Support underneath",
+    "Balance around the ball"
+  ],
+  "Game understanding": [
+    "Scan before receiving",
+    "Recognize pressure",
+    "Choose when to pass or dribble",
+    "Use space"
+  ],
+  "Physical / reaction / speed": [
+    "Reaction speed",
+    "Acceleration",
+    "Change of direction",
+    "Recover quickly"
+  ],
+  Custom: []
+};
+
+const PRIMARY_OBJECTIVE_OPTIONS = Object.keys(OBJECTIVE_FOCUS_OPTIONS);
+
+function buildGuidedObjective({
+  primary,
+  focus,
+  detail
+}: {
+  primary: string;
+  focus: string;
+  detail: string;
+}) {
+  const normalizedDetail = detail.replace(/\s+/g, " ").trim();
+
+  if (!primary || primary === "Custom") {
+    return normalizedDetail;
+  }
+
+  const focusText = focus ? `${primary}: ${focus.toLowerCase()}.` : `${primary}.`;
+  return normalizedDetail ? `${focusText} Coach note: ${normalizedDetail}.` : focusText;
+}
+
 export function SessionBuilderTopBlock({
   formAction,
   confirmedProfileJson,
@@ -86,6 +180,43 @@ export function SessionBuilderTopBlock({
 }: SessionBuilderTopBlockProps) {
   const [isAddingEnvironment, setIsAddingEnvironment] = useState(false);
   const [environmentDraft, setEnvironmentDraft] = useState("");
+  const [primaryObjective, setPrimaryObjective] = useState("");
+  const [specificFocus, setSpecificFocus] = useState("");
+  const [objectiveDetail, setObjectiveDetail] = useState(objective);
+  const focusOptions = primaryObjective ? OBJECTIVE_FOCUS_OPTIONS[primaryObjective] || [] : [];
+
+  useEffect(() => {
+    if (!primaryObjective && objective !== objectiveDetail) {
+      setObjectiveDetail(objective);
+    }
+  }, [objective, objectiveDetail, primaryObjective]);
+
+  function updateObjective(nextValues: {
+    primary?: string;
+    focus?: string;
+    detail?: string;
+  }) {
+    const nextPrimary = nextValues.primary ?? primaryObjective;
+    const allowedFocusOptions = nextPrimary ? OBJECTIVE_FOCUS_OPTIONS[nextPrimary] || [] : [];
+    const nextFocus =
+      nextValues.focus !== undefined
+        ? nextValues.focus
+        : allowedFocusOptions.includes(specificFocus)
+          ? specificFocus
+          : "";
+    const nextDetail = nextValues.detail ?? objectiveDetail;
+
+    setPrimaryObjective(nextPrimary);
+    setSpecificFocus(nextFocus);
+    setObjectiveDetail(nextDetail);
+    onObjectiveChange(
+      buildGuidedObjective({
+        primary: nextPrimary,
+        focus: nextFocus,
+        detail: nextDetail
+      })
+    );
+  }
 
   function handleAddEnvironment() {
     const normalizedDraft = normalizeCustomEnvironment(environmentDraft);
@@ -154,18 +285,85 @@ export function SessionBuilderTopBlock({
         </div>
 
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
+          <input type="hidden" name="theme" value={objective} />
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Objective</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Choose a guide, then add your own detail. You can also leave the guides blank and type
+              a custom objective.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <label className="grid gap-2 text-sm text-slate-700">
+              <span className="font-medium">Primary objective</span>
+              <select
+                value={primaryObjective}
+                onChange={(event) => updateObjective({ primary: event.target.value, focus: "" })}
+                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+              >
+                <option value="">Use custom text only</option>
+                {PRIMARY_OBJECTIVE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm text-slate-700">
+              <span className="font-medium">Specific focus</span>
+              <select
+                value={specificFocus}
+                onChange={(event) => updateObjective({ focus: event.target.value })}
+                disabled={focusOptions.length === 0}
+                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="">Select focus</option>
+                {focusOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {focusOptions.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {focusOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => updateObjective({ focus: option })}
+                  className={[
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    specificFocus === option
+                      ? "border-teal-700 bg-teal-700 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:bg-teal-50"
+                  ].join(" ")}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <label className="grid gap-2 text-sm text-slate-700">
-            <span className="font-medium">Objective</span>
-            <input
-              name="theme"
-              value={objective}
-              onChange={(event) => onObjectiveChange(event.target.value)}
-              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-              placeholder="Pressing in midfield, first touch under pressure, finishing from cutbacks"
-              required
+            <span className="font-medium">
+              {primaryObjective && primaryObjective !== "Custom"
+                ? "Coach note / custom detail"
+                : "Custom objective"}
+            </span>
+            <textarea
+              value={objectiveDetail}
+              onChange={(event) => updateObjective({ detail: event.target.value })}
+              className="min-h-24 rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+              placeholder="Example: find the first pass forward after recovering in our own box"
+              required={!objective}
             />
             <span className="text-xs leading-5 text-slate-500">
-              Keep the session goal short and specific so the generated plan is easier to use.
+              Sent to the builder as: {objective || "Add an objective before generating."}
             </span>
           </label>
         </section>

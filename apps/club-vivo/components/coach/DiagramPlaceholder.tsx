@@ -9,6 +9,8 @@ type DiagramActivity = {
 };
 
 type DiagramKind =
+  | "activation_chase_or_reaction"
+  | "transition_to_attack"
   | "chase_gates"
   | "pressure_cover_gates"
   | "recover_delay_win"
@@ -18,7 +20,7 @@ type DiagramKind =
 type DiagramPhase = {
   label: string;
   note: string;
-  action: "chase" | "pressure" | "recover" | "generic";
+  action: "activation" | "chase" | "pressure" | "recover" | "outlet" | "generic";
 };
 
 function normalizeText(value: string | undefined) {
@@ -35,15 +37,27 @@ function inferDiagramKind(activity: DiagramActivity | undefined, activityIndex: 
     return "final_game_format";
   }
 
-  if (/duck|goose|chase|escape|reaction/.test(text) && /gate/.test(text)) {
-    return "chase_gates";
+  if (
+    /recover|regain|win it back|winning the ball|transition|counter|outlet|first pass|escape pressure after regain|own box/.test(
+      text
+    )
+  ) {
+    return /delay|recover|win it back/.test(text) ? "recover_delay_win" : "transition_to_attack";
   }
 
   if (/3v3|pressure|cover|defending gates|defender/.test(text) && /gate/.test(text)) {
     return "pressure_cover_gates";
   }
 
-  if (/recover|delay|win it back|counter|transition|opposite gate/.test(text)) {
+  if (/duck|goose|chase|escape|reaction/.test(text) && /gate/.test(text)) {
+    return activityIndex === 0 ? "activation_chase_or_reaction" : "chase_gates";
+  }
+
+  if (activityIndex === 0) {
+    return "activation_chase_or_reaction";
+  }
+
+  if (activityIndex === 2) {
     return "recover_delay_win";
   }
 
@@ -51,6 +65,31 @@ function inferDiagramKind(activity: DiagramActivity | undefined, activityIndex: 
 }
 
 function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPhase[] {
+  if (kind === "activation_chase_or_reaction") {
+    return [
+      {
+        label: "Setup view",
+        note: "Start with a simple activation shape, quick reactions, and players moving right away.",
+        action: "activation"
+      }
+    ];
+  }
+
+  if (kind === "transition_to_attack") {
+    return [
+      {
+        label: "Setup view",
+        note: "Start near the defending box with an outlet player and a clear escape lane.",
+        action: "generic"
+      },
+      {
+        label: "Regain to outlet",
+        note: "Win the ball, secure the first pass, and escape pressure into space.",
+        action: "outlet"
+      }
+    ];
+  }
+
   if (kind === "chase_gates") {
     return [
       {
@@ -93,7 +132,7 @@ function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPh
 
   return [
     {
-      label: activityIndex === 0 ? "Setup view" : "Setup view",
+      label: "Setup view",
       note: "Use a clear field shape, short rotations, and visible scoring targets.",
       action: "generic"
     },
@@ -216,6 +255,26 @@ function DiagramSvg({
         </>
       ) : null}
 
+      {phase.action === "activation" ? (
+        <>
+          <Player x={43} y={34} team="blue" />
+          <Player x={60} y={52} team="blue" />
+          <Player x={42} y={72} team="blue" />
+          <Player x={90} y={35} team="red" />
+          <Player x={106} y={56} team="red" />
+          <Player x={88} y={76} team="red" />
+          <ActionArrow d="M43 34 C56 25, 78 24, 96 32" markerId={markerId} dashed />
+          <ActionArrow d="M60 52 C77 45, 99 44, 128 24" markerId={markerId} />
+          <ActionArrow d="M42 72 C58 83, 85 86, 134 82" markerId={markerId} />
+          <text x="67" y="23" className="fill-teal-700 text-[8px] font-bold">
+            React
+          </text>
+          <text x="113" y="18" className="fill-teal-700 text-[8px] font-bold">
+            Gate
+          </text>
+        </>
+      ) : null}
+
       {phase.action === "pressure" ? (
         <>
           <Player x={48} y={33} team="blue" label="B1" />
@@ -252,6 +311,28 @@ function DiagramSvg({
           </text>
           <text x="118" y="74" className="fill-teal-700 text-[8px] font-bold">
             Counter
+          </text>
+        </>
+      ) : null}
+
+      {phase.action === "outlet" ? (
+        <>
+          <rect x="8" y="28" width="18" height="49" rx="3" fill="none" stroke="#cbd5e1" strokeDasharray="3 3" />
+          <Player x={34} y={53} team="blue" label="Regain" />
+          <Player x={55} y={38} team="blue" label="1st" />
+          <Player x={84} y={28} team="blue" label="Outlet" />
+          <Player x={62} y={65} team="red" />
+          <Player x={87} y={55} team="red" />
+          <Player x={111} y={72} team="red" />
+          <ActionArrow d="M34 53 C42 45, 48 41, 55 38" markerId={markerId} />
+          <ActionArrow d="M55 38 C65 27, 74 24, 84 28" markerId={markerId} />
+          <ActionArrow d="M84 28 C104 27, 120 25, 136 24" markerId={markerId} />
+          <ActionArrow d="M62 65 C55 59, 51 50, 55 40" markerId={markerId} color="#ef4444" dashed />
+          <text x="43" y="24" className="fill-teal-700 text-[8px] font-bold">
+            First pass
+          </text>
+          <text x="116" y="18" className="fill-teal-700 text-[8px] font-bold">
+            Escape
           </text>
         </>
       ) : null}

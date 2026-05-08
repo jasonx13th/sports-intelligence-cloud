@@ -142,6 +142,16 @@ show the first main learning activity. Activity 3 diagrams should show a progres
 recovery, or harder decision, and should not visually repeat Activity 2. Activity 4 should stay as
 a competitive final-game card only, not a full tactical diagram.
 
+Diagram Storytelling Polish v2 keeps the SVG itself minimal. Diagrams should not overload the field
+view with text; use short labels only when they add meaning, such as Start, Ball, Play, Press,
+Recover, Score, or Reset. Put extra explanation in the caption below the SVG.
+
+Activity 1 should stay lighter and use only Setup and Action story views. Activity 2 and Activity
+3 should use Setup, How to play, and How to score / reset. Activity 2 should show the first main
+activity, while Activity 3 should show a visibly different progression, recovery, counter, or second
+decision. The legend should explain the cone-gate symbol: two yellow cone dots connected by a short
+line means gate.
+
 ## 7. Quick Activity Standard
 
 Quick Activity should usually produce one strong activity that a coach can run fast.

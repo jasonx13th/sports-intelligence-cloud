@@ -16,6 +16,7 @@ Use the New SIC closeout summaries as the chronological source of truth:
 - `closeout-summary-4.md`
 - `closeout-summary-5.md`
 - `closeout-summary-6.md`
+- `closeout-summary-7.md`
 
 The other files in this folder are supporting planning, audit, readiness, hosting, deployment, and
 evidence documents.
@@ -142,6 +143,97 @@ Key work:
 This block did not add RAG, FAISS, vector search, Bedrock production generation, a new DynamoDB
 schema, or a new AI model.
 
+### Closeout Summary 7 - Session Builder Quality And Diagram Storytelling
+
+Status: completed on `main` through PR `#43`.
+
+Scope:
+
+```text
+PR #39 through PR #43
+commit range: f489d57..39bc557
+```
+
+Main point: moved Session Builder from basic deterministic output toward a more coach-facing
+training-session product by improving deterministic session structure, equipment language, setup
+dimensions, diagram storytelling, and diagram movement semantics.
+
+Key work:
+
+- PR `#39` improved Session Builder quality, equipment specificity, and deterministic generation
+  standards.
+- PR `#40` added deterministic diagram storytelling.
+- PR `#41` polished diagram storytelling so the live visuals were less text-heavy.
+- PR `#42` improved session diagram layout and backend setup text so sessions read as one
+  progressive coaching story.
+- PR `#43` clarified diagram movement language, ball symbols, arrow semantics, and legend behavior.
+
+Key decisions:
+
+- Keep the current generation brain deterministic/template-based until a proper research and
+  architecture block defines the next AI/RAG approach.
+- Treat full sessions as one progressive story: Activity 1 introduces the theme/grid/scoring idea,
+  Activity 2 increases pressure or decision level, Activity 3 adds progression/transition/recovery
+  or a second decision, and Activity 4 applies the theme in a competitive final game.
+- Keep Activity 4 as a compact final-game card, not a full tactical diagram.
+- Keep diagrams deterministic, lightweight, SVG/React/CSS-based, clickable to enlarge, and suitable
+  for future export.
+
+Shipped artifacts:
+
+- generator setup text with direct `Grid:` and `Field:` dimensions
+- direct selected-equipment language and safer no-equipment defaults
+- backend tests for setup dimensions, equipment specificity, distinct Activity 2/3 language, and
+  competitive final games
+- always-visible diagram story views for Activity 1, Activity 2, and Activity 3
+- clearer 50/50 desktop activity text and visual layout
+- visual legend examples for coached team, opposition, equipment, cone gates, solid green action
+  arrows, blue dashed support/recovery arrows, and red dashed pressure/chase arrows
+- visual ball symbol instead of the word `Ball`
+- updated Club Vivo coaching session and generation-quality standards
+
+Validation:
+
+- `git diff --check`
+- `npm.cmd test --prefix services/club-vivo/api -- src/domains/session-builder/session-pack-templates.test.js`
+- `npm.cmd test --prefix services/club-vivo/api`
+- `cd apps/club-vivo && npx.cmd tsc --noEmit`
+- `cd apps/club-vivo && npm.cmd run build`
+
+Deployment notes:
+
+- PR `#39` and PR `#42` changed backend deterministic generator behavior and required backend
+  deployment.
+- PR `#42` required both backend deployment and Amplify deployment.
+- PR `#43` required Amplify deployment only.
+- Frontend/docs slices after PR `#42` did not require backend deployment.
+- The existing Next.js warning remains: `middleware` is deprecated in favor of `proxy`.
+
+Guardrails preserved:
+
+- no auth redesign
+- no tenancy redesign
+- no client-supplied tenant scope
+- no IAM, Cognito, DynamoDB schema, CDK, or Amplify config changes
+- no Bedrock, RAG, FAISS, vector search, storage, video generation, image generation, or new
+  dependencies
+
+Current state:
+
+- Session Builder output is more connected and coach-ready.
+- Activity setup text now gives clearer field/grid shape before the activity action.
+- Diagrams now tell a deterministic setup/action/play/score story.
+- Diagram movement language is clearer and documented.
+- The system is still deterministic and still needs deeper coaching methodology and future brain
+  architecture before real AI/RAG work.
+
+Next block:
+
+The next New SIC block should be research and architecture, not more small UI polish. It should cover
+soccer/futsal session methodology, ages 5-21 age-stage rules, coach workflow and mental model,
+diagram notation, RAG/FAISS/AI generation architecture, structured diagram JSON, and revised
+SIC/Club Vivo source-of-truth docs after research.
+
 ## Supporting New SIC Docs Inventory
 
 Planning and baseline:
@@ -157,6 +249,7 @@ Closeout summaries:
 - `closeout-summary-4.md`
 - `closeout-summary-5.md`
 - `closeout-summary-6.md`
+- `closeout-summary-7.md`
 
 Readiness, launch, and deployment support:
 
@@ -191,7 +284,13 @@ cleanup decisions, readiness decisions, and future review.
 - Quick Activity is the fast activity lane.
 - Session Builder is the guided planning lane.
 - Current generation quality improvements are deterministic/template-based.
-- Current diagrams are deterministic output aids, not a full graphics engine.
+- Current diagrams are deterministic SVG story views, not a full graphics engine.
+- Full-session output should read as a progressive coaching story.
+- Setup text should start with clear grid or field dimensions.
+- Activity 4 remains a compact competitive final-game card.
+- Diagram legend semantics are blue coached-team dots, red opposition dots, yellow equipment dots,
+  yellow cone gates, solid green ball/player action arrows, blue dashed coached-team movement
+  arrows, and red dashed opposition pressure/chase arrows.
 
 ## Current State After Closeout Summary 6
 
@@ -222,6 +321,30 @@ It is not:
 - vector search
 - a new AI model
 
+## Current State After Closeout Summary 7
+
+Club Vivo now has a stronger deterministic Session Builder and a more readable diagram experience.
+
+Current state:
+
+- Session Builder generation is still deterministic/template-based
+- full sessions are structured as a progressive coaching story
+- Activity 1 introduces the theme, grid, ball start, movement direction, gates, and scoring idea
+- Activity 2 increases pressure or decision level
+- Activity 3 progresses the learning with transition, recovery, a second decision, or faster tempo
+- Activity 4 applies the theme in a competitive final-game or mini-tournament format
+- setup text starts with direct grid or field dimensions
+- selected equipment is used directly when available
+- broad equipment `or` lists are avoided in coach-facing setup text
+- diagrams show deterministic story views for setup, action, how to play, and score/reset moments
+- Activity 4 remains a compact final-game card
+- the diagram legend now explains cone gates, green action arrows, blue dashed support/recovery
+  arrows, and red dashed pressure/chase arrows
+- the ball is shown as a visual symbol
+
+The current diagrams are better coaching-board aids, but they are still deterministic templates. They
+are not truly activity-specific tactical diagrams yet.
+
 ## Guardrails Preserved
 
 - Tenancy must fail closed.
@@ -240,17 +363,18 @@ It is not:
 Recommended next block:
 
 ```text
-Club Vivo Session Builder quality and coach-facing output refinement.
+Club Vivo coaching-methodology research and future brain architecture.
 ```
 
 Suggested scope:
 
-- continue Session Builder quality work
-- improve equipment specificity in generated and saved output
-- improve diagram instructions and legend
-- improve Quick Activity / Session Builder prompt QA coverage
-- define deeper brain architecture later before adding RAG, Bedrock, FAISS, or vector search
-- continue Club Workspace / Admin Portal later as its own clean block
+- deep research on soccer and futsal session design
+- age-stage methodology for ages 5-21
+- coach workflow and coach mental model
+- diagram notation standard
+- RAG/FAISS/AI generation architecture planning
+- structured diagram JSON plan for future renderer-driven diagrams
+- revised SIC / Club Vivo source-of-truth docs after research
 
-The next block should keep product quality moving while preserving the current security and tenancy
-boundaries.
+The next block should design the next real brain before adding Bedrock, RAG, FAISS, vector search,
+or AI diagram generation to production.

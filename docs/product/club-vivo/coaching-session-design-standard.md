@@ -127,6 +127,21 @@ to read/play this" caption. Coaches should be able to see where players start, w
 starts, what action begins the activity, where the main movement goes, and how the action scores or
 finishes.
 
+## 6b. Diagram Storytelling v1
+
+Diagram Storytelling v1 keeps diagrams lightweight, deterministic, SVG/React/CSS-based, and
+export-friendly. It does not require video, image generation, external storage, or new backend
+generation logic.
+
+A static diagram is the setup view: where the space, players, ball, and equipment begin. A
+step-based or animated diagram shows how the activity works. The story should move through setup,
+trigger, main action, and score/reset.
+
+Activity 1 diagrams should stay simple and activation/warm-up oriented. Activity 2 diagrams should
+show the first main learning activity. Activity 3 diagrams should show a progression, transition,
+recovery, or harder decision, and should not visually repeat Activity 2. Activity 4 should stay as
+a competitive final-game card only, not a full tactical diagram.
+
 ## 7. Quick Activity Standard
 
 Quick Activity should usually produce one strong activity that a coach can run fast.

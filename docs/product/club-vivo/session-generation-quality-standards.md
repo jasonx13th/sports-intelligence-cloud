@@ -76,6 +76,24 @@ Diagrams should include a clear start cue, ball cue when relevant, movement cue,
 start, where the ball starts, what action begins play, what the main movement/action is, and how to
 score or finish the action.
 
+## Diagram Storytelling v1 Standard
+
+Static diagram equals setup view. It should show where the players, ball, space, and equipment
+begin.
+
+Step-based diagram equals how the activity works. It should tell a small story: setup, trigger,
+main action, and score/reset. This can be a lightweight step display or simple SVG overlay; it
+should not require video rendering, image generation, storage, new backend logic, or new
+dependencies.
+
+Activity 1 should look like a simple activation or warm-up pattern. Activity 2 should show the main
+learning activity. Activity 3 should show a progression, transition, recovery, or harder decision
+instead of repeating Activity 2 visually. Activity 4 should remain a compact competitive final-game
+card only.
+
+Diagrams must remain deterministic, lightweight, readable when static, and suitable for future
+PDF/export use.
+
 ## Drill Mode Standard
 
 A drill output should be specific and usable, but still game-like when possible.

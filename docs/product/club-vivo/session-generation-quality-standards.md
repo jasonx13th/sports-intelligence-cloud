@@ -94,6 +94,18 @@ card only.
 Diagrams must remain deterministic, lightweight, readable when static, and suitable for future
 PDF/export use.
 
+Diagram Storytelling Polish v2 should make diagrams feel like a clean coaching board. Do not
+overload the SVG with text or label every dot and arrow. Use only short labels when useful, and put
+the explanation in the caption.
+
+Activity 1 stays lighter with Setup and Action only. Activity 2 and Activity 3 use Setup, How to
+play, and How to score / reset. Activity 2 should show field shape, gates, first pass or first
+action, and score/reset direction. Activity 3 should look related but distinct by showing a harder
+progression, recovery, counter, or second decision. Activity 4 remains a final-game card only.
+
+The diagram legend should stay short and should explain that two yellow cone dots connected by a
+small line means cone gate.
+
 ## Drill Mode Standard
 
 A drill output should be specific and usable, but still game-like when possible.

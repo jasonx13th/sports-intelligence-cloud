@@ -81,7 +81,7 @@ function buildStoryNotes(role: DiagramPhase["role"]): Record<DiagramPhase["momen
   if (role === "activation") {
     return {
       setup: "Players start loose inside a small grid with the ball central and gates visible.",
-      play: "Coach call starts the reaction. Players move quickly, carry the ball, and choose a gate.",
+      play: "Ball starts with the central blue player. Coach call triggers one run, one chase, and a carry through a gate.",
       score: "Finish through the marked gate, collect the ball, and rotate back in."
     };
   }
@@ -89,15 +89,15 @@ function buildStoryNotes(role: DiagramPhase["role"]): Record<DiagramPhase["momen
   if (role === "progression") {
     return {
       setup: "Start from a related directional game shape with recovery space and a counter target.",
-      play: "A turnover or loose touch starts the harder decision: recover, play the first pass, and counter.",
-      score: "Score on the counter target, then reset from the coach or next group."
+      play: "A turnover or loose touch starts the harder decision: support run, pressure arrives, then counter.",
+      score: "Score on the counter target. Reset from the coach or next group after the finish."
     };
   }
 
   return {
     setup: "Two teams start in a compact game area with ball, gates, and support lanes visible.",
     play: "First pass or bad touch starts the pressure and support movement toward the scoring target.",
-    score: "Score through the target, then restart quickly for the next round."
+    score: "Score through the target. Blue players reset shape while the coach restarts the next round."
   };
 }
 
@@ -157,8 +157,15 @@ function Gate({ x, y, rotate = 0 }: { x: number; y: number; rotate?: number }) {
 function Ball({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <circle cx={x} cy={y} r="3.2" fill="white" stroke="#0f172a" strokeWidth="1" />
-      <path d={`M${x - 2} ${y} H${x + 2} M${x} ${y - 2} V${y + 2}`} stroke="#0f172a" strokeWidth="0.6" />
+      <circle cx={x} cy={y} r="4" fill="white" stroke="#0f172a" strokeWidth="1" />
+      <circle cx={x} cy={y} r="1.1" fill="#0f172a" />
+      <path
+        d={`M${x - 2.4} ${y - 1.4} L${x - 3.4} ${y - 3} M${x + 2.4} ${y - 1.4} L${x + 3.4} ${y - 3} M${x - 2.4} ${y + 1.5} L${x - 3.5} ${y + 3} M${x + 2.4} ${y + 1.5} L${x + 3.5} ${y + 3}`}
+        fill="none"
+        stroke="#0f172a"
+        strokeLinecap="round"
+        strokeWidth="0.6"
+      />
     </g>
   );
 }
@@ -187,7 +194,7 @@ function ActionArrow({
       d={d}
       fill="none"
       stroke={color}
-      strokeWidth="1.5"
+      strokeWidth="1.25"
       strokeLinecap="round"
       strokeDasharray={dashed ? "3 3" : undefined}
       markerEnd={`url(#${markerId})`}
@@ -205,6 +212,121 @@ function DiagramSvg({
   size: "compact" | "large";
 }) {
   const isLarge = size === "large";
+  const markerGreen = `${markerId}-green`;
+  const markerBlue = `${markerId}-blue`;
+  const markerRed = `${markerId}-red`;
+  const activationPlayers =
+    phase.moment === "setup"
+      ? {
+          blue: [
+            [38, 34],
+            [56, 52],
+            [38, 73],
+          ],
+          red: [
+            [94, 35],
+            [110, 58],
+            [94, 77],
+          ],
+          ball: [56, 52],
+        }
+      : {
+          blue: [
+            [50, 28],
+            [86, 40],
+            [62, 76],
+          ],
+          red: [
+            [91, 35],
+            [118, 45],
+            [98, 78],
+          ],
+          ball: [86, 40],
+        };
+  const mainPlayers =
+    phase.moment === "setup"
+      ? {
+          blue: [
+            [39, 31],
+            [50, 53],
+            [39, 76],
+          ],
+          red: [
+            [111, 31],
+            [121, 53],
+            [111, 76],
+          ],
+          ball: [50, 53],
+        }
+      : phase.moment === "play"
+        ? {
+            blue: [
+              [53, 31],
+              [78, 48],
+              [58, 78],
+            ],
+            red: [
+              [92, 35],
+              [106, 53],
+              [104, 76],
+            ],
+            ball: [78, 48],
+          }
+        : {
+            blue: [
+              [76, 29],
+              [112, 38],
+              [78, 73],
+            ],
+            red: [
+              [92, 45],
+              [108, 61],
+              [102, 82],
+            ],
+            ball: [112, 38],
+          };
+  const progressionPlayers =
+    phase.moment === "setup"
+      ? {
+          blue: [
+            [32, 30],
+            [53, 56],
+            [32, 80],
+          ],
+          red: [
+            [106, 29],
+            [123, 54],
+            [106, 80],
+          ],
+          ball: [53, 56],
+        }
+      : phase.moment === "play"
+        ? {
+            blue: [
+              [48, 34],
+              [78, 50],
+              [58, 82],
+            ],
+            red: [
+              [88, 30],
+              [108, 50],
+              [96, 77],
+            ],
+            ball: [78, 50],
+          }
+        : {
+            blue: [
+              [82, 30],
+              [118, 35],
+              [88, 70],
+            ],
+            red: [
+              [72, 48],
+              [98, 58],
+              [76, 84],
+            ],
+            ball: [118, 35],
+          };
 
   return (
     <svg
@@ -214,8 +336,14 @@ function DiagramSvg({
       className={["h-full w-full", isLarge ? "min-h-72" : "min-h-40"].join(" ")}
     >
       <defs>
-        <marker id={markerId} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-          <path d="M0,1 L7,4 L0,7 Z" fill="#0f766e" />
+        <marker id={markerGreen} markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto">
+          <path d="M0,1 L5.5,3 L0,5 Z" fill="#0f766e" />
+        </marker>
+        <marker id={markerBlue} markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto">
+          <path d="M0,1 L5.5,3 L0,5 Z" fill="#2563eb" />
+        </marker>
+        <marker id={markerRed} markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto">
+          <path d="M0,1 L5.5,3 L0,5 Z" fill="#ef4444" />
         </marker>
       </defs>
 
@@ -230,20 +358,20 @@ function DiagramSvg({
 
       {phase.role === "activation" ? (
         <>
-          <Ball x={56} y={52} />
-          <Player x={38} y={34} team="blue" />
-          <Player x={56} y={52} team="blue" />
-          <Player x={38} y={73} team="blue" />
-          <Player x={94} y={35} team="red" />
-          <Player x={110} y={58} team="red" />
-          <Player x={94} y={77} team="red" />
+          <Ball x={activationPlayers.ball[0]} y={activationPlayers.ball[1]} />
+          {activationPlayers.blue.map(([x, y]) => (
+            <Player key={`activation-blue-${x}-${y}`} x={x} y={y} team="blue" />
+          ))}
+          {activationPlayers.red.map(([x, y]) => (
+            <Player key={`activation-red-${x}-${y}`} x={x} y={y} team="red" />
+          ))}
           {phase.moment !== "setup" ? (
-            <ActionArrow d="M40 34 C57 24, 78 25, 97 35" markerId={markerId} dashed />
+            <ActionArrow d="M43 34 C56 24, 72 24, 88 37" markerId={markerBlue} color="#2563eb" dashed />
           ) : null}
           {phase.moment === "play" || phase.moment === "score" ? (
             <>
-              <ActionArrow d="M58 52 C80 43, 104 37, 134 24" markerId={markerId} />
-              <ActionArrow d="M110 58 C119 47, 124 37, 132 29" markerId={markerId} color="#ef4444" dashed />
+              <ActionArrow d="M86 40 C101 34, 118 28, 135 24" markerId={markerGreen} />
+              <ActionArrow d="M118 45 C124 40, 129 34, 133 29" markerId={markerRed} color="#ef4444" dashed />
             </>
           ) : null}
           <CueLabel x={24} y={18}>{phase.moment === "setup" ? "Start" : "Play"}</CueLabel>
@@ -253,25 +381,25 @@ function DiagramSvg({
 
       {phase.role === "main" ? (
         <>
-          <Ball x={57} y={53} />
-          <Player x={39} y={31} team="blue" />
-          <Player x={50} y={53} team="blue" />
-          <Player x={39} y={76} team="blue" />
-          <Player x={111} y={31} team="red" />
-          <Player x={121} y={53} team="red" />
-          <Player x={111} y={76} team="red" />
+          <Ball x={mainPlayers.ball[0]} y={mainPlayers.ball[1]} />
+          {mainPlayers.blue.map(([x, y]) => (
+            <Player key={`main-blue-${x}-${y}`} x={x} y={y} team="blue" />
+          ))}
+          {mainPlayers.red.map(([x, y]) => (
+            <Player key={`main-red-${x}-${y}`} x={x} y={y} team="red" />
+          ))}
           {phase.moment !== "setup" ? (
-            <ActionArrow d="M58 53 C74 45, 91 45, 108 53" markerId={markerId} />
+            <ActionArrow d="M78 48 C88 45, 99 47, 108 53" markerId={markerGreen} />
           ) : null}
           {phase.moment === "play" || phase.moment === "score" ? (
             <>
-              <ActionArrow d="M111 31 C92 35, 73 42, 53 51" markerId={markerId} color="#ef4444" dashed />
-              <ActionArrow d="M39 76 C62 83, 86 83, 111 76" markerId={markerId} dashed />
-              <ActionArrow d="M108 53 C118 44, 126 33, 136 24" markerId={markerId} />
+              <ActionArrow d="M92 35 C80 38, 66 43, 54 50" markerId={markerRed} color="#ef4444" dashed />
+              <ActionArrow d="M58 78 C75 84, 93 83, 108 76" markerId={markerBlue} color="#2563eb" dashed />
+              <ActionArrow d="M112 38 C121 33, 129 27, 136 24" markerId={markerGreen} />
             </>
           ) : null}
           {phase.moment === "score" ? (
-            <ActionArrow d="M136 24 C119 17, 90 17, 62 28" markerId={markerId} color="#64748b" dashed />
+            <ActionArrow d="M112 38 C92 30, 75 31, 58 42" markerId={markerBlue} color="#2563eb" dashed />
           ) : null}
           <CueLabel x={67} y={40}>Play</CueLabel>
           {phase.moment === "play" ? <CueLabel x={72} y={90}>Press</CueLabel> : null}
@@ -282,27 +410,27 @@ function DiagramSvg({
       {phase.role === "progression" ? (
         <>
           <rect x="73" y="8" width="14" height="89" fill="#f1f5f9" stroke="#cbd5e1" strokeDasharray="3 3" />
-          <Ball x={53} y={56} />
-          <Player x={32} y={30} team="blue" />
-          <Player x={53} y={56} team="blue" />
-          <Player x={32} y={80} team="blue" />
-          <Player x={106} y={29} team="red" />
-          <Player x={123} y={54} team="red" />
-          <Player x={106} y={80} team="red" />
+          <Ball x={progressionPlayers.ball[0]} y={progressionPlayers.ball[1]} />
+          {progressionPlayers.blue.map(([x, y]) => (
+            <Player key={`progression-blue-${x}-${y}`} x={x} y={y} team="blue" />
+          ))}
+          {progressionPlayers.red.map(([x, y]) => (
+            <Player key={`progression-red-${x}-${y}`} x={x} y={y} team="red" />
+          ))}
           {phase.moment !== "setup" ? (
-            <ActionArrow d="M106 29 C88 38, 70 49, 55 56" markerId={markerId} color="#ef4444" dashed />
+            <ActionArrow d="M88 30 C76 38, 67 45, 58 55" markerId={markerRed} color="#ef4444" dashed />
           ) : null}
           {phase.moment === "play" || phase.moment === "score" ? (
             <>
-              <ActionArrow d="M55 56 C70 50, 85 44, 99 36" markerId={markerId} />
-              <ActionArrow d="M99 36 C112 30, 124 26, 136 24" markerId={markerId} />
-              <ActionArrow d="M32 80 C54 70, 75 63, 94 55" markerId={markerId} dashed />
+              <ActionArrow d="M78 50 C90 43, 101 38, 114 35" markerId={markerGreen} />
+              <ActionArrow d="M114 35 C123 30, 131 26, 138 24" markerId={markerGreen} />
+              <ActionArrow d="M58 82 C70 72, 83 64, 96 58" markerId={markerBlue} color="#2563eb" dashed />
             </>
           ) : null}
           {phase.moment === "score" ? (
-            <ActionArrow d="M136 24 C116 88, 65 92, 32 80" markerId={markerId} color="#64748b" dashed />
+            <ActionArrow d="M82 30 C94 39, 106 50, 118 63" markerId={markerBlue} color="#2563eb" dashed />
           ) : null}
-          <CueLabel x={58} y={34}>Recover</CueLabel>
+          {phase.moment === "setup" ? <CueLabel x={58} y={34}>Start</CueLabel> : null}
           {phase.moment !== "setup" ? <CueLabel x={100} y={18}>Counter</CueLabel> : null}
           <CueLabel x={118} y={75}>{phase.moment === "score" ? "Reset" : "Score"}</CueLabel>
         </>
@@ -384,10 +512,17 @@ function DiagramLegend() {
       </p>
       <p className="flex items-center gap-2">
         <svg viewBox="0 0 34 10" aria-hidden="true" className="h-3 w-10">
+          <path d="M2 5 H28" fill="none" stroke="#2563eb" strokeDasharray="3 3" strokeLinecap="round" strokeWidth="1.5" />
+          <path d="M27 2 L32 5 L27 8" fill="none" stroke="#2563eb" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+        </svg>
+        Blue dashed arrow = support/recovery run
+      </p>
+      <p className="flex items-center gap-2">
+        <svg viewBox="0 0 34 10" aria-hidden="true" className="h-3 w-10">
           <path d="M2 5 H28" fill="none" stroke="#ef4444" strokeDasharray="3 3" strokeLinecap="round" strokeWidth="1.5" />
           <path d="M27 2 L32 5 L27 8" fill="none" stroke="#ef4444" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
         </svg>
-        Dashed arrow = pressure/recovery cue
+        Red dashed arrow = pressure/chase
       </p>
     </div>
   );

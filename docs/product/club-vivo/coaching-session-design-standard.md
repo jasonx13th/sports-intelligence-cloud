@@ -170,6 +170,24 @@ the diagram area to enlarge it. Diagrams should avoid overlap between players, a
 and labels. The legend should include visual examples for blue dot, red dot, yellow dot, cone gate,
 solid arrow, and dashed arrow.
 
+## 6d. Diagram Movement Clarity v4
+
+Diagram symbols must stay consistent. Blue dots are the coached team, red dots are opposition, and
+yellow dots are cones, goals, or equipment. Two yellow cone dots connected by a short line means a
+cone gate. A solid green arrow means player-with-ball or ball action, such as carry, pass, shoot,
+or score. A blue dashed arrow means coached-team off-ball run, support movement, or recovery run. A
+red dashed arrow means opposition pressure, chase, or defensive movement.
+
+The ball must be visible as a small ball symbol, not as the word "Ball." Player positions should
+change across Setup, How to play, and How to score / reset so movement is visible without reading
+every caption. Activity 2 and Activity 3 must not reuse the same visual shape; Activity 3 should
+show a different pressure angle, recovery/counter shape, or second decision.
+
+Avoid unexplained grey curved reset arrows. Keep arrows and arrowheads thin, avoid overlap with
+players, labels, gates, and the ball, and use captions for detail so the SVG stays clean. When AI
+diagram generation is added later, it should produce structured diagram instructions for this
+deterministic renderer rather than raw images.
+
 ## 7. Quick Activity Standard
 
 Quick Activity should usually produce one strong activity that a coach can run fast.

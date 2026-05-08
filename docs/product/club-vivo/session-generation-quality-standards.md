@@ -122,6 +122,25 @@ Story visuals for Activities 1, 2, and 3 should always be visible. The diagram a
 clickable to enlarge. Diagrams should avoid player, arrow, gate, ball, and label overlap. The legend
 should visually explain blue dot, red dot, yellow dot, cone gate, solid arrow, and dashed arrow.
 
+## Diagram Movement Clarity v4 Standard
+
+Diagram symbols and arrows must be consistent. Blue dots are the coached team, red dots are
+opposition, yellow dots are cones/goals/equipment, and yellow o--o means cone gate. Solid green
+arrows show player-with-ball or ball action. Blue dashed arrows show coached-team support,
+off-ball runs, or recovery runs. Red dashed arrows show opposition pressure, chase, or defensive
+movement.
+
+The ball should always be shown as a small ball symbol where play starts or continues. Avoid the
+word "Ball" inside the SVG. Player positions should change across Setup, How to play, and How to
+score / reset so the movement story is visible. Activity 2 and Activity 3 should not reuse the same
+shape with different arrows; Activity 3 needs a distinct pressure angle, recovery/counter shape, or
+second decision.
+
+Avoid unexplained grey curved reset arrows. Keep arrows and arrowheads thin, avoid overlapping
+players and labels, and let captions explain where the ball starts, what triggers play, who moves,
+and how to score or reset. Future AI diagram work should produce structured diagram instructions
+for this deterministic renderer, not raw generated images.
+
 ## Drill Mode Standard
 
 A drill output should be specific and usable, but still game-like when possible.

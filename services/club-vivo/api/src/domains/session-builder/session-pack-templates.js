@@ -149,7 +149,7 @@ function buildPromptInfluenceSentences(promptSignals) {
   return {
     first: [
       environment ? `Set the area to fit the available ${environment}.` : "",
-      "Setup: organize the space quickly, demo the first action, and start with high player involvement.",
+      "Run: demo the first action, connect it to the session theme, and start with high player involvement.",
     ].filter(Boolean),
     middle: [
       coachNotes ? `Coach notes: ${getCoachNotesSnippet(coachNotes)}.` : "",
@@ -591,8 +591,8 @@ function buildDuckDuckGooseEscapeDescription({ promptSignals, phase = "main" }) 
   return capDescription(
     [
       isDefendingActivity
-        ? `Setup: build a 20x18 yard area with two end gates and two side gates using ${equipmentText}; split players into 3v3 groups when possible and place spare balls beside the coach for fast restarts${playerCount}.`
-        : `Setup: build a 16x16 yard grid or circle with ${equipmentText}; place four cone gates outside it and give players balls when possible${playerCount}.`,
+        ? `Setup: Field: 20x18 yards with two end gates, two side gates, and ${equipmentText}; split players into 3v3 groups when possible and place spare balls beside the coach for fast restarts${playerCount}.`
+        : `Setup: Grid: 16x16 yards with four outside cone gates and ${equipmentText}; give players balls when possible${playerCount}.`,
       "How to start: players dribble or toe-tap while one caller says duck, duck, goose; on goose, the named player takes a first touch into space.",
       isDefendingActivity
         ? `How to run it: the goose tries to escape through a gate while the first defender chases and the other defenders recover to cover angles; ${phaseDetail}.`
@@ -638,22 +638,22 @@ function buildCoachReadyDescription({ phase, baseDescription, promptSignals }) {
   const noteText = coachNotes ? `Coach notes: ${coachNotes}.` : "";
   const phaseRun =
     phase === "final"
-      ? "Run: restart like a real game, keep score, and coach briefly on balls out."
+      ? "Run: apply the same theme from the session, restart like a real game, keep score, and coach briefly on balls out."
       : phase === "arrival"
-        ? "Run: start as players arrive, keep rounds short, and let late arrivals join."
+        ? "Run: introduce the session theme, ball start, movement direction, and scoring idea before the main activities."
         : phase === "progression"
-          ? "Run: add pressure or direction so players solve it closer to game speed."
-          : "Run: start each round, keep score, and rotate roles every 2-3 minutes.";
+          ? "Run: progress from Activity 2 by adding transition, recovery, or a faster second decision."
+          : "Run: increase the pressure from Activity 1, start each round with a first pass, keep score, and rotate roles every 2-3 minutes.";
   const baseSnippet = compactText(baseDescription, "").slice(0, 135).replace(/\s+\S*$/, "").trim();
 
   const setupByPhase =
     phase === "final"
-      ? `Setup: build a game field with clear touchlines, ${scoringTargets}, and quick restart balls; keep teams balanced and ready to compete`
+      ? `Setup: Field: 36x28 yards with clear touchlines, ${scoringTargets}, and quick restart balls; keep teams balanced and ready to compete`
       : phase === "arrival"
-        ? `Setup: build a small arrival grid with two or four gates using ${equipmentText}; start with every player moving and no long lines`
+        ? `Setup: Grid: 18x16 yards with four cone gates, balls starting central, and ${equipmentText}; introduce the theme, movement direction, and scoring idea`
         : phase === "progression"
-          ? `Setup: build a directional area with two scoring targets, one recovery line, and space for the next group to rotate in`
-          : `Setup: build a 20x18 yard area with two end gates and two side gates using ${equipmentText}; place spare balls beside the coach`;
+          ? `Setup: Field: 24x20 yards with two end gates, one recovery line, and ${equipmentText}; use the same direction as Activity 2 with a counter target added`
+          : `Setup: Grid: 20x18 yards with two end gates, two side gates, and ${equipmentText}; place spare balls beside the coach`;
 
   return capDescription(
     [
@@ -710,7 +710,7 @@ function buildFinalGameDescription({ promptSignals, ageBand }) {
   return buildCoachReadyDescription({
     phase: "final",
     promptSignals,
-    baseDescription: `Play a real ${gameName}. Keep direction, restarts, and scoring through ${scoringTargetText} so players apply ${objective} in the game.`,
+    baseDescription: `Play a real ${gameName}. Keep direction, restarts, and scoring through ${scoringTargetText} so players apply ${objective} from the first three activities in the game.`,
   });
 }
 
@@ -722,7 +722,7 @@ function buildDefendingGatesMainDescription({ promptSignals, phase }) {
 
   return capDescription(
     [
-      "Setup: build a 24x20 yard field with two end gates and two side gates; play 3v3 with spare balls beside the coach and waiting teams ready on the outside.",
+      "Setup: Field: 24x20 yards with two end gates, two side gates, spare balls beside the coach, and waiting teams ready on the outside.",
       "How to start: coach serves to the attacking team and calls a gate color or side to create the first defending decision.",
       "How to run it: defenders press the ball, one covers the closest gate, and the third protects the far-side escape while attackers try to split or dribble through a gate.",
       "Rules / scoring: attackers score by crossing a gate under control; defenders score by winning the ball and countering through any gate within six seconds.",

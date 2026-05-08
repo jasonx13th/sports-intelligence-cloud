@@ -323,6 +323,61 @@ test("generatePack gives every full-session activity coach-ready sections", () =
   }
 });
 
+test("generatePack full-session setup starts with direct grid or field dimensions", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing transition",
+    sessionMode: "full_session",
+    sessionsCount: 1,
+    equipment: ["balls", "flat cones", "pinnies"],
+  });
+
+  const [session] = pack.sessions;
+  const setupLines = session.activities.map((activity) =>
+    activity.description.match(/Setup: [^.]+\./)?.[0] || ""
+  );
+
+  assert.equal(setupLines.length, 4);
+  assert.match(setupLines[0], /^Setup: Grid: 18x16 yards/i);
+  assert.match(setupLines[1], /^Setup: Grid: 20x18 yards/i);
+  assert.match(setupLines[2], /^Setup: Field: 24x20 yards/i);
+  assert.match(setupLines[3], /^Setup: Field: 36x28 yards/i);
+  assert.equal(/diameter/i.test(setupLines.join(" ")), false);
+  assert.match(setupLines.join(" "), /balls, flat cones, pinnies/i);
+});
+
+test("generatePack full-session story progresses from theme intro to final game", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "defending pressure",
+    sessionMode: "full_session",
+    coachNotes: "Keep the story connected through gates and quick transition.",
+    sessionsCount: 1,
+    equipment: ["balls", "flat cones", "pinnies"],
+  });
+
+  const [activity1, activity2, activity3, activity4] = pack.sessions[0].activities;
+  const setup1 = activity1.description.match(/Setup: [^.]+\./)?.[0] || "";
+  const setup2 = activity2.description.match(/Setup: [^.]+\./)?.[0] || "";
+  const setup3 = activity3.description.match(/Setup: [^.]+\./)?.[0] || "";
+  const run2 = activity2.description.match(/Run: [^.]+\./)?.[0] || "";
+  const run3 = activity3.description.match(/Run: [^.]+\./)?.[0] || "";
+
+  assert.match(setup1, /introduce the theme, movement direction, and scoring idea/i);
+  assert.match(activity1.description, /introduce the session theme/i);
+  assert.match(run2, /increase the pressure from Activity 1|first pass/i);
+  assert.match(run3, /progress from Activity 2|transition|recovery|second decision/i);
+  assert.notEqual(setup2, setup3);
+  assert.notEqual(run2, run3);
+  assert.equal(/Pugg goals, small goals, target goals, or cone gates/i.test(pack.sessions[0].activities.map((activity) => activity.description).join(" ")), false);
+  assert.match(activity4.name, /Final Game|Tournament|Competitive/i);
+  assert.match(activity4.description, /apply .*defending pressure|first three activities|competitive|keep score/i);
+});
+
 test("generatePack does not end full sessions with generic cooldown", () => {
   const pack = generatePack({
     sport: "soccer",

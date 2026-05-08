@@ -157,10 +157,8 @@ function Gate({ x, y, rotate = 0 }: { x: number; y: number; rotate?: number }) {
 function Ball({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <circle cx={x} cy={y} r="2.8" fill="white" stroke="#0f172a" strokeWidth="1" />
-      <text x={x + 5} y={y + 3} className="fill-slate-700 text-[7px] font-bold">
-        Ball
-      </text>
+      <circle cx={x} cy={y} r="3.2" fill="white" stroke="#0f172a" strokeWidth="1" />
+      <path d={`M${x - 2} ${y} H${x + 2} M${x} ${y - 2} V${y + 2}`} stroke="#0f172a" strokeWidth="0.6" />
     </g>
   );
 }
@@ -189,9 +187,9 @@ function ActionArrow({
       d={d}
       fill="none"
       stroke={color}
-      strokeWidth="2"
+      strokeWidth="1.5"
       strokeLinecap="round"
-      strokeDasharray={dashed ? "4 4" : undefined}
+      strokeDasharray={dashed ? "3 3" : undefined}
       markerEnd={`url(#${markerId})`}
     />
   );
@@ -217,7 +215,7 @@ function DiagramSvg({
     >
       <defs>
         <marker id={markerId} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-          <path d="M0,0 L8,4 L0,8 Z" fill="#0f766e" />
+          <path d="M0,1 L7,4 L0,7 Z" fill="#0f766e" />
         </marker>
       </defs>
 
@@ -232,20 +230,20 @@ function DiagramSvg({
 
       {phase.role === "activation" ? (
         <>
-          <Ball x={58} y={53} />
-          <Player x={42} y={34} team="blue" />
-          <Player x={58} y={53} team="blue" />
-          <Player x={43} y={73} team="blue" />
-          <Player x={92} y={34} team="red" />
-          <Player x={105} y={56} team="red" />
-          <Player x={91} y={76} team="red" />
+          <Ball x={56} y={52} />
+          <Player x={38} y={34} team="blue" />
+          <Player x={56} y={52} team="blue" />
+          <Player x={38} y={73} team="blue" />
+          <Player x={94} y={35} team="red" />
+          <Player x={110} y={58} team="red" />
+          <Player x={94} y={77} team="red" />
           {phase.moment !== "setup" ? (
-            <ActionArrow d="M42 34 C57 24, 78 25, 98 34" markerId={markerId} dashed />
+            <ActionArrow d="M40 34 C57 24, 78 25, 97 35" markerId={markerId} dashed />
           ) : null}
           {phase.moment === "play" || phase.moment === "score" ? (
             <>
-              <ActionArrow d="M58 53 C78 44, 101 39, 134 24" markerId={markerId} />
-              <ActionArrow d="M105 56 C115 45, 122 36, 130 28" markerId={markerId} color="#ef4444" dashed />
+              <ActionArrow d="M58 52 C80 43, 104 37, 134 24" markerId={markerId} />
+              <ActionArrow d="M110 58 C119 47, 124 37, 132 29" markerId={markerId} color="#ef4444" dashed />
             </>
           ) : null}
           <CueLabel x={24} y={18}>{phase.moment === "setup" ? "Start" : "Play"}</CueLabel>
@@ -255,28 +253,28 @@ function DiagramSvg({
 
       {phase.role === "main" ? (
         <>
-          <Ball x={58} y={53} />
-          <Player x={43} y={32} team="blue" />
+          <Ball x={57} y={53} />
+          <Player x={39} y={31} team="blue" />
           <Player x={50} y={53} team="blue" />
-          <Player x={43} y={74} team="blue" />
-          <Player x={106} y={32} team="red" />
-          <Player x={112} y={53} team="red" />
-          <Player x={106} y={74} team="red" />
+          <Player x={39} y={76} team="blue" />
+          <Player x={111} y={31} team="red" />
+          <Player x={121} y={53} team="red" />
+          <Player x={111} y={76} team="red" />
           {phase.moment !== "setup" ? (
-            <ActionArrow d="M58 53 C72 48, 88 47, 103 53" markerId={markerId} />
+            <ActionArrow d="M58 53 C74 45, 91 45, 108 53" markerId={markerId} />
           ) : null}
           {phase.moment === "play" || phase.moment === "score" ? (
             <>
-              <ActionArrow d="M106 32 C88 35, 69 41, 52 50" markerId={markerId} color="#ef4444" dashed />
-              <ActionArrow d="M43 74 C61 80, 85 80, 104 74" markerId={markerId} dashed />
-              <ActionArrow d="M103 53 C113 43, 124 32, 136 24" markerId={markerId} />
+              <ActionArrow d="M111 31 C92 35, 73 42, 53 51" markerId={markerId} color="#ef4444" dashed />
+              <ActionArrow d="M39 76 C62 83, 86 83, 111 76" markerId={markerId} dashed />
+              <ActionArrow d="M108 53 C118 44, 126 33, 136 24" markerId={markerId} />
             </>
           ) : null}
           {phase.moment === "score" ? (
             <ActionArrow d="M136 24 C119 17, 90 17, 62 28" markerId={markerId} color="#64748b" dashed />
           ) : null}
-          <CueLabel x={68} y={43}>Play</CueLabel>
-          {phase.moment === "play" ? <CueLabel x={73} y={86}>Press</CueLabel> : null}
+          <CueLabel x={67} y={40}>Play</CueLabel>
+          {phase.moment === "play" ? <CueLabel x={72} y={90}>Press</CueLabel> : null}
           <CueLabel x={117} y={18}>{phase.moment === "score" ? "Reset" : "Score"}</CueLabel>
         </>
       ) : null}
@@ -284,28 +282,28 @@ function DiagramSvg({
       {phase.role === "progression" ? (
         <>
           <rect x="73" y="8" width="14" height="89" fill="#f1f5f9" stroke="#cbd5e1" strokeDasharray="3 3" />
-          <Ball x={56} y={55} />
-          <Player x={35} y={32} team="blue" />
-          <Player x={56} y={55} team="blue" />
-          <Player x={35} y={78} team="blue" />
-          <Player x={104} y={31} team="red" />
-          <Player x={116} y={53} team="red" />
-          <Player x={104} y={77} team="red" />
+          <Ball x={53} y={56} />
+          <Player x={32} y={30} team="blue" />
+          <Player x={53} y={56} team="blue" />
+          <Player x={32} y={80} team="blue" />
+          <Player x={106} y={29} team="red" />
+          <Player x={123} y={54} team="red" />
+          <Player x={106} y={80} team="red" />
           {phase.moment !== "setup" ? (
-            <ActionArrow d="M104 31 C86 38, 69 48, 56 55" markerId={markerId} color="#ef4444" dashed />
+            <ActionArrow d="M106 29 C88 38, 70 49, 55 56" markerId={markerId} color="#ef4444" dashed />
           ) : null}
           {phase.moment === "play" || phase.moment === "score" ? (
             <>
-              <ActionArrow d="M56 55 C70 50, 84 45, 96 38" markerId={markerId} />
-              <ActionArrow d="M96 38 C110 31, 122 26, 136 24" markerId={markerId} />
-              <ActionArrow d="M35 78 C55 69, 74 62, 91 55" markerId={markerId} dashed />
+              <ActionArrow d="M55 56 C70 50, 85 44, 99 36" markerId={markerId} />
+              <ActionArrow d="M99 36 C112 30, 124 26, 136 24" markerId={markerId} />
+              <ActionArrow d="M32 80 C54 70, 75 63, 94 55" markerId={markerId} dashed />
             </>
           ) : null}
           {phase.moment === "score" ? (
-            <ActionArrow d="M136 24 C115 86, 64 91, 35 78" markerId={markerId} color="#64748b" dashed />
+            <ActionArrow d="M136 24 C116 88, 65 92, 32 80" markerId={markerId} color="#64748b" dashed />
           ) : null}
-          <CueLabel x={60} y={36}>Recover</CueLabel>
-          {phase.moment !== "setup" ? <CueLabel x={97} y={20}>Counter</CueLabel> : null}
+          <CueLabel x={58} y={34}>Recover</CueLabel>
+          {phase.moment !== "setup" ? <CueLabel x={100} y={18}>Counter</CueLabel> : null}
           <CueLabel x={118} y={75}>{phase.moment === "score" ? "Reset" : "Score"}</CueLabel>
         </>
       ) : null}
@@ -356,23 +354,40 @@ function FinalGameFormatCard({ activity }: { activity?: DiagramActivity }) {
 
 function DiagramLegend() {
   return (
-    <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-500">
-      <p>
-        <span className="font-semibold text-blue-700">Blue</span> coached team,{" "}
-        <span className="font-semibold text-red-600">red</span> opposition,{" "}
-        <span className="font-semibold text-yellow-700">yellow</span> cones/goals/equipment.
+    <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-500 sm:grid-cols-2">
+      <p className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+        Blue = coached team
       </p>
-      <p>
-        <span className="inline-flex items-center gap-1 align-middle font-semibold text-yellow-700">
-          yellow
-          <span className="inline-flex items-center gap-0.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 ring-1 ring-yellow-600" />
-            <span className="h-px w-3 bg-yellow-700" />
-            <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 ring-1 ring-yellow-600" />
-          </span>
-        </span>{" "}
-        = cone gate. Solid arrow = player/ball action. Dashed arrow = pressure, recovery, or
-        movement cue.
+      <p className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+        Red = opposition
+      </p>
+      <p className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-yellow-400 ring-1 ring-yellow-600" />
+        Yellow = cones/goals/equipment
+      </p>
+      <p className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-0.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 ring-1 ring-yellow-600" />
+          <span className="h-px w-3 bg-yellow-700" />
+          <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 ring-1 ring-yellow-600" />
+        </span>
+        Yellow o--o = cone gate
+      </p>
+      <p className="flex items-center gap-2">
+        <svg viewBox="0 0 34 10" aria-hidden="true" className="h-3 w-10">
+          <path d="M2 5 H28" fill="none" stroke="#0f766e" strokeLinecap="round" strokeWidth="1.5" />
+          <path d="M27 2 L32 5 L27 8" fill="none" stroke="#0f766e" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+        </svg>
+        Solid arrow = player/ball action
+      </p>
+      <p className="flex items-center gap-2">
+        <svg viewBox="0 0 34 10" aria-hidden="true" className="h-3 w-10">
+          <path d="M2 5 H28" fill="none" stroke="#ef4444" strokeDasharray="3 3" strokeLinecap="round" strokeWidth="1.5" />
+          <path d="M27 2 L32 5 L27 8" fill="none" stroke="#ef4444" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+        </svg>
+        Dashed arrow = pressure/recovery cue
       </p>
     </div>
   );
@@ -390,7 +405,6 @@ function ActivityDiagramCanvas({
   size?: "compact" | "large";
 }) {
   const id = useId().replace(/:/g, "");
-  const [showSteps, setShowSteps] = useState(false);
   const kind = inferDiagramKind(activity, activityIndex, totalActivities);
 
   if (kind === "final_game_format") {
@@ -398,43 +412,17 @@ function ActivityDiagramCanvas({
   }
 
   const phases = buildDiagramPhases(kind, activityIndex);
-  const setupPhase = phases[0];
-  const storyPhases = phases.slice(1);
 
   return (
     <div className="grid gap-3">
-      <PhaseCard
-        phase={setupPhase}
-        markerId={`club-vivo-diagram-arrow-${id}-setup`}
-        size={size}
-      />
-
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs leading-5 text-slate-600">
-          Static view shows setup. Story views show how to play and how to score or reset.
-        </p>
-        <button
-          type="button"
-          onClick={() => setShowSteps((current) => !current)}
-          className="inline-flex w-fit rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-          aria-expanded={showSteps}
-        >
-          {showSteps ? "Hide story" : "Show story"}
-        </button>
-      </div>
-
-      {showSteps ? (
-        <div className="grid gap-3">
-          {storyPhases.map((phase, index) => (
-            <PhaseCard
-              key={`${phase.label}-${index}`}
-              phase={phase}
-              markerId={`club-vivo-diagram-arrow-${id}-story-${index}`}
-              size={size}
-            />
-          ))}
-        </div>
-      ) : null}
+      {phases.map((phase, index) => (
+        <PhaseCard
+          key={`${phase.label}-${index}`}
+          phase={phase}
+          markerId={`club-vivo-diagram-arrow-${id}-${index}`}
+          size={size}
+        />
+      ))}
     </div>
   );
 }
@@ -478,19 +466,25 @@ export function DiagramPlaceholder({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <ActivityDiagramCanvas
-        activity={activity}
-        activityIndex={activityIndex}
-        totalActivities={totalActivities}
-      />
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsZoomOpen(true)}
-        className="mt-3 inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setIsZoomOpen(true);
+          }
+        }}
+        className="block w-full rounded-xl text-left outline-none transition hover:bg-teal-50/20 focus-visible:ring-2 focus-visible:ring-teal-600"
         aria-label={`Open larger activity diagram for ${activity?.name || "this activity"}`}
       >
-        Open larger diagram
-      </button>
+        <ActivityDiagramCanvas
+          activity={activity}
+          activityIndex={activityIndex}
+          totalActivities={totalActivities}
+        />
+      </div>
       <DiagramLegend />
 
       {isZoomOpen ? (

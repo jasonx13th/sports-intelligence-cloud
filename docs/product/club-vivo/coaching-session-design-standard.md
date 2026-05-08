@@ -152,6 +152,24 @@ activity, while Activity 3 should show a visibly different progression, recovery
 decision. The legend should explain the cone-gate symbol: two yellow cone dots connected by a short
 line means gate.
 
+## 6c. Session Diagram Layout v3
+
+Session Builder output should read like one progressive coaching story. Activity 1 introduces the
+grid, theme, ball start, movement direction, gates, and scoring idea. Activity 2 is the first main
+activity and raises pressure or decision-making. Activity 3 is the second main activity and should
+progress difficulty, transition, recovery, or decision speed instead of sounding or looking like a
+copy of Activity 2. Activity 4 applies the same theme in a competitive final game or mini
+tournament.
+
+Coach-facing setup text should start with a direct space description: "Grid: 20x18 yards..." or
+"Field: 24x20 yards..." for rectangular spaces, and "Circle: 12-yard diameter..." only when the
+activity is truly circular. Do not use diameter for rectangular grids.
+
+Story visuals should always be visible for Activities 1, 2, and 3. Coaches should be able to click
+the diagram area to enlarge it. Diagrams should avoid overlap between players, arrows, gates, ball,
+and labels. The legend should include visual examples for blue dot, red dot, yellow dot, cone gate,
+solid arrow, and dashed arrow.
+
 ## 7. Quick Activity Standard
 
 Quick Activity should usually produce one strong activity that a coach can run fast.

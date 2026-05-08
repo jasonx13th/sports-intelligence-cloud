@@ -92,17 +92,40 @@ A great session should:
 
 For a 60-minute session, use this standard:
 
-Activity 1: Fun game-like warm-up that activates the theme.
+Activity 1: Simple game-like activation that introduces the session theme.
 
 Activity 2: Main activity 1. High-quality theme-focused practice.
 
 Activity 3: Main activity 2. Same importance as Activity 2. Should be a progression, variation, or
 different game condition.
 
-Activity 4: Final game, mini tournament, or competitive close that applies the theme.
+Activity 4: Final game, mini tournament, or competitive close that applies the theme. This block
+should not need a full tactical diagram; the coach needs the game format, teams, scoring, and final
+constraint.
 
 Activity 1 should not be a boring generic warm-up. Activity 3 should not be weaker than Activity 2.
 Activity 4 should not be just "water break + final game." It should be a real competitive close.
+
+## 6a. Objective, Coach Notes, Equipment, and Diagram Clarity
+
+The Objective section is for what the session is teaching. It should describe the learning focus
+the coach wants players to improve.
+
+Coaching note / activity idea is for today's context, constraint, coach preference, or extra idea.
+Examples include player count, field limits, preferred activity style, team needs, or a specific
+idea the coach wants included.
+
+Equipment should be specific and direct. Generated coach-facing setup should avoid vague lists such
+as "Pugg goals, small goals, target goals, or cone gates." If the coach selects equipment, the
+generator should prefer that equipment in the setup. If no equipment is selected, the generator may
+choose simple standard equipment, but should still write one clear setup choice. If a session would
+be better with missing equipment, suggest it as an optional coaching note rather than as a vague
+setup list.
+
+Diagrams should include a clear start cue, ball cue when relevant, movement cue, and a short "how
+to read/play this" caption. Coaches should be able to see where players start, where the ball
+starts, what action begins the activity, where the main movement goes, and how the action scores or
+finishes.
 
 ## 7. Quick Activity Standard
 

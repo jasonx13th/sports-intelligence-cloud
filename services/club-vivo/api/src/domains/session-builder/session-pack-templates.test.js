@@ -153,10 +153,11 @@ test("generatePack avoids goal-required wording when no goal equipment is select
   const text = session.activities.map((activity) => `${activity.name} ${activity.description}`).join(" ");
 
   assert.equal(/to goal|full-size goals?|mini goals|pugg goals/i.test(text), false);
-  assert.match(text, /cone gates|end zones|target lines|passing gates|scoring zones/i);
+  assert.match(text, /cone gates/i);
+  assert.equal(/cone goals, cone gates, target lines, end zones, scoring zones, passing gates, or possession points/i.test(text), false);
 });
 
-test("generatePack uses small-goal language when Pugg goals are selected", () => {
+test("generatePack uses selected Pugg goals directly without vague alternatives", () => {
   const pack = generatePack({
     sport: "soccer",
     ageBand: "u12",
@@ -172,7 +173,47 @@ test("generatePack uses small-goal language when Pugg goals are selected", () =>
   const text = session.activities.map((activity) => `${activity.name} ${activity.description}`).join(" ");
 
   assert.deepEqual(session.equipment, ["balls", "mini disc cones", "pugg goals"]);
-  assert.match(text, /pugg goals|mini goals|small goals|target goals|goals/i);
+  assert.match(text, /pugg goals/i);
+  assert.equal(/Pugg goals, small goals, target goals, or cone gates/i.test(text), false);
+  assert.equal(/mini goals, target goals, or cone gates/i.test(text), false);
+});
+
+test("generatePack uses selected equipment in setup text", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "pressing",
+    sessionMode: "full_session",
+    sessionsCount: 1,
+    equipment: ["balls", "flat cones", "pinnies"],
+  });
+
+  const setupText = pack.sessions[0].activities
+    .map((activity) => activity.description.match(/Setup: [^.]+\./)?.[0] || "")
+    .join(" ");
+
+  assert.match(setupText, /balls, flat cones, pinnies/i);
+});
+
+test("generatePack chooses direct standard equipment when none is selected", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 60,
+    theme: "possession",
+    sessionMode: "full_session",
+    sessionsCount: 1,
+  });
+
+  const setupText = pack.sessions[0].activities
+    .map((activity) => activity.description.match(/Setup: [^.]+\./)?.[0] || "")
+    .join(" ");
+
+  assert.match(setupText, /balls, cones, and pinnies/i);
+  assert.equal(/Pugg goals, small goals, target goals, or cone gates/i.test(setupText), false);
+  assert.equal(/cone goals, cone gates, target lines, end zones, scoring zones, passing gates, or possession points/i.test(setupText), false);
+  assert.equal(/available equipment/i.test(setupText), false);
 });
 
 test("generatePack carries OST mixed-age playful context into activity text", () => {
@@ -604,6 +645,31 @@ test("generatePack distributes full-session multi-intent defending chase ideas a
   assert.doesNotMatch(names[2], /placeholder|cooldown|water break/i);
   assert.match(names[3], /Tournament|Final Game|Competitive/i);
   assert.equal(/Water break/i.test(names.join(" ") + descriptions.join(" ")), false);
+});
+
+test("generatePack keeps activity 2 and activity 3 text distinct", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 60,
+    theme: "defending pressure",
+    sessionMode: "full_session",
+    coachNotes: "Use quick transition gates.",
+    sessionsCount: 1,
+    equipment: ["balls", "cones", "pinnies"],
+  });
+
+  const [, activity2, activity3, activity4] = pack.sessions[0].activities;
+  const setup2 = activity2.description.match(/Setup: [^.]+\./)?.[0];
+  const setup3 = activity3.description.match(/Setup: [^.]+\./)?.[0];
+  const run2 = activity2.description.match(/Run: [^.]+\./)?.[0];
+  const run3 = activity3.description.match(/Run: [^.]+\./)?.[0];
+
+  assert.notEqual(setup2, setup3);
+  assert.notEqual(run2, run3);
+  assert.match(activity4.name, /Final Game|Tournament|Competitive/i);
+  assert.match(activity4.description, /compete|competitive|keep score|real game/i);
+  assert.equal(/water break/i.test(`${activity4.name} ${activity4.description}`), false);
 });
 
 test("generatePack avoids repeating one generic setup across all full-session activities", () => {

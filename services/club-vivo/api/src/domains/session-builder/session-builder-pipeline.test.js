@@ -242,7 +242,7 @@ test("programType team context can bias generated sessions while keeping request
   );
   assert.match(
     resolvedResult.validatedPack.sessions[0].activities[0].description,
-    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
+    /Use clear spacing, scanning detail, and a progression the group can grow into\./
   );
   assert.equal(resolvedResult.validatedPack.durationMin, rawInput.durationMin);
   assert.equal(resolvedResult.validatedPack.theme, rawInput.theme);
@@ -330,7 +330,7 @@ test("optional internal methodologyRecords influence only resolvedGenerationCont
   );
   assert.match(
     resolvedResult.validatedPack.sessions[0].activities[0].description,
-    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
+    /Use clear spacing, scanning detail, and a progression the group can grow into\./
   );
   assert.equal(Object.hasOwn(resolvedResult.validatedPack, "resolvedMethodologyScope"), false);
   assert.equal(Object.hasOwn(resolvedResult.validatedPack, "methodologyInfluence"), false);
@@ -535,7 +535,7 @@ test("lookup path can resolve missing team programType and published travel meth
   assert.deepEqual(result.validatedPack.equipment, rawInput.equipment);
   assert.match(
     result.validatedPack.sessions[0].activities[0].description,
-    /Build the session with clear spacing, scanning detail, and a progression the group can grow into\./
+    /Use clear spacing, scanning detail, and a progression the group can grow into\./
   );
   assert.equal(Object.hasOwn(result.validatedPack, "resolvedProgramType"), false);
   assert.equal(Object.hasOwn(result.validatedPack, "appliedMethodologyScopes"), false);

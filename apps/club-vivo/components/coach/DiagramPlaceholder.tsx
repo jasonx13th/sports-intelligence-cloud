@@ -69,7 +69,7 @@ function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPh
     return [
       {
         label: "Setup view",
-        note: "Start with a simple activation shape, quick reactions, and players moving right away.",
+        note: "Players start inside the grid. Coach starts the action with a call; players react, move with the ball, and finish through the marked gate.",
         action: "activation"
       }
     ];
@@ -79,12 +79,12 @@ function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPh
     return [
       {
         label: "Setup view",
-        note: "Start near the defending box with an outlet player and a clear escape lane.",
+        note: "Ball starts near the regain player. Players begin close to pressure, with the outlet already visible as the escape option.",
         action: "generic"
       },
       {
         label: "Regain to outlet",
-        note: "Win the ball, secure the first pass, and escape pressure into space.",
+        note: "Start cue is the regain. First pass breaks pressure, then the outlet carries or passes into space to finish the action.",
         action: "outlet"
       }
     ];
@@ -94,7 +94,7 @@ function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPh
     return [
       {
         label: "Setup view",
-        note: "Players start active in the area. The trigger creates a chase to a gate.",
+        note: "Players start active in the area. Coach call starts the chase; attacker escapes with the ball through a gate to score.",
         action: "chase"
       }
     ];
@@ -104,12 +104,12 @@ function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPh
     return [
       {
         label: "Setup view",
-        note: "Set two teams in a small area with gates as the scoring targets.",
+        note: "Ball starts with the attacking team. Both teams start in a compact shape with gates as the direct scoring targets.",
         action: "generic"
       },
       {
         label: "Trigger view",
-        note: "The first defender presses while teammates cover gates and passing lanes.",
+        note: "Trigger is the first pass or bad touch. First defender presses, cover players protect gates, and the action finishes by winning it or forcing play out.",
         action: "pressure"
       }
     ];
@@ -119,12 +119,12 @@ function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPh
     return [
       {
         label: "Setup view",
-        note: "Start from the same small-sided shape so the progression feels connected.",
+        note: "Start from the same small-sided shape. Ball begins central so the first pressure and recovery lanes are easy to see.",
         action: "generic"
       },
       {
         label: "Recover / score",
-        note: "After the first action, defenders recover and counter through a gate.",
+        note: "Start cue is the turnover or escape. Defenders recover, win it, then counter through the far gate to score.",
         action: "recover"
       }
     ];
@@ -133,14 +133,17 @@ function buildDiagramPhases(kind: DiagramKind, activityIndex: number): DiagramPh
   return [
     {
       label: "Setup view",
-      note: "Use a clear field shape, short rotations, and visible scoring targets.",
+      note: "Players start in two teams with the ball central. First pass starts play; teams attack the visible scoring target.",
       action: "generic"
     },
     ...(activityIndex === 1 || activityIndex === 2
       ? [
           {
             label: activityIndex === 1 ? "Trigger view" : "Recover / score",
-            note: "Show the main action, pressure, and where players can score.",
+            note:
+              activityIndex === 1
+                ? "Start cue is the first pass. Pressure arrives, support moves, and the attack scores through the target."
+                : "Start cue is the turnover. Recover, counter, and finish through the scoring target.",
             action: activityIndex === 1 ? ("pressure" as const) : ("recover" as const)
           }
         ]
@@ -180,6 +183,25 @@ function Gate({ x, y, rotate = 0 }: { x: number; y: number; rotate?: number }) {
       <circle cx="6" cy="0" r="2.6" fill="#facc15" stroke="#ca8a04" strokeWidth="0.5" />
       <line x1="-4" y1="0" x2="4" y2="0" stroke="#ca8a04" strokeWidth="1.2" strokeDasharray="2 2" />
     </g>
+  );
+}
+
+function Ball({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r="2.8" fill="white" stroke="#0f172a" strokeWidth="1" />
+      <text x={x + 5} y={y + 3} className="fill-slate-700 text-[7px] font-bold">
+        Ball
+      </text>
+    </g>
+  );
+}
+
+function CueLabel({ x, y, children }: { x: number; y: number; children: string }) {
+  return (
+    <text x={x} y={y} className="fill-slate-700 text-[8px] font-bold">
+      {children}
+    </text>
   );
 }
 
@@ -242,6 +264,7 @@ function DiagramSvg({
 
       {phase.action === "chase" ? (
         <>
+          <Ball x={50} y={43} />
           <Player x={54} y={43} team="blue" label="Goose" />
           <Player x={67} y={53} team="red" label="Chase" />
           <Player x={45} y={65} team="blue" />
@@ -252,11 +275,13 @@ function DiagramSvg({
           <text x="118" y="18" className="fill-teal-700 text-[8px] font-bold">
             Score
           </text>
+          <CueLabel x={36} y={33}>Start</CueLabel>
         </>
       ) : null}
 
       {phase.action === "activation" ? (
         <>
+          <Ball x={57} y={52} />
           <Player x={43} y={34} team="blue" />
           <Player x={60} y={52} team="blue" />
           <Player x={42} y={72} team="blue" />
@@ -272,11 +297,13 @@ function DiagramSvg({
           <text x="113" y="18" className="fill-teal-700 text-[8px] font-bold">
             Gate
           </text>
+          <CueLabel x={23} y={18}>Start</CueLabel>
         </>
       ) : null}
 
       {phase.action === "pressure" ? (
         <>
+          <Ball x={96} y={53} />
           <Player x={48} y={33} team="blue" label="B1" />
           <Player x={48} y={53} team="blue" label="B2" />
           <Player x={48} y={73} team="blue" label="B3" />
@@ -292,11 +319,13 @@ function DiagramSvg({
           <text x="71" y="86" className="fill-slate-600 text-[8px] font-semibold">
             Cover gates
           </text>
+          <CueLabel x={87} y={47}>Start pass</CueLabel>
         </>
       ) : null}
 
       {phase.action === "recover" ? (
         <>
+          <Ball x={57} y={55} />
           <Player x={45} y={35} team="blue" label="D1" />
           <Player x={58} y={55} team="blue" label="D2" />
           <Player x={45} y={75} team="blue" label="D3" />
@@ -312,11 +341,13 @@ function DiagramSvg({
           <text x="118" y="74" className="fill-teal-700 text-[8px] font-bold">
             Counter
           </text>
+          <CueLabel x={27} y={24}>Start</CueLabel>
         </>
       ) : null}
 
       {phase.action === "outlet" ? (
         <>
+          <Ball x={31} y={53} />
           <rect x="8" y="28" width="18" height="49" rx="3" fill="none" stroke="#cbd5e1" strokeDasharray="3 3" />
           <Player x={34} y={53} team="blue" label="Regain" />
           <Player x={55} y={38} team="blue" label="1st" />
@@ -334,11 +365,13 @@ function DiagramSvg({
           <text x="116" y="18" className="fill-teal-700 text-[8px] font-bold">
             Escape
           </text>
+          <CueLabel x={19} y={45}>Start</CueLabel>
         </>
       ) : null}
 
       {phase.action === "generic" ? (
         <>
+          <Ball x={51} y={54} />
           <Player x={46} y={34} team="blue" />
           <Player x={46} y={54} team="blue" />
           <Player x={46} y={74} team="blue" />
@@ -353,6 +386,7 @@ function DiagramSvg({
           <text x="117" y="18" className="fill-teal-700 text-[8px] font-bold">
             Score
           </text>
+          <CueLabel x={28} y={25}>Start</CueLabel>
         </>
       ) : null}
     </svg>
@@ -396,6 +430,19 @@ function FinalGameFormatCard({ activity }: { activity?: DiagramActivity }) {
         Use the activity text to set teams, scoring, restarts, and the final constraint. Keep this
         block game-like and competitive.
       </p>
+    </div>
+  );
+}
+
+function DiagramLegend() {
+  return (
+    <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-500 sm:grid-cols-2">
+      <p>
+        <span className="font-semibold text-blue-700">Blue</span> coached team,{" "}
+        <span className="font-semibold text-red-600">red</span> opposition,{" "}
+        <span className="font-semibold text-yellow-700">yellow</span> cones/goals/equipment.
+      </p>
+      <p>Solid arrow = player/ball action. Dashed arrow = pressure, recovery, or movement cue.</p>
     </div>
   );
 }
@@ -487,9 +534,7 @@ export function DiagramPlaceholder({
           />
         </div>
       </button>
-      <p className="mt-3 text-xs leading-5 text-slate-500">
-        Blue shows the coached team, red shows opposition, yellow shows gates or cones.
-      </p>
+      <DiagramLegend />
 
       {isZoomOpen ? (
         <div
@@ -529,10 +574,7 @@ export function DiagramPlaceholder({
               totalActivities={totalActivities}
               size="large"
             />
-            <p className="mt-4 text-xs leading-5 text-slate-600">
-              Deterministic v1 diagram. Use it as a field setup guide, then follow the activity
-              text for exact rules, scoring, progressions, and safety adjustments.
-            </p>
+            <DiagramLegend />
           </div>
         </div>
       ) : null}

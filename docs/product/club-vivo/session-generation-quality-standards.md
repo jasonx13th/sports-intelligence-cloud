@@ -42,13 +42,39 @@ request was only one idea.
 
 For a 60-minute full session, use this structure:
 
-- Activity 1: fun game-like warm-up that activates the theme
+- Activity 1: simple game-like activation that introduces the session theme
 - Activity 2: main activity 1, high-quality theme-focused practice
 - Activity 3: main activity 2, same importance as activity 2, progression or different game condition
 - Activity 4: final game, mini tournament, or competitive game that closes the day with energy
 
 The two main activities should feel equally important. Activity 3 should not be a throwaway add-on;
 it should deepen the theme through a progression, constraint, pressure, or different game condition.
+Activity 4 should close with competition and should not require a full tactical diagram.
+
+## Session Builder Input Meaning
+
+Objective means what the session is teaching.
+
+Coaching note / activity idea means today's context, constraint, coach preference, or extra idea.
+The generator should treat it as practical planning context, not as a replacement for the learning
+objective.
+
+## Equipment Specificity Standard
+
+Equipment should be specific and direct in generated coach-facing setup. Avoid vague equipment
+lists such as "Pugg goals, small goals, target goals, or cone gates."
+
+If the coach selects equipment, the generator should prefer that equipment. If no equipment is
+selected, the generator may choose simple standard equipment, but should still make one direct setup
+choice. If the activity would be better with missing equipment, mention that as an optional coaching
+note rather than a vague setup list.
+
+## Diagram Clarity Standard
+
+Diagrams should include a clear start cue, ball cue when relevant, movement cue, and a short
+"how to read/play this" caption. Captions and labels should help coaches understand where players
+start, where the ball starts, what action begins play, what the main movement/action is, and how to
+score or finish the action.
 
 ## Drill Mode Standard
 

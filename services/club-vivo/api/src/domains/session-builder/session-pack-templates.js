@@ -404,29 +404,29 @@ function hasGoalEquipment(equipment) {
 
 function describeEquipment(equipment) {
   const items = mergeUniqueStrings(equipment).slice(0, 5);
-  return items.length ? items.join(", ") : "available equipment";
+  return items.length ? items.join(", ") : "balls, cones, and pinnies";
 }
 
 function getScoringTargets(equipment) {
   if (!hasGoalEquipment(equipment)) {
-    return "cone goals, cone gates, target lines, end zones, scoring zones, passing gates, or possession points";
+    return "cone gates";
   }
 
   const normalized = (Array.isArray(equipment) ? equipment : []).map((item) => normalizeTheme(item));
 
   if (normalized.some((item) => item.includes("pugg") || item.includes("pug goal"))) {
-    return "Pugg goals, small goals, target goals, or cone gates";
+    return "Pugg goals";
   }
 
   if (normalized.some((item) => item.includes("mini goal"))) {
-    return "mini goals, target goals, or cone gates";
+    return "mini goals";
   }
 
   if (normalized.some((item) => item.includes("small goal") || item.includes("portable goal"))) {
-    return "small goals, portable goals, target goals, or cone gates";
+    return "small goals";
   }
 
-  return "goals, target goals, or cone gates";
+  return "goals";
 }
 
 function getCoachNotesSnippet(value) {
@@ -483,7 +483,7 @@ function getProgramStyle(promptSignals) {
     context.includes("game-realistic")
   ) {
     return {
-      setup: "Build the session with clear spacing, scanning detail, and a progression the group can grow into",
+      setup: "Use clear spacing, scanning detail, and a progression the group can grow into",
       run: "coach the trigger, tempo, support angle, and transition after each repetition",
       cues: "scan early, receive side-on, play away from pressure, react on the next action",
       watch: "flat support angles, slow decisions, poor body shape, or players missing the press trigger",
@@ -705,7 +705,7 @@ function buildFinalGameDescription({ promptSignals, ageBand }) {
 
   const scoringTargetText = hasGoalEquipment(promptSignals?.equipment)
     ? getScoringTargets(promptSignals?.equipment)
-    : "end zones, cone goals, cone gates, target lines, or possession points";
+    : "cone gates";
 
   return buildCoachReadyDescription({
     phase: "final",
@@ -896,7 +896,7 @@ function applyMethodologyInfluenceToSession(session, methodologyInfluence) {
   const styleBiasSentences =
     styleBias === "travel"
       ? {
-          first: ["Build the session with clear spacing, scanning detail, and a progression the group can grow into."],
+          first: ["Use clear spacing, scanning detail, and a progression the group can grow into."],
           middle: ["Add decision-making detail and raise the pressure as the players settle in."],
           last: ["Finish with a competitive progression that rewards tempo, decisions, and execution under pressure."],
         }

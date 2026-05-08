@@ -52,7 +52,7 @@ export default async function HomePage() {
       <CoachPageHeader
         badge="Home"
         title="Coach workspace"
-        description="Brainstorm fast, turn the idea into a session, or use the top navigation when you want to go deeper on planning, teams, methodology, equipment, and saved sessions."
+        description="Start fast, turn the idea into a session, or use the top navigation when you want to go deeper on planning, teams, methodology, equipment, and saved sessions."
       />
 
       <HomeSessionStartCard

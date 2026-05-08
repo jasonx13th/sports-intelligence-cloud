@@ -362,7 +362,7 @@ export function NewSessionFlow({
     buildEnvironmentOptions([initialGenerateState.values.environment])
   );
   const [objective, setObjective] = useState(initialGenerateState.values.theme);
-  const [constraints, setConstraints] = useState(initialConstraints ?? "");
+  const constraints = initialConstraints ?? "";
   const [equipment, setEquipment] = useState(initialGenerateState.values.equipment);
   const [equipmentOptions, setEquipmentOptions] = useState(initialEquipmentOptions);
   const [profileEditorValue, setProfileEditorValue] = useState("");
@@ -514,7 +514,6 @@ export function NewSessionFlow({
         objective={objective}
         onObjectiveChange={setObjective}
         constraints={constraints}
-        onConstraintsChange={setConstraints}
         equipment={equipment}
         onEquipmentChange={setEquipment}
         equipmentOptions={equipmentOptions}

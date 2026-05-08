@@ -34,7 +34,6 @@ type SessionBuilderTopBlockProps = {
   objective: string;
   onObjectiveChange: (value: string) => void;
   constraints: string;
-  onConstraintsChange: (value: string) => void;
   equipment: string;
   onEquipmentChange: (value: string) => void;
   equipmentOptions: string[];
@@ -143,7 +142,7 @@ function buildGuidedObjective({
   }
 
   const focusText = focus ? `${primary}: ${focus.toLowerCase()}.` : `${primary}.`;
-  return normalizedDetail ? `${focusText} Coach note: ${normalizedDetail}.` : focusText;
+  return normalizedDetail ? `${focusText} Coaching notes: ${normalizedDetail}.` : focusText;
 }
 
 export function SessionBuilderTopBlock({
@@ -167,7 +166,6 @@ export function SessionBuilderTopBlock({
   objective,
   onObjectiveChange,
   constraints,
-  onConstraintsChange,
   equipment,
   onEquipmentChange,
   equipmentOptions,
@@ -289,8 +287,7 @@ export function SessionBuilderTopBlock({
           <div>
             <h3 className="text-base font-semibold text-slate-900">Objective</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Choose a guide, then add your own detail. You can also leave the guides blank and type
-              a custom objective.
+              Choose what the session teaches, then add today's context or coach preference.
             </p>
           </div>
 
@@ -352,16 +349,26 @@ export function SessionBuilderTopBlock({
           <label className="grid gap-2 text-sm text-slate-700">
             <span className="font-medium">
               {primaryObjective && primaryObjective !== "Custom"
-                ? "Coach note / custom detail"
+                ? "Coaching notes"
                 : "Custom objective"}
             </span>
             <textarea
               value={objectiveDetail}
               onChange={(event) => updateObjective({ detail: event.target.value })}
               className="min-h-24 rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-              placeholder="Example: find the first pass forward after recovering in our own box"
+              placeholder={
+                primaryObjective && primaryObjective !== "Custom"
+                  ? "Example: 14 players, only tall cones, make it competitive, start from our own box after winning the ball."
+                  : "Example: transition to attack after winning the ball in our own box"
+              }
               required={!objective}
             />
+            {primaryObjective && primaryObjective !== "Custom" ? (
+              <span className="text-xs leading-5 text-slate-500">
+                Add field limits, equipment constraints, player needs, style of play, or any
+                activity idea you want included.
+              </span>
+            ) : null}
             <span className="text-xs leading-5 text-slate-500">
               Sent to the builder as: {objective || "Add an objective before generating."}
             </span>
@@ -437,7 +444,6 @@ export function SessionBuilderTopBlock({
 
         <ObjectiveConstraintsInputs
           constraints={constraints}
-          onConstraintsChange={onConstraintsChange}
           equipment={equipment}
           onEquipmentChange={onEquipmentChange}
           equipmentOptions={equipmentOptions}

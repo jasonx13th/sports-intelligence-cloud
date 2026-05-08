@@ -45,26 +45,26 @@ export function HomeSessionStartCard({
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Quick activity</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Drop in one prompt for a 20-minute game-like activity by default. Ask for a session or
-            full practice when you want the shared brain to build a longer plan.
+            Add one note or activity idea for a 20-minute game-like activity by default. Ask for a
+            session or full practice when you want the shared planner to build a longer plan.
           </p>
         </div>
 
         <label className="grid gap-2 text-sm text-slate-700">
-          <span className="font-medium">Brainstorm</span>
+          <span className="font-medium">Coaching note / activity idea</span>
           <textarea
             name="prompt"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             rows={6}
             className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-            placeholder="Attacking 2v3 with cones and balls for under 12 players."
+            placeholder="Example: 10 players, only cones and balls, make a game-like activity for defending 1v1."
             required
           />
           {showPromptHelper ? (
             <span className="text-xs leading-5 text-slate-500">
-              Include duration, player count, age, equipment, or constraints when you have them.
-              The result opens in the text-first quick activity review.
+              Describe the quick activity you want, or add constraints like players, space,
+              equipment, or style.
             </span>
           ) : null}
         </label>

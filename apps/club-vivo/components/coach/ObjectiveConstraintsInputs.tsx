@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 
 type ObjectiveConstraintsInputsProps = {
   constraints: string;
-  onConstraintsChange: (value: string) => void;
   equipment: string;
   onEquipmentChange: (value: string) => void;
   equipmentOptions: string[];
@@ -42,7 +41,6 @@ function getEquipmentDescription(value: string) {
 
 export function ObjectiveConstraintsInputs({
   constraints,
-  onConstraintsChange,
   equipment,
   onEquipmentChange,
   equipmentOptions,
@@ -231,23 +229,7 @@ export function ObjectiveConstraintsInputs({
         </p>
       </section>
 
-      <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
-        <label className="grid gap-2 text-sm text-slate-700">
-          <span className="font-medium">Brainstorming</span>
-          <textarea
-            name="constraints"
-            value={constraints}
-            onChange={(event) => onConstraintsChange(event.target.value)}
-            rows={6}
-            className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-            placeholder="Session ideas, coaching notes, weather or space limits, and extra details for today"
-          />
-          <span className="text-xs leading-5 text-slate-500">
-            Use this for session ideas, coaching notes, weather or space constraints, and any extra
-            details that matter today.
-          </span>
-        </label>
-      </section>
+      <input type="hidden" name="constraints" value={constraints} />
     </>
   );
 }

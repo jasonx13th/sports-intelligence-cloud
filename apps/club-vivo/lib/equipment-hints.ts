@@ -24,6 +24,10 @@ function normalizeEquipmentName(value: string | undefined) {
     return undefined;
   }
 
+  if (normalized.toLowerCase() === "pennies") {
+    return "Pinnies";
+  }
+
   return normalized.slice(0, MAX_EQUIPMENT_NAME_LENGTH).trim();
 }
 

@@ -299,7 +299,7 @@ export function SessionBuilderTopBlock({
                 onChange={(event) => updateObjective({ primary: event.target.value, focus: "" })}
                 className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
               >
-                <option value="">Use custom text only</option>
+                <option value="">Coaching note only</option>
                 {PRIMARY_OBJECTIVE_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -350,7 +350,7 @@ export function SessionBuilderTopBlock({
             <span className="font-medium">
               {primaryObjective && primaryObjective !== "Custom"
                 ? "Coaching notes"
-                : "Custom objective"}
+                : "Coaching note / activity idea"}
             </span>
             <textarea
               value={objectiveDetail}
@@ -359,7 +359,7 @@ export function SessionBuilderTopBlock({
               placeholder={
                 primaryObjective && primaryObjective !== "Custom"
                   ? "Example: 14 players, only tall cones, make it competitive, start from our own box after winning the ball."
-                  : "Example: transition to attack after winning the ball in our own box"
+                  : "Example: 14 players, only tall cones, make a game-like activity for defending 1v1."
               }
               required={!objective}
             />

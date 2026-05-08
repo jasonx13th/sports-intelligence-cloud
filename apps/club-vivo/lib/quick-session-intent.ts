@@ -41,7 +41,7 @@ function stripDurationPhrase(prompt: string) {
 
 function stripEquipmentPhrases(prompt: string) {
   return prompt.replace(
-    /\b(?:with|using|use|need|needs)\s+(?:flat\s+cones?|cones?|balls?|goals?|mini\s+goals?|pug\s+goals?|pinnies|bibs|mannequins?|poles?|ladders?)(?:\s*(?:,|and)\s*(?:flat\s+cones?|cones?|balls?|goals?|mini\s+goals?|pug\s+goals?|pinnies|bibs|mannequins?|poles?|ladders?))*\b/gi,
+    /\b(?:with|using|use|need|needs)\s+(?:flat\s+cones?|cones?|balls?|goals?|mini\s+goals?|pug\s+goals?|pennies|pinnies|bibs|mannequins?|poles?|ladders?)(?:\s*(?:,|and)\s*(?:flat\s+cones?|cones?|balls?|goals?|mini\s+goals?|pug\s+goals?|pennies|pinnies|bibs|mannequins?|poles?|ladders?))*\b/gi,
     " "
   );
 }
@@ -201,7 +201,7 @@ export function detectQuickSessionEquipment(prompt: string) {
   add("mini goals", [/\bmini goals?\b/, /\bsmall goals?\b/]);
   add("pug goals", [/\bpug goals?\b/]);
   add("goals", [/\bgoals?\b/, /\bfull goals?\b/]);
-  add("pinnies", [/\bpinnies\b/, /\bbibs\b/, /\bvests\b/]);
+  add("Pinnies", [/\bpennies\b/, /\bpinnies\b/, /\bbibs\b/, /\bvests\b/]);
   add("mannequins", [/\bmannequins?\b/, /\bdummies\b/]);
   add("poles", [/\bpoles?\b/]);
   add("ladders", [/\bladders?\b/, /\bagility ladders?\b/]);

@@ -106,6 +106,22 @@ progression, recovery, counter, or second decision. Activity 4 remains a final-g
 The diagram legend should stay short and should explain that two yellow cone dots connected by a
 small line means cone gate.
 
+## Session Diagram Layout v3 Standard
+
+Generated full sessions should read as one progressive coaching story. Activity 1 introduces the
+grid, theme, ball start, movement direction, gates, and scoring idea. Activity 2 is the first main
+activity and increases decision-making or pressure. Activity 3 is the second main activity and must
+add progression, transition, recovery, or faster decisions rather than repeat Activity 2. Activity 4
+applies the same theme in a competitive final game or mini tournament.
+
+Setup text should begin with a direct space description such as "Grid: 20x18 yards..." or "Field:
+24x20 yards..." for rectangular spaces. Use "Circle: 12-yard diameter..." only for circular
+activities. Avoid broad equipment alternatives, and keep selected equipment direct.
+
+Story visuals for Activities 1, 2, and 3 should always be visible. The diagram area should be
+clickable to enlarge. Diagrams should avoid player, arrow, gate, ball, and label overlap. The legend
+should visually explain blue dot, red dot, yellow dot, cone gate, solid arrow, and dashed arrow.
+
 ## Drill Mode Standard
 
 A drill output should be specific and usable, but still game-like when possible.

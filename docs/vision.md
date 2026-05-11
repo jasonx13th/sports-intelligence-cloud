@@ -30,6 +30,8 @@ The first product focus is helping coaches create and run sessions under real-wo
 
 This entry point is the **Session Builder**.
 
+The next intended evolution is a proposed soccer-only **Training Prescription Layer** that helps translate match/performance evidence and coach observations into training objectives, sessions, activities, and diagram-ready outputs. It extends Session Builder and is not shipped runtime behavior yet.
+
 Near-term, this expands into a lightweight **Coach Workspace** direction where:
 
 - first-time coaches set up once
@@ -84,12 +86,14 @@ SIC currently prioritizes:
 
 - individual coaches
 - assistant coaches
+- grassroots and low-budget clubs
 - small academies
 - clubs with multiple coaches
 
 Over time, SIC can support:
 
 - larger academies
+- professional environments
 - sports organizations
 - schools and NGOs
 - structured development programs
@@ -142,18 +146,25 @@ Its job is simple:
 
 This wedge matters because it creates immediate value for coaches while also laying the data foundation for future SIC features.
 
-Week 21 keeps Session Builder as the active wedge, but freezes the next product step as **Coach Workspace Hardening for KSC**.
+Session Builder remains the active product wedge.
+
+The next intended evolution is the proposed **Club Vivo Training Prescription Layer**. It keeps grassroots and low-budget clubs as the starting market, with academies and professional environments as a future scaling direction.
 
 That means SIC should improve the product direction around:
 
-- first-time coach setup
-- returning-coach speed
-- team-level Travel vs OST context
-- team-level methodology defaults
-- Full Session vs Quick Drill direction
-- coach-admin governance direction
+- translating match/performance evidence and coach observations into the next training focus
+- turning that focus into objectives, sessions, activities, and drills
+- producing diagram-ready outputs from structured sequence data rather than raw generated images
+- preserving tenant isolation, server-derived tenant context, validation, observability, cost-awareness, and product value before platform expansion
 
 This is still one shared app and one shared tenant-safe product path.
+
+Related direction docs:
+
+- `docs/product/club-vivo/training-prescription-layer.md`
+- `docs/api/training-brief-v1-contract.md`
+- `docs/architecture/club-vivo/diagram-sequence-spec-v1.md`
+- `docs/adr/ADR-0011-soccer-only-training-prescription-layer.md`
 
 ---
 

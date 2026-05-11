@@ -39,6 +39,8 @@ This first product helps coaches:
 
 This wedge is intentionally narrow so SIC can deliver real value early while building the structured foundation for broader platform growth.
 
+The next intended evolution is a proposed soccer-only Training Prescription Layer that helps translate match/performance evidence and coach observations into training objectives, sessions, activities, and diagram-ready outputs. This extends the Session Builder; it is not shipped runtime behavior yet and does not create a separate app, backend service, or tenancy path.
+
 ---
 
 ## 3. Product Evolution Path
@@ -76,12 +78,14 @@ SIC currently prioritizes:
 
 - individual coaches
 - assistant coaches
+- grassroots and low-budget clubs
 - small academies
 - clubs with multiple coaches
 
 Future expansion may support:
 
 - larger organizations
+- academies and professional environments
 - schools
 - NGOs
 - structured development programs
@@ -192,6 +196,12 @@ When there is ambiguity, use this order:
 
 For repo navigation and current source orientation, see:
 - `docs/architecture/club-vivo-source-map.md`
+
+For the proposed Training Prescription direction, see:
+- `docs/product/club-vivo/training-prescription-layer.md`
+- `docs/api/training-brief-v1-contract.md`
+- `docs/architecture/club-vivo/diagram-sequence-spec-v1.md`
+- `docs/adr/ADR-0011-soccer-only-training-prescription-layer.md`
 
 ---
 

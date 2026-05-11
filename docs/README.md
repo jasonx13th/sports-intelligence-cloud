@@ -23,17 +23,18 @@ Docs explain product direction, API contracts, architecture, operations, decisio
 ## Folder Map
 
 - `api/`
-  - API and cross-layer contract docs.
+  - API contracts and cross-layer contract docs.
 - `architecture/`
   - Platform/system architecture, principles, repo maps, source-of-truth governance, and diagram guidance.
+  - `architecture/club-vivo-source-map.md` is the detailed Club Vivo source map for frontend, backend, Session Builder, diagrams, methodology, teams, auth/tenancy, and infra.
 - `product/`
-  - Product documentation. Current Club Vivo product docs live under `product/club-vivo/`.
+  - Product documentation. Active Club Vivo product docs live under `product/club-vivo/`.
 - `adr/`
   - Architecture decision records.
 - `runbooks/`
-  - Operational guidance for failures, smoke tests, shipping, and support workflows.
+  - Operational guidance.
 - `progress/`
-  - Concise progress summaries and New SIC cleanup notes.
+  - Build history and closeout notes.
 
 ## Historical Progress Docs
 

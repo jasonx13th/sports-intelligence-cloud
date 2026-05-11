@@ -4,6 +4,8 @@ This folder contains source-controlled product documentation for Sports Intellig
 
 SIC is the platform. Club Vivo is the current coach-facing product and app surface.
 
+Active product docs live under `docs/product/club-vivo/`.
+
 ## What Belongs Here
 
 - Product overviews and product-scope docs.
@@ -22,10 +24,15 @@ SIC is the platform. Club Vivo is the current coach-facing product and app surfa
 ## Current Product Area
 
 - `docs/product/club-vivo/`
-  - Club Vivo product docs for the shared coach-facing workspace.
+  - Current Club Vivo product source area for the shared coach-facing workspace.
 
 ## Future Product Concepts
 
 - `docs/product/future/`
-  - SIC-wide future product concepts that are not active runtime apps.
+  - Broader future concepts outside the current Club Vivo execution path.
   - Current preserved concepts include Ruta Viva and Athlete Evolution AI.
+
+## Legacy Product Material
+
+- `docs/product/sic-coach-lite/`
+  - Legacy/leftover material to review later before archive or delete decisions.

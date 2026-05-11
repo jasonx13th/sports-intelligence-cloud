@@ -190,6 +190,9 @@ When there is ambiguity, use this order:
 4. `docs/architecture/tenant-claim-contract.md`
 5. `docs/product/club-vivo/session-builder.md`
 
+For repo navigation and current source orientation, see:
+- `docs/architecture/club-vivo-source-map.md`
+
 ---
 
 ## 12. What SIC Must Avoid Right Now

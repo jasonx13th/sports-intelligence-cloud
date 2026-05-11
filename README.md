@@ -74,20 +74,28 @@ cd infra/cdk
 npm run build
 ```
 
-## Repo Navigation
+## How To Read This Repo
 
-- `apps/`
-  - User-facing app surfaces. `apps/club-vivo` is active; other app folders are future/cleanup-review candidates.
-- `services/`
-  - Backend services and auth Lambda source.
-- `infra/`
-  - Infrastructure-as-code source.
-- `docs/`
-  - Human-readable architecture, product, API, ADR, runbook, and progress documentation.
-- `scripts/`
-  - Repo utility and smoke-test scripts.
-- `datasets/`
-  - Checked-in machine-readable schemas and reference assets.
+- `apps/club-vivo`
+  - Active Club Vivo web app and coach workspace.
+- `services/club-vivo/api`
+  - Active backend API for Club Vivo.
+- `services/auth`
+  - Cognito auth lifecycle Lambdas.
+- `infra/cdk`
+  - AWS CDK infrastructure.
+- `docs/product/club-vivo`
+  - Active product source-of-truth docs.
+- `docs/api`
+  - API contracts.
+- `docs/architecture`
+  - Platform architecture, tenancy, repo maps, and system maps.
+- `docs/runbooks`
+  - Operational guidance.
+- `docs/progress`
+  - Build history and closeout notes.
+
+For a detailed source map, see [Club Vivo Source Map](docs/architecture/club-vivo-source-map.md).
 
 ## Boundaries
 

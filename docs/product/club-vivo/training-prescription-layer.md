@@ -142,11 +142,11 @@ The product should work with minimal data and practical coach inputs first. It s
 
 The same concepts should scale upward by supporting richer evidence over time, including more structured match data, video-derived observations, staff workflows, and methodology libraries.
 
-## 14. Spanish/Futbol Readiness
+## 14. Spanish/Fútbol Readiness
 
 Spanish localization should be planned for later.
 
-This document does not implement translation or require bilingual runtime behavior now. The product language, data model, and naming choices should avoid blocking future Spanish/futbol support.
+This document does not implement translation or require bilingual runtime behavior now. The product language, data model, and naming choices should avoid blocking future Spanish/fútbol support.
 
 ## 15. Non-Goals
 

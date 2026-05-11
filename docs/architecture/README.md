@@ -26,6 +26,7 @@ Architecture docs explain how SIC is structured, what boundaries matter, and how
 - `architecture-principles.md`
 - `platform-constitution.md`
 - `tenant-claim-contract.md`
+- `club-vivo-source-map.md`
 - `repo-structure.md`
 - `sic-repo-inventory.md`
 - `sic-current-system-map.md`
@@ -38,7 +39,7 @@ Architecture docs explain how SIC is structured, what boundaries matter, and how
 - `foundations/`
   - Governance and source-of-truth foundation docs.
 - `coach-lite/`
-  - Older Coach Lite architecture material. Review naming before adding new Club Vivo product docs here.
+  - Legacy naming that still contains useful architecture material for generation flow, diagram rendering, drill diagram specs, and tenant methodology knowledge.
 
 ## Change Rules
 
@@ -53,4 +54,3 @@ Architecture docs explain how SIC is structured, what boundaries matter, and how
 - `architecture-principles.md`
 - `platform-constitution.md`
 - `tenant-claim-contract.md`
-

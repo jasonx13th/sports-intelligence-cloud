@@ -44,6 +44,7 @@ Add an ADR, or get an explicit architecture decision, for changes such as:
 - `ADR-0008-coach-basic-to-org-premium-upgrade-and-active-tenant-selection.md`
 - `ADR-0009-session-builder-runtime-boundaries-and-explicit-coach-flow.md`
 - `ADR-0010-club-vivo-web-auth-and-server-side-api-access.md`
+- `ADR-0011-soccer-only-training-prescription-layer.md` - Accepted: Soccer-Only Training Prescription Layer
 
 ## Change Rules
 

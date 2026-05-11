@@ -28,6 +28,7 @@ These docs describe behavior that callers, handlers, frontend clients, domain co
 - `generation-context-v1-contract.md`
 - `resolved-generation-context-v1-contract.md`
 - `session-feedback-v1-contract.md`
+- `training-brief-v1-contract.md` (proposed; not shipped runtime behavior)
 - `platform-error-contract.md`
 
 Other contract/reference docs in this folder include:

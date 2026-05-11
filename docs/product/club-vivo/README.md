@@ -2,18 +2,23 @@
 
 ## Naming Note
 
-SIC is the platform. Club Vivo is the current coach-facing product and app surface. Older references in this document to SIC Coach Lite describe the original product wedge that has now been reorganized under Club Vivo product docs.
+SIC is the platform. Club Vivo is the current coach-facing product and app surface. SIC Coach Lite was the earlier/original wedge name and has now been reorganized under the current Club Vivo product name.
 
 ## Status
 Draft v1
 
+## Related Product Direction
+
+- `training-prescription-layer.md`
+  - Proposed Club Vivo Training Prescription Layer product direction. Not shipped runtime behavior.
+
 ## Product Summary
 
-SIC Coach Lite is the first club-facing product inside Sports Intelligence Cloud.
+Club Vivo is the current club-facing product inside Sports Intelligence Cloud.
 
 It helps coaches turn real-world training constraints into usable training sessions that are fast to run, visually clear, and easy to export. The first release is built specifically for soccer.
 
-SIC Coach Lite is not just a chatbot. It is a coaching workflow product that combines:
+Club Vivo is not just a chatbot. It is a coaching workflow product that combines:
 - structured coach intake
 - session generation
 - session validation
@@ -45,7 +50,7 @@ Most tools either:
 - do not reflect club methodology
 - do not provide clear visual setup
 
-SIC Coach Lite is designed to solve that.
+Club Vivo is designed to solve that.
 
 ---
 
@@ -68,7 +73,7 @@ SIC Coach Lite is designed to solve that.
 
 ## Core Product Promise
 
-Tell SIC Coach Lite what you have today, and it will generate a session you can run now.
+Tell Club Vivo what you have today, and it will generate a session you can run now.
 
 That includes:
 - the structure of the session
@@ -83,29 +88,29 @@ That includes:
 
 ## Why Soccer First
 
-SIC is designed as a multi-sport platform over time, but Coach Lite v1 is soccer-first.
+Club Vivo's current execution path is soccer-only.
 
 That choice keeps the first release focused and credible. Soccer offers:
 - strong founder-context fit
 - repeatable drill patterns
 - common youth coaching workflows
 - natural club methodology use cases
-- high reuse for future futsal support
+- a focused base for future multi-sport or futsal ideas, which remain parked outside the active scope
 
-Future sports may be added later, but the first release should be excellent for soccer before it becomes broader.
+Future multi-sport or futsal expansion may be revisited later, but it is not active Club Vivo scope.
 
 ---
 
 ## Product Positioning
 
 ### User-facing product name
-SIC Coach Lite
+Club Vivo
 
 ### Internal feature wedge
 Session Builder
 
 ### Platform relationship
-SIC Coach Lite is the first product layer that turns SIC from a platform foundation into a coach-facing workflow.
+Club Vivo is the current product layer that turns SIC from a platform foundation into a coach-facing workflow.
 
 It sits on top of:
 - authenticated tenant-safe access
@@ -115,7 +120,7 @@ It sits on top of:
 - observability
 - Club Vivo product direction
 
-For Coach Lite v1, the backend path should stay aligned to the existing Session Builder modules and the existing `POST /session-packs` endpoint family. The contract should evolve in place rather than creating a parallel Coach Lite generation pipeline.
+For Club Vivo v1, the backend path should stay aligned to the existing Session Builder modules and the existing `POST /session-packs` endpoint family. The contract should evolve in place rather than creating a parallel generation pipeline.
 
 ---
 
@@ -140,7 +145,7 @@ All club data, session history, and methodology context must stay tenant-scoped 
 
 ## V1 Capabilities
 
-Coach Lite v1 should support:
+Club Vivo v1 should support:
 
 - soccer-only intake
 - structured coach input
@@ -174,7 +179,7 @@ The first version is not trying to do all of the following:
 
 ## Product Value for Clubs
 
-SIC Coach Lite helps clubs by:
+Club Vivo helps clubs by:
 - improving coach consistency
 - reducing session planning time
 - supporting less experienced coaches
@@ -186,7 +191,7 @@ SIC Coach Lite helps clubs by:
 
 ## Product Value for Coaches
 
-SIC Coach Lite helps coaches by:
+Club Vivo helps coaches by:
 - turning constraints into usable training sessions
 - giving structure when time is limited
 - making setup easier through visual diagrams
@@ -209,6 +214,6 @@ Early success should be measured by:
 
 ## Summary
 
-SIC Coach Lite is the first practical coaching product in SIC.
+Club Vivo is the first practical coaching product in SIC.
 
 It starts with soccer, focuses on clear session output and visual setup, and gives clubs a realistic way to support coaches without requiring expensive tools or heavy infrastructure.

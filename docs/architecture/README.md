@@ -34,6 +34,8 @@ Architecture docs explain how SIC is structured, what boundaries matter, and how
 
 ## Important Subfolders
 
+- `club-vivo/`
+  - Current Club Vivo architecture area, including `diagram-sequence-spec-v1.md` as the proposed structured diagram and future animation data spec.
 - `diagrams/`
   - Official architecture diagram guidance, blueprints, editable diagram sources, and exported images.
 - `foundations/`

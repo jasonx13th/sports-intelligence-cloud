@@ -42,6 +42,7 @@ This map is not a replacement for `repo-structure.md`; it is a Club Vivo-specifi
 - Frontend diagram display lives in `apps/club-vivo/components/coach/DrillDiagramView.tsx` and `DiagramPlaceholder.tsx`.
 - Shared frontend diagram typing lives in `apps/club-vivo/lib/types/drill-diagram-spec.ts`.
 - Backend diagram validation lives in `services/club-vivo/api/src/domains/session-builder/diagram-spec-validate.js`.
+- `docs/architecture/club-vivo/diagram-sequence-spec-v1.md` is the current proposed DiagramSequence v1 spec for structured diagram and future animation data.
 - Current diagram contracts and architecture notes live in `docs/api/diagram-rendering-contract-v1.md`, `docs/architecture/coach-lite/diagram-rendering-architecture.md`, and `docs/architecture/coach-lite/drill-diagram-spec-v1.md`.
 
 ## Methodology
@@ -91,10 +92,11 @@ This map is not a replacement for `repo-structure.md`; it is a Club Vivo-specifi
 ## Architecture Docs
 
 - Current architecture docs live in `docs/architecture/`.
+- `docs/architecture/club-vivo/` is the current Club Vivo architecture area.
 - ADRs live in `docs/adr/`.
 - `docs/architecture/diagrams/` contains rendered or source diagram notes.
 - `docs/architecture/foundations/` contains foundation/source-of-truth material.
-- `docs/architecture/coach-lite/` is legacy naming that still contains useful architecture material and should be migrated before any archive/delete decision.
+- `docs/architecture/coach-lite/` is legacy naming that still contains useful architecture material and should be reviewed and migrated before any archive/delete decision.
 
 ## Progress/History Docs
 

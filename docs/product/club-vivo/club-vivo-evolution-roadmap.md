@@ -92,6 +92,14 @@ The Training Prescription direction should help translate observations and perfo
 
 Diagrams are a five-star requirement. Activity visuals should be driven by structured sequence data that can be validated and rendered, not by raw generated images as the source of truth.
 
+### Football intelligence and learning
+
+Club Vivo should develop a simple football intelligence language that helps coaches and players understand why a training objective matters.
+
+The proposed 7Q direction should support tactical classification, Training Brief reasoning, Session Builder objectives, activity recommendations, DiagramSequence intent, coach education, player learning, and future engagement surfaces.
+
+This is proposed product direction only. It is not shipped runtime behavior.
+
 ### Low-cost scalability
 
 The product should start with minimal required inputs and affordable infrastructure, then scale toward academies and professional environments as richer evidence and workflows become useful.
@@ -106,7 +114,8 @@ The preferred build order is:
 4. add lightweight Training Brief intake
 5. map Training Brief output into Session Builder objectives and activities
 6. add coach review, edit, and feedback loops
-7. introduce methodology-aware and evidence-aware intelligence only after the core workflow proves value
+7. add lightweight football intelligence classification through 7Q tags and coach-facing learning prompts
+8. introduce methodology-aware and evidence-aware intelligence only after the core workflow proves value
 
 This order can change when a smaller slice delivers clearer product value, but platform expansion should not outrun the user workflow.
 
@@ -148,6 +157,9 @@ Near-term work should stay focused on proving the evidence-to-training bridge:
 - diagram-first activity output prototype
 - save/review/export continuity through the existing Coach Workspace
 - coach feedback capture after session use
+- optional 7Q tagging for Training Briefs and activity recommendations
+- coach-facing learning prompts connected to football intelligence categories
+- future 7Q learning-surface exploration kept separate from current runtime claims
 
 These are roadmap slices, not a claim of current shipped behavior.
 
@@ -171,6 +183,8 @@ Read this roadmap with:
 - `docs/product/club-vivo/session-builder.md`
 - `docs/product/club-vivo/coach-workspace.md`
 - `docs/product/club-vivo/training-prescription-layer.md`
+- `docs/product/club-vivo/football-intelligence-learning-layer.md`
+- `docs/product/club-vivo/future/7q-board-game-learning-surface.md`
 - `docs/product/club-vivo/coaching-session-design-standard.md`
 - `docs/product/club-vivo/session-generation-quality-standards.md`
 - `docs/api/session-builder-v1-contract.md`

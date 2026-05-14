@@ -620,6 +620,7 @@ test("quick one-drill requests under 25 minutes validate as one activity", async
     ageBand: "u14",
     durationMin: 25,
     theme: "quick | format:one_drill | 1v1 dribbling | 10 players",
+    sessionMode: "drill",
     sessionsCount: 1,
     equipment: ["cones", "pinnies"],
   });
@@ -681,7 +682,7 @@ test("quick drill-mode requests create one main activity", async () => {
   const result = await processSessionPackRequest({
     sport: "soccer",
     ageBand: "u14",
-    durationMin: 30,
+    durationMin: 23,
     theme: "quick | passing drill | 10 players",
     sessionMode: "drill",
     coachNotes: "Give me a quick drill with repetition.",
@@ -691,7 +692,7 @@ test("quick drill-mode requests create one main activity", async () => {
   const [session] = result.validatedPack.sessions;
 
   assert.equal(session.activities.length, 1);
-  assert.deepEqual(session.activities.map((activity) => activity.minutes), [30]);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [23]);
   assert.match(session.activities[0].description, /grid|gates|channels|target players/i);
 });
 

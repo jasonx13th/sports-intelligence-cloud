@@ -90,18 +90,39 @@ A great session should:
 
 ## 6. Standard Full Session Structure
 
-For a 60-minute session, use this standard:
+Full sessions should run from 45 to 120 minutes. The selected duration should shape the activity
+structure instead of stretching one generic template.
 
-Activity 1: Simple game-like activation that introduces the session theme.
+For a 45-minute session, use:
 
-Activity 2: Main activity 1. High-quality theme-focused practice.
+Activity 1: 10-minute game-like activation.
 
-Activity 3: Main activity 2. Same importance as Activity 2. Should be a progression, variation, or
-different game condition.
+Activity 2: 20-minute main activity.
 
-Activity 4: Final game, mini tournament, or competitive close that applies the theme. This block
-should not need a full tactical diagram; the coach needs the game format, teams, scoring, and final
-constraint.
+Activity 3: 15-minute final game or competitive close.
+
+For a 60-minute session, use this standard deterministic split:
+
+Activity 1: 12-minute simple game-like activation that introduces the session theme.
+
+Activity 2: 18-minute main activity 1. High-quality theme-focused practice.
+
+Activity 3: 18-minute main activity 2. Same importance as Activity 2. Should be a progression,
+variation, or different game condition.
+
+Activity 4: 12-minute final game, mini tournament, or competitive close that applies the theme.
+This block should not need a full tactical diagram; the coach needs the game format, teams,
+scoring, and final constraint.
+
+For a 90-minute session, use a longer four-block shape: 20-minute activation, two 25-minute main
+activities, and a 20-minute competitive close.
+
+For a 120-minute session, use five meaningful blocks: 20-minute activation, three 25-minute main
+activities, and a 25-minute competitive close. Do not add low-value filler activities.
+
+For other full-session durations between 45 and 120 minutes, use a sensible deterministic
+allocation. The total minutes must exactly match the requested duration while preserving activation,
+main activity work, and a final game or competitive close.
 
 Activity 1 should not be a boring generic warm-up. Activity 3 should not be weaker than Activity 2.
 Activity 4 should not be just "water break + final game." It should be a real competitive close.
@@ -190,7 +211,9 @@ deterministic renderer rather than raw images.
 
 ## 7. Quick Activity Standard
 
-Quick Activity should usually produce one strong activity that a coach can run fast.
+Quick Activity should usually produce one strong activity that a coach can run fast. Drill/activity
+duration should run from 15 to 25 minutes, and the activity should exactly match the selected
+minutes.
 
 It should include:
 
@@ -214,6 +237,9 @@ If a coach asks for multiple ideas in Quick Activity, the system should either:
 Drill mode should not mean boring lines or isolated repetition by default.
 
 A good drill should still feel game-like when possible.
+
+Drill mode should produce one strong activity from 15 to 25 minutes. It should not create several
+thin mini-blocks just to fill time.
 
 It should include:
 

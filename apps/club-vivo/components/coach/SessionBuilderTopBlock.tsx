@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { DurationSelector } from "./DurationSelector";
 import { ModeSelector, type SessionBuilderMode } from "./ModeSelector";
@@ -27,29 +27,23 @@ type SessionBuilderTopBlockProps = {
   durationMin: string;
   onDurationMinChange: (value: string) => void;
   minimumDuration: number;
+  maximumDuration: number;
   environment: string;
   environmentOptions: SessionEnvironmentOption[];
   onEnvironmentChange: (value: string) => void;
-  onAddEnvironment: (value: string) => void;
   objective: string;
   onObjectiveChange: (value: string) => void;
   constraints: string;
+  onConstraintsChange: (value: string) => void;
   equipment: string;
   onEquipmentChange: (value: string) => void;
   equipmentOptions: string[];
-  onSaveEquipmentOption: (
-    value: string
-  ) => Promise<{ items: string[]; error?: string; message?: string }>;
   selectedTeamName: string;
   selectedTeamAgeBand?: string;
   selectedTeamProgramType?: "travel" | "ost";
   selectedTeamPlayerCount?: number;
   actions: ReactNode;
 };
-
-function normalizeCustomEnvironment(value: string) {
-  return value.replace(/\s+/g, " ").trim().slice(0, 48).trim();
-}
 
 const OBJECTIVE_FOCUS_OPTIONS: Record<string, string[]> = {
   Attacking: [
@@ -129,20 +123,32 @@ const PRIMARY_OBJECTIVE_OPTIONS = Object.keys(OBJECTIVE_FOCUS_OPTIONS);
 function buildGuidedObjective({
   primary,
   focus,
-  detail
+  constraints
 }: {
   primary: string;
   focus: string;
-  detail: string;
+  constraints: string;
 }) {
-  const normalizedDetail = detail.replace(/\s+/g, " ").trim();
-
-  if (!primary || primary === "Custom") {
-    return normalizedDetail;
+  if (!primary) {
+    return "";
   }
 
-  const focusText = focus ? `${primary}: ${focus.toLowerCase()}.` : `${primary}.`;
-  return normalizedDetail ? `${focusText} Coaching notes: ${normalizedDetail}.` : focusText;
+  if (primary === "Custom") {
+    const normalizedConstraints = constraints.replace(/\s+/g, " ").trim();
+
+    if (!normalizedConstraints) {
+      return "";
+    }
+
+    const conciseConstraints =
+      normalizedConstraints.length > 96
+        ? `${normalizedConstraints.slice(0, 93).trim()}...`
+        : normalizedConstraints;
+
+    return `Custom: ${conciseConstraints}`;
+  }
+
+  return focus ? `${primary}: ${focus.toLowerCase()}.` : `${primary}.`;
 }
 
 export function SessionBuilderTopBlock({
@@ -159,40 +165,30 @@ export function SessionBuilderTopBlock({
   durationMin,
   onDurationMinChange,
   minimumDuration,
+  maximumDuration,
   environment,
   environmentOptions,
   onEnvironmentChange,
-  onAddEnvironment,
   objective,
   onObjectiveChange,
   constraints,
+  onConstraintsChange,
   equipment,
   onEquipmentChange,
   equipmentOptions,
-  onSaveEquipmentOption,
   selectedTeamName,
   selectedTeamAgeBand,
   selectedTeamProgramType,
   selectedTeamPlayerCount,
   actions
 }: SessionBuilderTopBlockProps) {
-  const [isAddingEnvironment, setIsAddingEnvironment] = useState(false);
-  const [environmentDraft, setEnvironmentDraft] = useState("");
   const [primaryObjective, setPrimaryObjective] = useState("");
   const [specificFocus, setSpecificFocus] = useState("");
-  const [objectiveDetail, setObjectiveDetail] = useState(objective);
   const focusOptions = primaryObjective ? OBJECTIVE_FOCUS_OPTIONS[primaryObjective] || [] : [];
-
-  useEffect(() => {
-    if (!primaryObjective && objective !== objectiveDetail) {
-      setObjectiveDetail(objective);
-    }
-  }, [objective, objectiveDetail, primaryObjective]);
 
   function updateObjective(nextValues: {
     primary?: string;
     focus?: string;
-    detail?: string;
   }) {
     const nextPrimary = nextValues.primary ?? primaryObjective;
     const allowedFocusOptions = nextPrimary ? OBJECTIVE_FOCUS_OPTIONS[nextPrimary] || [] : [];
@@ -202,32 +198,32 @@ export function SessionBuilderTopBlock({
         : allowedFocusOptions.includes(specificFocus)
           ? specificFocus
           : "";
-    const nextDetail = nextValues.detail ?? objectiveDetail;
 
     setPrimaryObjective(nextPrimary);
     setSpecificFocus(nextFocus);
-    setObjectiveDetail(nextDetail);
     onObjectiveChange(
       buildGuidedObjective({
         primary: nextPrimary,
         focus: nextFocus,
-        detail: nextDetail
+        constraints
       })
     );
   }
 
-  function handleAddEnvironment() {
-    const normalizedDraft = normalizeCustomEnvironment(environmentDraft);
+  function handleConstraintsChange(value: string) {
+    onConstraintsChange(value);
 
-    if (!normalizedDraft) {
-      setEnvironmentDraft("");
-      setIsAddingEnvironment(false);
+    if (primaryObjective !== "Custom") {
       return;
     }
 
-    onAddEnvironment(normalizedDraft);
-    setEnvironmentDraft("");
-    setIsAddingEnvironment(false);
+    onObjectiveChange(
+      buildGuidedObjective({
+        primary: primaryObjective,
+        focus: specificFocus,
+        constraints: value
+      })
+    );
   }
 
   return (
@@ -255,7 +251,7 @@ export function SessionBuilderTopBlock({
           <div>
             <h3 className="text-base font-semibold text-slate-900">Build mode</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Pick the planning frame that fits what you want to build.
+              Custom Build: Build a session or drill when you already know the focus.
             </p>
           </div>
           <ModeSelector value={mode} onChange={onModeChange} />
@@ -277,7 +273,7 @@ export function SessionBuilderTopBlock({
               value={durationMin}
               onChange={onDurationMinChange}
               minimumDuration={minimumDuration}
-              mode={mode}
+              maximumDuration={maximumDuration}
             />
           </section>
         </div>
@@ -285,9 +281,10 @@ export function SessionBuilderTopBlock({
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
           <input type="hidden" name="theme" value={objective} />
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Objective</h3>
+            <h3 className="text-base font-semibold text-slate-900">Session focus</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Choose what the session teaches, then add today's context or coach preference.
+              Choose a primary objective and focus, or choose Custom and write your own
+              soccer-specific idea below.
             </p>
           </div>
 
@@ -299,7 +296,7 @@ export function SessionBuilderTopBlock({
                 onChange={(event) => updateObjective({ primary: event.target.value, focus: "" })}
                 className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
               >
-                <option value="">Coaching note only</option>
+                <option value="">Select primary objective</option>
                 {PRIMARY_OBJECTIVE_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -347,30 +344,17 @@ export function SessionBuilderTopBlock({
           ) : null}
 
           <label className="grid gap-2 text-sm text-slate-700">
-            <span className="font-medium">
-              {primaryObjective && primaryObjective !== "Custom"
-                ? "Coaching notes"
-                : "Coaching note / activity idea"}
-            </span>
+            <span className="font-medium">Coaching note / activity idea</span>
             <textarea
-              value={objectiveDetail}
-              onChange={(event) => updateObjective({ detail: event.target.value })}
-              className="min-h-24 rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-              placeholder={
-                primaryObjective && primaryObjective !== "Custom"
-                  ? "Example: 14 players, only tall cones, make it competitive, start from our own box after winning the ball."
-                  : "Example: 14 players, only tall cones, make a game-like activity for defending 1v1."
-              }
-              required={!objective}
+              name="constraints"
+              value={constraints}
+              onChange={(event) => handleConstraintsChange(event.target.value)}
+              className="min-h-28 rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
+              placeholder="Example: Make it game-like like duck duck goose, with quick decisions after regains."
             />
-            {primaryObjective && primaryObjective !== "Custom" ? (
-              <span className="text-xs leading-5 text-slate-500">
-                Add field limits, equipment constraints, player needs, style of play, or any
-                activity idea you want included.
-              </span>
-            ) : null}
             <span className="text-xs leading-5 text-slate-500">
-              Sent to the builder as: {objective || "Add an objective before generating."}
+              Be creative here. Add soccer-specific objectives, activity ideas, field limits,
+              player needs, constraints, or a game-like idea you want to try.
             </span>
           </label>
         </section>
@@ -392,62 +376,18 @@ export function SessionBuilderTopBlock({
                 ))}
               </select>
             </label>
-
-            <button
-              type="button"
-              onClick={() => setIsAddingEnvironment(true)}
-              className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Add environment
-            </button>
           </div>
 
-          {isAddingEnvironment ? (
-            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-              <label className="grid gap-2 text-sm text-slate-700">
-                <span className="font-medium">Custom environment</span>
-                <input
-                  type="text"
-                  value={environmentDraft}
-                  onChange={(event) => setEnvironmentDraft(event.target.value)}
-                  placeholder="Parking lot"
-                  className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-700"
-                />
-              </label>
-
-              <button
-                type="button"
-                onClick={handleAddEnvironment}
-                className="inline-flex rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800"
-              >
-                Save
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEnvironmentDraft("");
-                  setIsAddingEnvironment(false);
-                }}
-                className="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : null}
-
           <span className="text-xs leading-5 text-slate-500">
-            Environment helps the builder reflect the real training surface and space. Added
-            environments stay in this builder page for now.
+            Choose the space or surface you are training on today so the builder can adapt the
+            session.
           </span>
         </section>
 
         <ObjectiveConstraintsInputs
-          constraints={constraints}
           equipment={equipment}
           onEquipmentChange={onEquipmentChange}
           equipmentOptions={equipmentOptions}
-          onSaveEquipmentOption={onSaveEquipmentOption}
         />
       </div>
 

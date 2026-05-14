@@ -95,11 +95,11 @@ test("generatePack splits a 60-minute full session into 12 / 18 / 18 / 12", () =
   assert.match(session.activities.at(-1).name, /7v7 .*Final Game|Tournament|Competitive/i);
 });
 
-test("generatePack creates one 30-minute drill activity", () => {
+test("generatePack creates one 23-minute drill activity", () => {
   const pack = generatePack({
     sport: "soccer",
     ageBand: "u12",
-    durationMin: 30,
+    durationMin: 23,
     theme: "quick | passing drill | 10 players",
     sessionMode: "drill",
     coachNotes: "Make it a drill with lots of repetition.",
@@ -109,8 +109,63 @@ test("generatePack creates one 30-minute drill activity", () => {
   const [session] = pack.sessions;
 
   assert.equal(session.activities.length, 1);
-  assert.deepEqual(session.activities.map((activity) => activity.minutes), [30]);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [23]);
   assert.match(session.activities[0].description, /grid|gates|channels|target players/i);
+});
+
+test("generatePack shapes a 45-minute full session into activation, main activity, and competitive close", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u12",
+    durationMin: 45,
+    theme: "attacking overloads",
+    sessionMode: "full_session",
+    sessionsCount: 1,
+    equipment: ["balls", "cones"],
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(minutesSum(session.activities), 45);
+  assert.equal(session.activities.length, 3);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [10, 20, 15]);
+  assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive/i);
+});
+
+test("generatePack shapes a 90-minute full session into four exact blocks", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u14",
+    durationMin: 90,
+    theme: "pressing transition",
+    sessionMode: "full_session",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(minutesSum(session.activities), 90);
+  assert.equal(session.activities.length, 4);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [20, 25, 25, 20]);
+  assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive/i);
+});
+
+test("generatePack shapes a 120-minute full session into five exact blocks", () => {
+  const pack = generatePack({
+    sport: "soccer",
+    ageBand: "u16",
+    durationMin: 120,
+    theme: "possession under pressure",
+    sessionMode: "full_session",
+    sessionsCount: 1,
+  });
+
+  const [session] = pack.sessions;
+
+  assert.equal(minutesSum(session.activities), 120);
+  assert.equal(session.activities.length, 5);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [20, 25, 25, 25, 25]);
+  assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive/i);
 });
 
 test("generatePack creates one 20-minute quick activity when requested", () => {
@@ -242,7 +297,7 @@ test("generatePack carries Travel U10 context into activity text", () => {
   const pack = generatePack({
     sport: "soccer",
     ageBand: "u10",
-    durationMin: 30,
+    durationMin: 23,
     theme: "passing under pressure",
     sessionMode: "drill",
     coachNotes:
@@ -308,8 +363,8 @@ test("generatePack gives every full-session activity coach-ready sections", () =
 
   const [session] = pack.sessions;
 
-  assert.equal(session.activities.length, 4);
-  assert.deepEqual(session.activities.map((activity) => activity.minutes), [9, 13, 14, 9]);
+  assert.equal(session.activities.length, 3);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [10, 20, 15]);
 
   for (const activity of session.activities) {
     assert.match(activity.description, /Setup:/);
@@ -389,8 +444,8 @@ test("generatePack does not end full sessions with generic cooldown", () => {
 
   const [session] = pack.sessions;
   assert.equal(minutesSum(session.activities), 50);
-  assert.equal(session.activities.length, 4);
-  assert.deepEqual(session.activities.map((activity) => activity.minutes), [10, 15, 15, 10]);
+  assert.equal(session.activities.length, 3);
+  assert.deepEqual(session.activities.map((activity) => activity.minutes), [11, 22, 17]);
   assert.match(session.activities.at(-1).name, /Final Game|Tournament|Competitive/i);
   assert.equal(
     session.activities.some((activity) => activity.name === "Cooldown"),

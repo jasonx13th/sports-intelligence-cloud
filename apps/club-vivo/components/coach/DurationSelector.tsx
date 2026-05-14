@@ -1,17 +1,15 @@
-import type { SessionBuilderMode } from "./ModeSelector";
-
 type DurationSelectorProps = {
   value: string;
   onChange: (value: string) => void;
   minimumDuration: number;
-  mode: SessionBuilderMode;
+  maximumDuration: number;
 };
 
 export function DurationSelector({
   value,
   onChange,
   minimumDuration,
-  mode
+  maximumDuration
 }: DurationSelectorProps) {
   return (
     <label className="grid gap-2 text-sm text-slate-700">
@@ -20,6 +18,7 @@ export function DurationSelector({
         name="durationMin"
         type="number"
         min={String(minimumDuration)}
+        max={String(maximumDuration)}
         step="1"
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -27,9 +26,8 @@ export function DurationSelector({
         required
       />
       <span className="text-xs leading-5 text-slate-500">
-        {mode === "quick_drill"
-          ? "Drill starts at 20 minutes in the UI, with a frontend minimum of 10. You can still adjust it."
-          : "Full Session starts at 60 minutes in the UI, with a frontend minimum of 30. You can still adjust it."}
+        Choose how long you have today. Full sessions run from 45 to 120 minutes. Drills run from
+        15 to 25 minutes.
       </span>
     </label>
   );

@@ -109,6 +109,7 @@ test("validateCreateSessionPack accepts explicit generation mode and coach notes
   const result = validateCreateSessionPack(
     makeValidPackRequest({
       sessionMode: "quick_activity",
+      durationMin: 20,
       coachNotes: "Use the players' request for more finishing repetition.",
     })
   );
@@ -124,6 +125,40 @@ test("validateCreateSessionPack rejects unsupported generation mode", () => {
       assert.equal(err.code, "invalid_field");
       assert.equal(err.details.reason, "unsupported_session_mode");
       assert.equal(err.details.field, "sessionMode");
+      return true;
+    }
+  );
+});
+
+test("validateCreateSessionPack rejects full sessions below 45 minutes", () => {
+  assert.throws(
+    () => validateCreateSessionPack(makeValidPackRequest({ durationMin: 44, sessionMode: "full_session" })),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.field, "durationMin");
+      assert.equal(err.details.min, 45);
+      return true;
+    }
+  );
+});
+
+test("validateCreateSessionPack rejects drill durations outside 15 to 25 minutes", () => {
+  assert.throws(
+    () => validateCreateSessionPack(makeValidPackRequest({ durationMin: 14, sessionMode: "drill" })),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.field, "durationMin");
+      assert.equal(err.details.min, 15);
+      return true;
+    }
+  );
+
+  assert.throws(
+    () => validateCreateSessionPack(makeValidPackRequest({ durationMin: 26, sessionMode: "quick_activity" })),
+    (err) => {
+      assert.equal(err.code, "invalid_field");
+      assert.equal(err.details.field, "durationMin");
+      assert.equal(err.details.max, 25);
       return true;
     }
   );

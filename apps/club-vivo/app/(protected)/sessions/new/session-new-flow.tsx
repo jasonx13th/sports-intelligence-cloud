@@ -7,6 +7,7 @@ import {
   SessionBuilderTopBlock,
   type SessionEnvironmentOption
 } from "../../../../components/coach/SessionBuilderTopBlock";
+import { MatchToMatchPrescriptionDraft } from "./match-to-match-prescription-draft";
 import { ActivityOutput } from "../../../../components/coach/ActivityOutput";
 import { DiagramPlaceholder } from "../../../../components/coach/DiagramPlaceholder";
 import { type SessionBuilderMode } from "../../../../components/coach/ModeSelector";
@@ -52,48 +53,26 @@ type GenerateAction = (
 type AnalyzeAction = (state: AnalyzeFormState, formData: FormData) => Promise<AnalyzeFormState>;
 type SaveAction = (state: SaveFormState, formData: FormData) => Promise<SaveFormState>;
 type SaveFormDispatch = (formData: FormData) => void;
-type SaveEquipmentOptionsAction = (
-  items: string[]
-) => Promise<{ items: string[]; error?: string; message?: string }>;
+type PlanningPath = "custom" | "match_to_match";
 
 const FULL_SESSION_DEFAULT_DURATION = "60";
-const FULL_SESSION_MIN_DURATION = 30;
+const FULL_SESSION_MIN_DURATION = 45;
+const FULL_SESSION_MAX_DURATION = 120;
 const QUICK_DRILL_DEFAULT_DURATION = "20";
-const QUICK_DRILL_MIN_DURATION = 10;
+const QUICK_DRILL_MIN_DURATION = 15;
+const QUICK_DRILL_MAX_DURATION = 25;
 const DEFAULT_ENVIRONMENT_OPTIONS: SessionEnvironmentOption[] = [
-  { value: "grass_field", label: "Grass field" },
-  { value: "turf_field", label: "Turf field" },
-  { value: "gym_floor", label: "Gym floor" },
-  { value: "wood_floor", label: "Wood floor" },
-  { value: "indoor_wood_floor", label: "Indoor wood floor" }
+  { value: "grass_field", label: "Full grass field" },
+  { value: "turf_field", label: "Full turf field" },
+  { value: "half_grass_field", label: "Half grass field" },
+  { value: "half_turf_field", label: "Half turf field" },
+  { value: "small_sided_field", label: "7v7 / 9v9 field" },
+  { value: "small_grass_grid", label: "Small grass grid" },
+  { value: "small_turf_grid", label: "Small turf grid" },
+  { value: "indoor_wood_court", label: "Indoor wood court" },
+  { value: "indoor_gym_floor", label: "Indoor gym floor" },
+  { value: "hardcourt_grid", label: "Cement / hardcourt grid" }
 ];
-
-function normalizeCustomEnvironment(value: string) {
-  return value.replace(/\s+/g, " ").trim().slice(0, 48).trim();
-}
-
-function buildEnvironmentOptions(values: string[]): SessionEnvironmentOption[] {
-  const defaultValues = new Set(DEFAULT_ENVIRONMENT_OPTIONS.map((option) => option.value));
-  const customOptions = values.reduce<SessionEnvironmentOption[]>((accumulator, value) => {
-    const normalizedValue = normalizeCustomEnvironment(value);
-
-    if (!normalizedValue || defaultValues.has(normalizedValue)) {
-      return accumulator;
-    }
-
-    if (accumulator.some((option) => option.value === normalizedValue)) {
-      return accumulator;
-    }
-
-    accumulator.push({
-      value: normalizedValue,
-      label: normalizedValue
-    });
-    return accumulator;
-  }, []);
-
-  return [...DEFAULT_ENVIRONMENT_OPTIONS, ...customOptions];
-}
 
 function AnalyzeButton() {
   const { pending } = useFormStatus();
@@ -335,8 +314,7 @@ export function NewSessionFlow({
   initialConstraints,
   analyzeAction,
   generateAction,
-  saveAction,
-  saveEquipmentOptionsAction
+  saveAction
 }: {
   initialAnalyzeState: AnalyzeFormState;
   initialGenerateState: GenerateFormState;
@@ -347,24 +325,22 @@ export function NewSessionFlow({
   analyzeAction: AnalyzeAction;
   generateAction: GenerateAction;
   saveAction: SaveAction;
-  saveEquipmentOptionsAction: SaveEquipmentOptionsAction;
 }) {
   const [analyzeState, analyzeFormAction] = useActionState(analyzeAction, initialAnalyzeState);
   const [generateState, generateFormAction] = useActionState(generateAction, initialGenerateState);
   const [saveState, saveFormAction] = useActionState(saveAction, initialSaveState);
   const [selectedTeamId, setSelectedTeamId] = useState(teamOptions[0]?.id ?? "");
+  const [planningPath, setPlanningPath] = useState<PlanningPath>("custom");
   const [workspaceMode, setWorkspaceMode] = useState<SessionBuilderMode>("full_session");
   const [sport, setSport] = useState(initialGenerateState.values.sport);
   const [ageBand, setAgeBand] = useState(initialGenerateState.values.ageBand);
   const [durationMin, setDurationMin] = useState(initialGenerateState.values.durationMin);
   const [environment, setEnvironment] = useState(initialGenerateState.values.environment);
-  const [environmentOptions, setEnvironmentOptions] = useState<SessionEnvironmentOption[]>(() =>
-    buildEnvironmentOptions([initialGenerateState.values.environment])
-  );
+  const [environmentOptions] = useState<SessionEnvironmentOption[]>(DEFAULT_ENVIRONMENT_OPTIONS);
   const [objective, setObjective] = useState(initialGenerateState.values.theme);
-  const constraints = initialConstraints ?? "";
+  const [constraints, setConstraints] = useState(initialConstraints ?? "");
   const [equipment, setEquipment] = useState(initialGenerateState.values.equipment);
-  const [equipmentOptions, setEquipmentOptions] = useState(initialEquipmentOptions);
+  const equipmentOptions = initialEquipmentOptions;
   const [profileEditorValue, setProfileEditorValue] = useState("");
   const [confirmedProfileJson, setConfirmedProfileJson] = useState("");
   const [profileNotice, setProfileNotice] = useState<string>();
@@ -386,12 +362,6 @@ export function NewSessionFlow({
     setAgeBand(generateState.values.ageBand);
     setDurationMin(generateState.values.durationMin);
     setEnvironment(generateState.values.environment);
-    setEnvironmentOptions((current) =>
-      buildEnvironmentOptions([
-        ...current.map((option) => option.value),
-        generateState.values.environment
-      ])
-    );
     setObjective(generateState.values.theme);
     setEquipment(generateState.values.equipment);
   }, [
@@ -420,6 +390,7 @@ export function NewSessionFlow({
   }, [generateState.pack?.packId]);
 
   const minimumDuration = workspaceMode === "quick_drill" ? QUICK_DRILL_MIN_DURATION : FULL_SESSION_MIN_DURATION;
+  const maximumDuration = workspaceMode === "quick_drill" ? QUICK_DRILL_MAX_DURATION : FULL_SESSION_MAX_DURATION;
   const hasDraftProfile = Boolean(analyzeState.analysis?.profile);
   const selectedTeam = teamOptions.find((team) => team.id === selectedTeamId);
 
@@ -474,58 +445,113 @@ export function NewSessionFlow({
     }
   }
 
-  function handleAddEnvironment(value: string) {
-    setEnvironmentOptions((current) =>
-      buildEnvironmentOptions([...current.map((option) => option.value), value])
-    );
-    setEnvironment(value);
-  }
-
-  async function handleSaveEquipmentOption(value: string) {
-    const result = await saveEquipmentOptionsAction([...equipmentOptions, value]);
-
-    if (!result.error) {
-      setEquipmentOptions(result.items);
-    }
-
-    return result;
-  }
-
   return (
     <div className="mt-8 grid gap-8">
-      <SessionBuilderTopBlock
-        formAction={generateFormAction}
-        confirmedProfileJson={confirmedProfileJson}
-        error={generateState.error}
-        teams={teamOptions}
-        selectedTeamId={selectedTeamId}
-        onTeamChange={handleTeamChange}
-        mode={workspaceMode}
-        onModeChange={handleModeChange}
-        sport={sport}
-        ageBand={ageBand}
-        durationMin={durationMin}
-        onDurationMinChange={setDurationMin}
-        minimumDuration={minimumDuration}
-        environment={environment}
-        environmentOptions={environmentOptions}
-        onEnvironmentChange={setEnvironment}
-        onAddEnvironment={handleAddEnvironment}
-        objective={objective}
-        onObjectiveChange={setObjective}
-        constraints={constraints}
-        equipment={equipment}
-        onEquipmentChange={setEquipment}
-        equipmentOptions={equipmentOptions}
-        onSaveEquipmentOption={handleSaveEquipmentOption}
-        selectedTeamName={selectedTeam?.label || ""}
-        selectedTeamAgeBand={selectedTeam?.ageBand}
-        selectedTeamProgramType={selectedTeam?.programType}
-        selectedTeamPlayerCount={selectedTeam?.playerCount}
-        actions={<GenerateButton />}
-      />
+      <section className="rounded-3xl border border-slate-200 bg-white/70 p-5">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">How do you want to start?</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Choose a coach-led build when you already know the focus, or draft a match-to-match
+            plan from recent performance evidence.
+          </p>
+        </div>
 
-      <details className="rounded-3xl border border-slate-200 bg-white/70 p-6">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[
+            {
+              value: "custom" as const,
+              title: "Custom Build",
+              description: "Coach-led session or drill builder."
+            },
+            {
+              value: "match_to_match" as const,
+              title: "Match-to-Match Prescription",
+              description: "Evidence-led planning from last match to next match."
+            }
+          ].map((option) => {
+            const selected = planningPath === option.value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setPlanningPath(option.value)}
+                className={[
+                  "rounded-2xl border px-4 py-3 text-left transition",
+                  selected
+                    ? "border-teal-700 bg-teal-50 text-teal-950"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                ].join(" ")}
+                aria-pressed={selected}
+              >
+                <span className="block text-sm font-semibold">{option.title}</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-500">
+                  {option.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {planningPath === "match_to_match" ? (
+        <MatchToMatchPrescriptionDraft
+          teams={teamOptions}
+          selectedTeamId={selectedTeamId}
+          onTeamChange={handleTeamChange}
+          environment={environment}
+          environmentOptions={environmentOptions}
+          onEnvironmentChange={setEnvironment}
+          onUseOption={({
+            objective: nextObjective,
+            constraints: nextConstraints,
+            environment: nextEnvironment,
+            durationMin: nextDurationMin,
+            mode: nextMode
+          }) => {
+            setPlanningPath("custom");
+            setWorkspaceMode(nextMode);
+            setObjective(nextObjective);
+            setConstraints(nextConstraints);
+            setEnvironment(nextEnvironment);
+            setDurationMin(nextDurationMin);
+          }}
+        />
+      ) : (
+        <>
+          <SessionBuilderTopBlock
+            formAction={generateFormAction}
+            confirmedProfileJson={confirmedProfileJson}
+            error={generateState.error}
+            teams={teamOptions}
+            selectedTeamId={selectedTeamId}
+            onTeamChange={handleTeamChange}
+            mode={workspaceMode}
+            onModeChange={handleModeChange}
+            sport={sport}
+            ageBand={ageBand}
+            durationMin={durationMin}
+            onDurationMinChange={setDurationMin}
+            minimumDuration={minimumDuration}
+            maximumDuration={maximumDuration}
+            environment={environment}
+            environmentOptions={environmentOptions}
+            onEnvironmentChange={setEnvironment}
+            objective={objective}
+            onObjectiveChange={setObjective}
+            constraints={constraints}
+            onConstraintsChange={setConstraints}
+            equipment={equipment}
+            onEquipmentChange={setEquipment}
+            equipmentOptions={equipmentOptions}
+            selectedTeamName={selectedTeam?.label || ""}
+            selectedTeamAgeBand={selectedTeam?.ageBand}
+            selectedTeamProgramType={selectedTeam?.programType}
+            selectedTeamPlayerCount={selectedTeam?.playerCount}
+            actions={<GenerateButton />}
+          />
+
+          <details className="rounded-3xl border border-slate-200 bg-white/70 p-6">
         <summary className="cursor-pointer list-none">
           <span className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <span className="block">
@@ -693,6 +719,8 @@ export function NewSessionFlow({
           </div>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

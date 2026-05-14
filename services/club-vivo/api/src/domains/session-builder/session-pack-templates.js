@@ -386,6 +386,34 @@ function splitDurationByWeights(durationMin, weights) {
   return weighted.sort((a, b) => a.index - b.index).map((item) => item.minutes);
 }
 
+function getFullSessionDurationBlocks(durationMin) {
+  if (durationMin <= 59) {
+    if (durationMin === 45) {
+      return [10, 20, 15];
+    }
+
+    return splitDurationByWeights(durationMin, [0.22, 0.45, 0.33]);
+  }
+
+  if (durationMin === 60) {
+    return [12, 18, 18, 12];
+  }
+
+  if (durationMin === 90) {
+    return [20, 25, 25, 20];
+  }
+
+  if (durationMin >= 105) {
+    if (durationMin === 120) {
+      return [20, 25, 25, 25, 25];
+    }
+
+    return splitDurationByWeights(durationMin, [0.17, 0.21, 0.21, 0.21, 0.2]);
+  }
+
+  return splitDurationByWeights(durationMin, [0.2, 0.3, 0.3, 0.2]);
+}
+
 function compactText(value, fallback) {
   const normalized = String(value || "").replace(/\s+/g, " ").trim();
   return normalized || fallback;
@@ -736,7 +764,7 @@ function buildDefendingGatesMainDescription({ promptSignals, phase }) {
 }
 
 function normalizeFullSessionShape({ session, promptSignals }) {
-  const minutes = splitDurationByWeights(session.durationMin, [0.2, 0.3, 0.3, 0.2]);
+  const minutes = getFullSessionDurationBlocks(session.durationMin);
   const activities = Array.isArray(session.activities) ? session.activities : [];
   const archetype = detectSoccerActivityArchetype(promptSignals);
   const first = pickMainActivity(
@@ -757,6 +785,68 @@ function normalizeFullSessionShape({ session, promptSignals }) {
     "Conditioned game progression",
     "Progress into a more game-like challenge. Add pressure, direction, or scoring constraints so players use the main idea while making real decisions."
   );
+  const fourth = pickMainActivity(
+    activities,
+    2,
+    "Expanded game progression",
+    "Add a third main activity that keeps the same theme alive with a larger space, more players, or a new tactical decision."
+  );
+  const mainActivities = [
+    {
+      ...second,
+      name:
+        archetype?.key === "duck-duck-goose-defending-gates"
+          ? "3v3 Pressure and Cover Gates"
+          : archetype?.name || second.name,
+      minutes: minutes[1],
+      description:
+        archetype?.key === "duck-duck-goose-defending-gates"
+          ? buildDefendingGatesMainDescription({ promptSignals, phase: "main" })
+          : buildCoachReadyDescription({
+              phase: "main",
+              baseDescription: second.description,
+              promptSignals,
+            }),
+    },
+  ];
+
+  if (minutes.length >= 4) {
+    mainActivities.push({
+      ...third,
+      name:
+        archetype?.key === "duck-duck-goose-defending-gates"
+          ? "Recover, Delay, Win It Back"
+          : third.name,
+      minutes: minutes[2],
+      description:
+        archetype?.key === "duck-duck-goose-defending-gates"
+          ? buildDefendingGatesMainDescription({ promptSignals, phase: "progression" })
+          : buildCoachReadyDescription({
+              phase: "progression",
+              baseDescription: third.description,
+              promptSignals,
+            }),
+    });
+  }
+
+  if (minutes.length >= 5) {
+    mainActivities.push({
+      ...fourth,
+      name:
+        archetype?.key === "duck-duck-goose-defending-gates"
+          ? "Defend, Counter, Reset"
+          : fourth.name,
+      minutes: minutes[3],
+      description:
+        archetype?.key === "duck-duck-goose-defending-gates"
+          ? buildDefendingGatesMainDescription({ promptSignals, phase: "progression" })
+          : buildCoachReadyDescription({
+              phase: "progression",
+              baseDescription: fourth.description,
+              promptSignals,
+            }),
+    });
+  }
 
   return {
     ...session,
@@ -771,41 +861,10 @@ function normalizeFullSessionShape({ session, promptSignals }) {
           promptSignals,
         }),
       },
-      {
-        ...second,
-        name:
-          archetype?.key === "duck-duck-goose-defending-gates"
-            ? "3v3 Pressure and Cover Gates"
-            : archetype?.name || second.name,
-        minutes: minutes[1],
-        description:
-          archetype?.key === "duck-duck-goose-defending-gates"
-            ? buildDefendingGatesMainDescription({ promptSignals, phase: "main" })
-            : buildCoachReadyDescription({
-                phase: "main",
-                baseDescription: second.description,
-                promptSignals,
-              }),
-      },
-      {
-        ...third,
-        name:
-          archetype?.key === "duck-duck-goose-defending-gates"
-            ? "Recover, Delay, Win It Back"
-            : third.name,
-        minutes: minutes[2],
-        description:
-          archetype?.key === "duck-duck-goose-defending-gates"
-            ? buildDefendingGatesMainDescription({ promptSignals, phase: "progression" })
-            : buildCoachReadyDescription({
-                phase: "progression",
-                baseDescription: third.description,
-                promptSignals,
-              }),
-      },
+      ...mainActivities,
       {
         name: buildFinalGameName({ promptSignals, ageBand: session.ageBand }),
-        minutes: minutes[3],
+        minutes: minutes[minutes.length - 1],
         description: buildFinalGameDescription({ promptSignals, ageBand: session.ageBand }),
       },
     ],

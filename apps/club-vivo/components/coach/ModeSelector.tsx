@@ -35,7 +35,8 @@ export function ModeSelector({ value, onChange }: ModeSelectorProps) {
           />
           <span className="text-sm font-semibold text-slate-900">Full Session</span>
           <span className="text-xs leading-5 text-slate-600">
-            Build a full practice plan with the current shared generation flow.
+            Standard 60-minute session with activation, two main activities, and a competitive
+            close.
           </span>
         </label>
 
@@ -57,7 +58,7 @@ export function ModeSelector({ value, onChange }: ModeSelectorProps) {
           />
           <span className="text-sm font-semibold text-slate-900">Drill</span>
           <span className="text-xs leading-5 text-slate-600">
-            Use a lighter drill-first planning frame while staying on the same generation path.
+            Focused 20-minute activity or drill.
           </span>
         </label>
       </div>

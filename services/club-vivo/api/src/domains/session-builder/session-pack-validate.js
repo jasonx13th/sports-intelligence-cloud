@@ -24,6 +24,10 @@ const LIMITS = {
   coachNotesMax: 1000,
   durationMinMin: 5,
   durationMinMax: 240,
+  fullSessionDurationMin: 45,
+  fullSessionDurationMax: 120,
+  drillDurationMin: 15,
+  drillDurationMax: 25,
   sessionsCountMin: 1,
   sessionsCountMax: 6,
 };
@@ -275,12 +279,18 @@ function validateCreateSessionPack(body) {
   const sport = requireString(body, "sport", { max: LIMITS.sportMax });
   const sportPackId = optionalString(body, "sportPackId", { max: LIMITS.sportMax });
   const ageBand = requireSupportedAgeBand(body, "ageBand");
-  const durationMin = requireInt(body, "durationMin", {
-    min: LIMITS.durationMinMin,
-    max: LIMITS.durationMinMax,
-  });
   const theme = requireString(body, "theme", { max: LIMITS.themeMax });
   const sessionMode = optionalEnum(body, "sessionMode", SUPPORTED_SESSION_MODES, "unsupported_session_mode");
+  const durationMin = requireInt(body, "durationMin", {
+    min:
+      sessionMode === "drill" || sessionMode === "quick_activity"
+        ? LIMITS.drillDurationMin
+        : LIMITS.fullSessionDurationMin,
+    max:
+      sessionMode === "drill" || sessionMode === "quick_activity"
+        ? LIMITS.drillDurationMax
+        : LIMITS.fullSessionDurationMax,
+  });
   const coachNotes = optionalString(body, "coachNotes", { max: LIMITS.coachNotesMax });
   const equipment = requireEquipmentArray(body, "equipment");
 

@@ -14,8 +14,7 @@ import {
 import { COACH_TEAM_HINTS_COOKIE, getCoachTeams } from "../../../../lib/coach-team-hints";
 import {
   EQUIPMENT_HINTS_COOKIE,
-  getEquipmentItems,
-  serializeEquipmentHints
+  getEquipmentItems
 } from "../../../../lib/equipment-hints";
 import { getCurrentUser } from "../../../../lib/get-current-user";
 import { listTeams, type TeamRecord } from "../../../../lib/team-api";
@@ -132,28 +131,6 @@ export default async function NewSessionPage({
     }
   };
 
-  async function saveEquipmentOptionsAction(items: string[]) {
-    "use server";
-
-    const currentUser = await getCurrentUser();
-    const equipmentCookieName = getWorkspaceCookieName(EQUIPMENT_HINTS_COOKIE, currentUser);
-    const serializedItems = serializeEquipmentHints(items);
-    const nextItems = getEquipmentItems(serializedItems);
-
-    const responseCookieStore = await cookies();
-    responseCookieStore.set(equipmentCookieName, serializedItems, {
-      httpOnly: true,
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-      sameSite: "lax"
-    });
-
-    return {
-      items: nextItems,
-      message: "Equipment saved in this browser."
-    };
-  }
-
   return (
     <div className="grid gap-6">
       <CoachPageHeader
@@ -172,7 +149,6 @@ export default async function NewSessionPage({
         analyzeAction={analyzeSessionImageAction}
         generateAction={generateSessionPackAction}
         saveAction={saveGeneratedSessionAction}
-        saveEquipmentOptionsAction={saveEquipmentOptionsAction}
       />
     </div>
   );

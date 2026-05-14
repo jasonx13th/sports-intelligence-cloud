@@ -28,7 +28,9 @@ activity.
 
 ## Quick Activity Standard
 
-Quick Activity should usually produce one strong activity.
+Quick Activity should usually produce one strong activity from 15 to 25 minutes. The activity
+duration should exactly match the selected minutes so the coach gets one usable block, not several
+thin mini-activities.
 
 If the prompt asks for multiple activities, the app should either:
 
@@ -40,12 +42,34 @@ request was only one idea.
 
 ## Full Session Structure Standard
 
+Full sessions should run from 45 to 120 minutes. Duration should shape the session structure, and
+the total activity minutes must exactly match the selected duration.
+
+For a 45-minute full session, use a tight three-block shape:
+
+- 10-minute game-like activation
+- 20-minute main activity
+- 15-minute final game or competitive close
+
 For a 60-minute full session, use this structure:
 
 - Activity 1: simple game-like activation that introduces the session theme
 - Activity 2: main activity 1, high-quality theme-focused practice
 - Activity 3: main activity 2, same importance as activity 2, progression or different game condition
 - Activity 4: final game, mini tournament, or competitive game that closes the day with energy
+
+Use a deterministic 60-minute split such as 12-minute activation, two 18-minute main activities,
+and a 12-minute competitive close.
+
+For a 90-minute full session, use a longer four-block shape: 20-minute activation, two 25-minute
+main activities, and a 20-minute competitive close.
+
+For a 120-minute full session, use five meaningful blocks: 20-minute activation, three 25-minute
+main activities, and a 25-minute competitive close.
+
+For other full-session durations between 45 and 120 minutes, use a sensible deterministic
+allocation with activation, main activity work, and a competitive close or final game. Avoid
+low-value filler activities.
 
 The two main activities should feel equally important. Activity 3 should not be a throwaway add-on;
 it should deepen the theme through a progression, constraint, pressure, or different game condition.
@@ -157,9 +181,10 @@ Avoid generic text. Include:
 - regression
 - safety/space adjustment
 
-Drills should describe player roles, starting positions, field shape, ball flow, scoring, restart
-rules, and the coach's intervention points clearly enough that another coach could run the activity
-without asking follow-up questions.
+Drills should run from 15 to 25 minutes and produce one strong activity that exactly matches the
+selected duration. They should describe player roles, starting positions, field shape, ball flow,
+scoring, restart rules, and the coach's intervention points clearly enough that another coach could
+run the activity without asking follow-up questions.
 
 ## Creativity Standard
 
@@ -204,7 +229,7 @@ Future backend work should update session-pack generation/template logic to:
 
 - parse multi-intent brainstorming
 - map requested themes into run order
-- enforce warm-up/main/main/final game pattern
+- enforce duration-based activation/main activity/final game or competitive close patterns
 - avoid repeated generic setup text
 - create richer main activities
 - generate better titles
